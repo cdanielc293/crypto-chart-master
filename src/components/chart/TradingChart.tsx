@@ -867,9 +867,6 @@ export default function TradingChart() {
     </div>
   );
 }
-
-
-          const diff = p2 - p1;
           const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
           const colors = ['#787b86', '#f44336', '#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#787b86'];
           levels.forEach((level, i) => {
