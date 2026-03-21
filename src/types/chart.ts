@@ -2,7 +2,12 @@ export type Interval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w' | '1M';
 
 export type DrawingTool = 'cursor' | 'trendline' | 'horizontalline' | 'fibonacci' | 'ray';
 
-export type ChartType = 'candles' | 'hollow' | 'line' | 'area';
+export type ChartType =
+  | 'bars' | 'candles' | 'hollow' | 'volume_candles'
+  | 'line' | 'line_markers' | 'step_line'
+  | 'area' | 'hlc_area' | 'baseline'
+  | 'columns' | 'high_low'
+  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi' | 'point_figure';
 
 export interface WatchlistItem {
   symbol: string;
