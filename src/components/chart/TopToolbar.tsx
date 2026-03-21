@@ -148,7 +148,21 @@ export default function TopToolbar() {
             </div>
           )}
         </div>
-      </div>
+
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Bar Replay */}
+        <button
+          onClick={() => setReplayState(replayState === 'off' ? 'selecting' : 'off')}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+            replayState !== 'off'
+              ? 'bg-primary/20 text-primary'
+              : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
+          }`}
+        >
+          <Rewind size={14} />
+          <span>Replay</span>
+        </button>
 
       {/* Close dropdowns on outside click */}
       {(chartTypeOpen || indicatorOpen) && (
