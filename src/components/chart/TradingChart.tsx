@@ -347,6 +347,7 @@ export default function TradingChart() {
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const replaySelectCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replayTimerRef = useRef<number | null>(null);
   const replayBarRef = useRef(replayBarIndex);
   replayBarRef.current = replayBarIndex;
@@ -394,6 +395,7 @@ export default function TradingChart() {
   const isBarType = chartType === 'bars' || chartType === 'high_low';
   const isPnFType = chartType === 'point_figure';
   const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi'].includes(chartType);
+  const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
 
   // Create series based on chart type
   useEffect(() => {
@@ -480,7 +482,7 @@ export default function TradingChart() {
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
-    const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+    // isTransformType is now at component scope
 
     const fetchData = async () => {
       try {
@@ -566,12 +568,20 @@ export default function TradingChart() {
 
     fetchData();
 
-    // WebSocket — only connect when not in replay
-    if (wsRef.current) wsRef.current.close();
-    if (replayState !== 'off' && replayState !== 'selecting') {
-      // Don't connect WS during replay
-      return;
-    }
+    return () => {};
+  }, [symbol, interval, chartType]);
+
+  // ─── WebSocket (separate from data fetch, respects replay) ───
+  useEffect(() => {
+    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+
+    // Don't connect WS during active replay
+    if (replayState !== 'off' && replayState !== 'selecting') return;
+
+    const series = mainSeriesRef.current;
+    const volSeries = volumeSeriesRef.current;
+    if (!series || !volSeries) return;
+
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
     wsRef.current = ws;
 
@@ -587,7 +597,6 @@ export default function TradingChart() {
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
 
-      // For transformed chart types we avoid direct incremental updates to prevent time-order errors.
       if (!isTransformType) {
         if (isLineType || isAreaType || isBaselineType || isColumnsType) {
           series.update({ time, value: c });
@@ -596,14 +605,13 @@ export default function TradingChart() {
             series.update({ time, open: o, high: h, low: l, close: c });
           }
         }
-
         volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
       }
 
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
     };
 
-    return () => { ws.close(); };
+    return () => { ws.close(); wsRef.current = null; };
   }, [symbol, interval, chartType, replayState]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
@@ -817,6 +825,82 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
+  // ─── Replay: blue vertical line following mouse during selection ───
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = replaySelectCanvasRef.current;
+    if (!container || !canvas || replayState !== 'selecting') {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+
+    const draw = (mouseX: number) => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      // Blue vertical line
+      ctx.strokeStyle = '#2962ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(mouseX, 0);
+      ctx.lineTo(mouseX, h);
+      ctx.stroke();
+
+      // Scissors icon (✂) near mouse
+      ctx.fillStyle = '#2962ff';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('✂', mouseX - 8, h / 2);
+
+      // Date label at bottom
+      const chart = chartRef.current;
+      if (chart) {
+        const timeCoord = chart.timeScale().coordinateToTime(mouseX);
+        if (timeCoord) {
+          const date = new Date((timeCoord as number) * 1000);
+          const label = `Re: ${date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' })}`;
+          ctx.fillStyle = '#2962ff';
+          const textW = ctx.measureText(label).width;
+          ctx.fillRect(mouseX - textW / 2 - 6, h - 22, textW + 12, 20);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '11px sans-serif';
+          ctx.fillText(label, mouseX - textW / 2, h - 8);
+        }
+      }
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      draw(e.clientX - rect.left);
+    };
+
+    const onLeave = () => {
+      const ctx = canvas.getContext('2d');
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    container.addEventListener('mousemove', onMove);
+    container.addEventListener('mouseleave', onLeave);
+    return () => {
+      container.removeEventListener('mousemove', onMove);
+      container.removeEventListener('mouseleave', onLeave);
+      onLeave();
+    };
+  }, [replayState]);
+
   // ─── Replay: click to select start bar ───
   useEffect(() => {
     const chart = chartRef.current;
@@ -831,6 +915,9 @@ export default function TradingChart() {
       setReplayStartIndex(idx);
       setReplayBarIndex(idx);
       setReplayState('paused');
+
+      // Close WS
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
 
       // Slice data to start point
       const sliced = allCandles.slice(0, idx + 1);
@@ -1004,6 +1091,11 @@ export default function TradingChart() {
           ref={pfCanvasRef}
           className="absolute inset-0 z-10 pointer-events-none"
           style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+        />
+        <canvas
+          ref={replaySelectCanvasRef}
+          className="absolute inset-0 z-20 pointer-events-none"
+          style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
         />
         <DrawingCanvas
           chart={chartRef.current}
