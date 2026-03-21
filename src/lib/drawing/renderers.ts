@@ -617,6 +617,41 @@ export function renderDrawing(
   ctx.save();
   renderer(ctx, drawing, coord, w, h);
   ctx.restore();
+
+  // Render text label if present
+  const text = drawing.props?.text;
+  if (text && text.trim() && drawing.points.length >= 2) {
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    const p2 = toXY(coord, drawing.points[1].time, drawing.points[1].price);
+    if (p1 && p2) {
+      const mx = (p1.x + p2.x) / 2;
+      const my = (p1.y + p2.y) / 2;
+      const fontSize = drawing.props?.textSize || 14;
+      const bold = drawing.props?.textBold ? 'bold ' : '';
+      const italic = drawing.props?.textItalic ? 'italic ' : '';
+      ctx.save();
+      ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+      ctx.fillStyle = drawing.props?.textColor || drawing.color;
+      ctx.textAlign = 'center';
+      const vAlign = drawing.props?.textVAlign || 'middle';
+      const offset = vAlign === 'top' ? -fontSize : vAlign === 'bottom' ? fontSize * 1.2 : 0;
+      ctx.fillText(text, mx, my + offset);
+      ctx.restore();
+    }
+  } else if (text && text.trim() && drawing.points.length === 1) {
+    const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    if (p) {
+      const fontSize = drawing.props?.textSize || 14;
+      const bold = drawing.props?.textBold ? 'bold ' : '';
+      const italic = drawing.props?.textItalic ? 'italic ' : '';
+      ctx.save();
+      ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+      ctx.fillStyle = drawing.props?.textColor || drawing.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(text, p.x, p.y - 10);
+      ctx.restore();
+    }
+  }
 }
 
 // ─── Anchors ───
