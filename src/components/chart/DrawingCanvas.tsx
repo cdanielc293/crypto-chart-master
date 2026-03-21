@@ -433,10 +433,14 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     previewPointRef.current = null;
   }, [drawingTool]);
 
+  const passingThroughRef = useRef(false);
+
   const passThrough = useCallback((e: React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // Disable pointer events so ALL subsequent mouse events (move, up) go to the chart
     canvas.style.pointerEvents = 'none';
+    passingThroughRef.current = true;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (el) {
       el.dispatchEvent(new MouseEvent('mousedown', {
@@ -444,9 +448,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         bubbles: true, cancelable: true, button: e.button,
       }));
     }
-    requestAnimationFrame(() => {
+    // Re-enable on mouseup (when chart drag ends)
+    const onUp = () => {
       if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
-    });
+      passingThroughRef.current = false;
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mouseup', onUp);
   }, []);
 
   const isCursorMode = drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor';
