@@ -1,4 +1,4 @@
-import { RotateCcw, Settings, Trash2 } from 'lucide-react';
+import { RotateCcw, Settings, Trash2, BarChart3 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -14,8 +14,10 @@ interface Props {
   getOpenMode: (event: React.MouseEvent<HTMLElement>) => CanvasMenuOpenMode;
   onResetChartView: () => void;
   onOpenSettings: () => void;
+  onOpenSymbolSettings: () => void;
   onRemoveIndicators: () => void;
   indicatorCount: number;
+  chartTypeLabel?: string;
 }
 
 export default function ChartCanvasContextMenu({
@@ -23,8 +25,10 @@ export default function ChartCanvasContextMenu({
   getOpenMode,
   onResetChartView,
   onOpenSettings,
+  onOpenSymbolSettings,
   onRemoveIndicators,
   indicatorCount,
+  chartTypeLabel,
 }: Props) {
   return (
     <ContextMenu>
@@ -39,6 +43,13 @@ export default function ChartCanvasContextMenu({
       </ContextMenuTrigger>
 
       <ContextMenuContent className="w-64 bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+        <ContextMenuItem onClick={onOpenSymbolSettings} className="gap-2">
+          <BarChart3 size={14} className="text-muted-foreground" />
+          {chartTypeLabel || 'Symbol'} settings…
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
         <ContextMenuItem onClick={onResetChartView} className="gap-2">
           <RotateCcw size={14} className="text-muted-foreground" />
           Reset chart view
