@@ -288,6 +288,19 @@ export default function TopToolbar() {
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Layout Manager */}
+        <LayoutManager />
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Multi-chart layout */}
+        <MultiChartLayoutSelector
+          grid={multiGrid}
+          onGridChange={setMultiGrid}
+          syncOptions={syncOptions}
+          onSyncChange={setSyncOptions}
+        />
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
         {/* Screenshot */}
         <button
           className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
