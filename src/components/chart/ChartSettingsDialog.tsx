@@ -284,7 +284,7 @@ export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props
           </div>
 
           <div className="min-h-[420px] flex-1 overflow-y-auto px-6 py-4">
-            {tab === 'symbol' && <SymbolTab settings={chartSettings} updateSection={updateSection} />}
+            {tab === 'symbol' && <SymbolTab settings={chartSettings} updateSection={updateSection} chartType={chartType} />}
             {tab === 'statusline' && <StatusLineTab settings={chartSettings} updateSection={updateSection} />}
             {tab === 'scales' && <ScalesTab settings={chartSettings} updateSection={updateSection} />}
             {tab === 'canvas' && <CanvasTab settings={chartSettings} updateSection={updateSection} />}
