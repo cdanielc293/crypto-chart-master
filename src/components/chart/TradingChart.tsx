@@ -331,6 +331,13 @@ const EMA_COLORS: Record<string, string> = {
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function mapCrosshairStyle(style: 'dashed' | 'dotted' | 'solid') {
   if (style === 'dashed') return LineStyle.Dashed;
   if (style === 'dotted') return LineStyle.Dotted;
@@ -360,6 +367,7 @@ export default function TradingChart() {
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
+  const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -432,8 +440,16 @@ export default function TradingChart() {
         fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? gridVert : 'transparent' },
-        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? gridHorz : 'transparent' },
+        vertLines: {
+          color: (cs.gridType === 'both' || cs.gridType === 'vert')
+            ? hexToRgba(gridVert, cs.gridVertOpacity / 100)
+            : 'transparent',
+        },
+        horzLines: {
+          color: (cs.gridType === 'both' || cs.gridType === 'horz')
+            ? hexToRgba(gridHorz, cs.gridHorzOpacity / 100)
+            : 'transparent',
+        },
       },
       crosshair: {
         vertLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
@@ -1159,6 +1175,45 @@ export default function TradingChart() {
     }
   }, [replayState]);
 
+  // ─── Countdown to bar close ───
+  useEffect(() => {
+    if (!chartSettings.scalesAndLines.countdownToBarClose || replayState !== 'off') {
+      setCountdown('');
+      return;
+    }
+
+    const intervalMs: Record<string, number> = {
+      '1s': 1000, '1m': 60_000, '3m': 180_000, '5m': 300_000, '15m': 900_000,
+      '30m': 1_800_000, '1h': 3_600_000, '2h': 7_200_000, '4h': 14_400_000,
+      '6h': 21_600_000, '8h': 28_800_000, '12h': 43_200_000,
+      '1d': 86_400_000, '3d': 259_200_000, '1w': 604_800_000, '1M': 2_592_000_000,
+    };
+    const barMs = intervalMs[interval] || 60_000;
+
+    const update = () => {
+      const now = Date.now();
+      const candles = rawCandlesRef.current;
+      if (candles.length === 0) { setCountdown(''); return; }
+      const lastTime = (candles[candles.length - 1].time as number) * 1000;
+      const barEnd = lastTime + barMs;
+      const remaining = Math.max(0, barEnd - now);
+
+      if (remaining <= 0) { setCountdown(''); return; }
+
+      const h = Math.floor(remaining / 3_600_000);
+      const m = Math.floor((remaining % 3_600_000) / 60_000);
+      const s = Math.floor((remaining % 60_000) / 1000);
+
+      if (h > 0) setCountdown(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+      else if (m > 0) setCountdown(`${m}:${String(s).padStart(2, '0')}`);
+      else setCountdown(`${s}s`);
+    };
+
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [interval, chartSettings.scalesAndLines.countdownToBarClose, replayState]);
+
   // Prepare candle data for drawing engine
   const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
     time: c.time as number,
@@ -1223,6 +1278,9 @@ export default function TradingChart() {
           </span>
         )}
         {statusLine.showVolume && <span className="text-muted-foreground">Vol {ohlc.v.toLocaleString()}</span>}
+        {countdown && chartSettings.scalesAndLines.countdownToBarClose && (
+          <span className="text-muted-foreground ml-1">⏱ {countdown}</span>
+        )}
       </div>
 
       {watermarkText && (

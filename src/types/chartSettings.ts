@@ -64,7 +64,9 @@ export interface CanvasSettings {
   // Grid
   gridType: 'both' | 'vert' | 'horz' | 'none';
   gridVertColor: string;
+  gridVertOpacity: number;
   gridHorzColor: string;
+  gridHorzOpacity: number;
   // Crosshair
   crosshairColor: string;
   crosshairStyle: 'dashed' | 'dotted' | 'solid';
@@ -202,7 +204,9 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
     backgroundGradientBottom: '#1e222d',
     gridType: 'both',
     gridVertColor: '#1e222d',
+    gridVertOpacity: 100,
     gridHorzColor: '#1e222d',
+    gridHorzOpacity: 100,
     crosshairColor: '#758696',
     crosshairStyle: 'dashed',
     watermarkMode: 'symbol',

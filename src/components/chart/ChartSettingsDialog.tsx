@@ -614,10 +614,34 @@ function CanvasTab({
         </Select>
       </Row>
       <Row label="Grid vertical color">
-        <ColorSwatch color={c.gridVertColor} onChange={v => updateSection('canvas', { gridVertColor: v })} />
+        <div className="flex items-center gap-2">
+          <ColorSwatch color={c.gridVertColor} onChange={v => updateSection('canvas', { gridVertColor: v })} />
+        </div>
+      </Row>
+      <Row label={`Vert opacity ${c.gridVertOpacity}%`}>
+        <Slider
+          value={[c.gridVertOpacity]}
+          onValueChange={([v]) => updateSection('canvas', { gridVertOpacity: v })}
+          min={0}
+          max={100}
+          step={1}
+          className="w-[180px]"
+        />
       </Row>
       <Row label="Grid horizontal color">
-        <ColorSwatch color={c.gridHorzColor} onChange={v => updateSection('canvas', { gridHorzColor: v })} />
+        <div className="flex items-center gap-2">
+          <ColorSwatch color={c.gridHorzColor} onChange={v => updateSection('canvas', { gridHorzColor: v })} />
+        </div>
+      </Row>
+      <Row label={`Horz opacity ${c.gridHorzOpacity}%`}>
+        <Slider
+          value={[c.gridHorzOpacity]}
+          onValueChange={([v]) => updateSection('canvas', { gridHorzOpacity: v })}
+          min={0}
+          max={100}
+          step={1}
+          className="w-[180px]"
+        />
       </Row>
 
       <Row label="Crosshair color">
