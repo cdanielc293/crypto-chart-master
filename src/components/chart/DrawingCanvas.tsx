@@ -515,6 +515,28 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
   const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || isHoveringDrawing;
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const coord = getCoordHelper();
+    const container = containerRef.current;
+    if (!coord || !container) return;
+    const rect = container.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+
+    for (let i = chartDrawings.length - 1; i >= 0; i--) {
+      if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDrawingCtxMenu({ x: e.clientX, y: e.clientY, drawingId: chartDrawings[i].id });
+        return;
+      }
+    }
+  }, [chartDrawings, getCoordHelper, containerRef]);
+
+  const ctxDrawing = drawingCtxMenu ? drawings.find(d => d.id === drawingCtxMenu.drawingId) || null : null;
+
   return (
     <>
       <canvas
@@ -526,6 +548,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
       {selectedDrawingId && toolbarPos && (
         <FloatingToolbar
@@ -555,6 +578,33 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           }}
         />
       )}
+      <DrawingContextMenu
+        open={!!drawingCtxMenu}
+        position={drawingCtxMenu || { x: 0, y: 0 }}
+        drawing={ctxDrawing}
+        onClose={() => setDrawingCtxMenu(null)}
+        onUpdate={(updates) => {
+          if (ctxDrawing) updateDrawing(ctxDrawing.id, { ...ctxDrawing, ...updates });
+        }}
+        onClone={() => {
+          if (ctxDrawing) {
+            const clone: Drawing = {
+              ...ctxDrawing,
+              id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              points: ctxDrawing.points.map(p => ({ ...p })),
+              selected: false,
+            };
+            addDrawing(clone);
+          }
+        }}
+        onDelete={() => {
+          if (ctxDrawing) {
+            removeDrawing(ctxDrawing.id);
+            setSelectedDrawingId(null);
+            setToolbarPos(null);
+          }
+        }}
+      />
     </>
   );
 }
