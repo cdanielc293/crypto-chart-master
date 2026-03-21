@@ -971,7 +971,7 @@ export default function TradingChart() {
   const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
 
   return (
-    <div className="flex-1 flex flex-col relative bg-chart-bg">
+    <div className={`flex-1 flex flex-col relative bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
       <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
         <span className="text-muted-foreground">O</span>
         <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
