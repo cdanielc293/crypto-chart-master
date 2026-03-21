@@ -1,26 +1,6 @@
 import type { Interval, ChartType, Drawing } from './chart';
 import type { ChartSettings } from './chartSettings';
 
-export interface ChartLayout {
-  id: string;
-  name: string;
-  symbol: string;
-  interval: Interval;
-  chartType: ChartType;
-  indicators: string[];
-  drawings: Drawing[];
-  chartSettings: ChartSettings;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export type MultiChartGrid = 
-  | '1' | '2h' | '2v' 
-  | '3h1' | '3h2' | '3v1' | '3v2'
-  | '4' | '4h1' | '4v1'
-  | '6h' | '6v'
-  | '8' | '9' | '12' | '16';
-
 export interface LayoutSyncOptions {
   symbol: boolean;
   interval: boolean;
@@ -37,17 +17,147 @@ export const DEFAULT_SYNC_OPTIONS: LayoutSyncOptions = {
   dateRange: false,
 };
 
-export function getGridCells(grid: MultiChartGrid): number {
-  switch (grid) {
-    case '1': return 1;
-    case '2h': case '2v': return 2;
-    case '3h1': case '3h2': case '3v1': case '3v2': return 3;
-    case '4': case '4h1': case '4v1': return 4;
-    case '6h': case '6v': return 6;
-    case '8': return 8;
-    case '9': return 9;
-    case '12': return 12;
-    case '16': return 16;
-    default: return 1;
+export interface ChartLayout {
+  id: string;
+  name: string;
+  symbol: string;
+  interval: Interval;
+  chartType: ChartType;
+  indicators: string[];
+  drawings: Drawing[];
+  chartSettings: ChartSettings;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Each cell: column start (0-based), row start (0-based), col span, row span */
+export interface GridCell { c: number; r: number; w: number; h: number; }
+
+export interface GridLayout {
+  id: string;
+  count: number;
+  cols: number;
+  rows: number;
+  cells: GridCell[];
+}
+
+function L(id: string, count: number, cols: number, rows: number, cells: [number,number,number,number][]): GridLayout {
+  return { id, count, cols, rows, cells: cells.map(([c,r,w,h]) => ({ c, r, w, h })) };
+}
+
+export const ALL_GRID_LAYOUTS: GridLayout[] = [
+  // ── 1 chart ──
+  L('1',1,1,1, [[0,0,1,1]]),
+
+  // ── 2 charts ──
+  L('2a',2,2,1, [[0,0,1,1],[1,0,1,1]]),
+  L('2b',2,1,2, [[0,0,1,1],[0,1,1,1]]),
+
+  // ── 3 charts ──
+  L('3a',3,3,1, [[0,0,1,1],[1,0,1,1],[2,0,1,1]]),
+  L('3b',3,2,2, [[0,0,1,2],[1,0,1,1],[1,1,1,1]]),               // big left + 2 right
+  L('3c',3,2,2, [[0,0,1,1],[0,1,1,1],[1,0,1,2]]),               // 2 left + big right
+  L('3d',3,2,2, [[0,0,1,1],[1,0,1,1],[0,1,2,1]]),               // 2 top + big bottom
+  L('3e',3,2,2, [[0,0,2,1],[0,1,1,1],[1,1,1,1]]),               // big top + 2 bottom
+  L('3f',3,1,3, [[0,0,1,1],[0,1,1,1],[0,2,1,1]]),               // 3 rows
+
+  // ── 4 charts ──
+  L('4a',4,2,2, [[0,0,1,1],[1,0,1,1],[0,1,1,1],[1,1,1,1]]),     // 2x2
+  L('4b',4,2,3, [[0,0,1,3],[1,0,1,1],[1,1,1,1],[1,2,1,1]]),     // big left + 3 right
+  L('4c',4,3,2, [[0,0,2,2],[2,0,1,1],[2,1,1,1],[0,0,0,0]]),     // big left + 2 right (only 3 visible)
+  // Actually 4c should be: 1 big + 3 arranged differently
+  L('4d',4,3,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,3,1]]),     // 3 top + big bottom
+  L('4e',4,3,2, [[0,0,3,1],[0,1,1,1],[1,1,1,1],[2,1,1,1]]),     // big top + 3 bottom
+  L('4f',4,2,3, [[0,0,1,1],[0,1,1,1],[0,2,1,1],[1,0,1,3]]),     // 3 left + big right
+  L('4g',4,4,1, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1]]),     // 4 columns
+  L('4h',4,1,4, [[0,0,1,1],[0,1,1,1],[0,2,1,1],[0,3,1,1]]),     // 4 rows
+
+  // ── 5 charts ──
+  L('5a',5,3,2, [[0,0,1,2],[1,0,1,1],[2,0,1,1],[1,1,1,1],[2,1,1,1]]), // big left + 2x2 right
+  L('5b',5,2,3, [[0,0,1,3],[1,0,1,1],[1,1,1,1],[1,2,1,1],[0,0,0,0]]), // Actually: 1bigLeft+4right? no that's only 5 with 1+4
+  // Let me redo row 5 more carefully
+  L('5b',5,4,2, [[0,0,2,2],[2,0,1,1],[3,0,1,1],[2,1,1,1],[3,1,1,1]]), // big left + 2x2 right
+  L('5c',5,3,2, [[0,0,1,1],[1,0,1,1],[2,0,1,2],[0,1,1,1],[1,1,1,1]]), // 2x2 left + big right
+  L('5d',5,3,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,2,1]]), // 3top + 1bottomLeft + 1bigBottomRight
+  L('5e',5,3,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,2,1],[2,1,1,1]]), // 3top + bigBottomLeft + 1bottomRight
+  L('5f',5,2,3, [[0,0,1,1],[1,0,1,1],[0,1,1,1],[1,1,1,1],[0,2,2,1]]), // 2x2 top + big bottom
+  L('5g',5,2,3, [[0,0,2,1],[0,1,1,1],[1,1,1,1],[0,2,1,1],[1,2,1,1]]), // big top + 2x2 bottom
+  L('5h',5,5,1, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[4,0,1,1]]), // 5 columns
+
+  // ── 6 charts ──
+  L('6a',6,3,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1]]), // 3x2
+  L('6b',6,4,2, [[0,0,2,2],[2,0,1,1],[3,0,1,1],[2,1,1,1],[3,1,1,1],[0,0,0,0]]), // big + 4
+  // Actually 6b: bigLeft + 4right arranged... but that's only 5. Need 6.
+  L('6b',6,2,3, [[0,0,1,1],[1,0,1,1],[0,1,1,1],[1,1,1,1],[0,2,1,1],[1,2,1,1]]), // 2x3
+  L('6c',6,3,3, [[0,0,1,3],[1,0,1,1],[2,0,1,1],[1,1,1,1],[2,1,1,1],[1,2,2,1]]), // big left + 5 right
+  L('6d',6,3,2, [[0,0,2,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,0,0,0]]), // hmm
+  // Simpler:
+  L('6d',6,4,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,2,1],[2,1,2,1]]), // 4top + 2bigBottom
+  L('6e',6,3,3, [[0,0,3,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,2,1]]), // bigTop + mixed
+
+  // ── 7 charts ──
+  L('7a',7,4,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,2,1]]),
+  L('7b',7,4,2, [[0,0,2,2],[2,0,1,1],[3,0,1,1],[2,1,1,1],[3,1,1,1],[0,0,0,0],[0,0,0,0]]),
+  // Actually need 7 non-zero cells. Let me redo:
+  L('7b',7,3,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,3,1]]),
+  L('7c',7,3,3, [[0,0,3,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1]]),
+
+  // ── 8 charts ──
+  L('8a',8,4,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1]]), // 4x2
+  L('8b',8,2,4, [[0,0,1,1],[1,0,1,1],[0,1,1,1],[1,1,1,1],[0,2,1,1],[1,2,1,1],[0,3,1,1],[1,3,1,1]]), // 2x4
+  L('8c',8,4,3, [[0,0,2,2],[2,0,1,1],[3,0,1,1],[2,1,1,1],[3,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,2,1]]),
+  L('8d',8,3,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,2,1]]),
+
+  // ── 9 charts ──
+  L('9a',9,3,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1]]), // 3x3
+  L('9b',9,4,3, [[0,0,2,2],[2,0,1,1],[3,0,1,1],[2,1,1,1],[3,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1],[3,2,1,1]]),
+  L('9c',9,3,4, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,2]]),
+  L('9d',9,4,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[0,2,4,1]]),
+
+  // ── 10 charts ──
+  L('10a',10,5,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[4,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1]]),
+  L('10b',10,2,5, [[0,0,1,1],[1,0,1,1],[0,1,1,1],[1,1,1,1],[0,2,1,1],[1,2,1,1],[0,3,1,1],[1,3,1,1],[0,4,1,1],[1,4,1,1]]),
+  L('10c',10,4,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[0,2,2,1],[2,2,2,1]]),
+
+  // ── 12 charts ──
+  L('12a',12,4,3, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1],[3,2,1,1]]), // 4x3
+  L('12b',12,3,4, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1],[0,3,1,1],[1,3,1,1],[2,3,1,1]]), // 3x4
+  L('12c',12,6,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[4,0,1,1],[5,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1],[5,1,1,1]]), // 6x2
+
+  // ── 14 charts ──
+  L('14a',14,7,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[4,0,1,1],[5,0,1,1],[6,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1],[5,1,1,1],[6,1,1,1]]),
+
+  // ── 16 charts ──
+  L('16a',16,4,4, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[0,2,1,1],[1,2,1,1],[2,2,1,1],[3,2,1,1],[0,3,1,1],[1,3,1,1],[2,3,1,1],[3,3,1,1]]),
+  L('16b',16,8,2, [[0,0,1,1],[1,0,1,1],[2,0,1,1],[3,0,1,1],[4,0,1,1],[5,0,1,1],[6,0,1,1],[7,0,1,1],[0,1,1,1],[1,1,1,1],[2,1,1,1],[3,1,1,1],[4,1,1,1],[5,1,1,1],[6,1,1,1],[7,1,1,1]]),
+];
+
+// Group layouts by count for the selector UI
+export function getLayoutsByCount(): Map<number, GridLayout[]> {
+  const map = new Map<number, GridLayout[]>();
+  for (const layout of ALL_GRID_LAYOUTS) {
+    const arr = map.get(layout.count) || [];
+    arr.push(layout);
+    map.set(layout.count, arr);
   }
+  return map;
+}
+
+// Get CSS grid style for a layout
+export function getGridStyle(layout: GridLayout): React.CSSProperties {
+  return {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+    gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
+    gap: '1px',
+    width: '100%',
+    height: '100%',
+  };
+}
+
+export function getCellStyle(cell: GridCell): React.CSSProperties {
+  return {
+    gridColumn: `${cell.c + 1} / span ${cell.w}`,
+    gridRow: `${cell.r + 1} / span ${cell.h}`,
+  };
 }

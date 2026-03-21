@@ -10,8 +10,7 @@ import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import LayoutManager from './LayoutManager';
 import MultiChartLayoutSelector from './MultiChartLayoutSelector';
-import type { MultiChartGrid, LayoutSyncOptions } from '@/types/layout';
-import { DEFAULT_SYNC_OPTIONS } from '@/types/layout';
+import type { LayoutSyncOptions } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
@@ -48,6 +47,7 @@ export default function TopToolbar() {
     symbol, interval, setInterval, chartType, setChartType,
     indicators, toggleIndicator, replayState, setReplayState,
     favoriteIntervals, toggleFavoriteInterval,
+    gridLayout, setGridLayout, syncOptions, setSyncOptions,
   } = useChart();
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -56,8 +56,6 @@ export default function TopToolbar() {
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
-  const [multiGrid, setMultiGrid] = useState<MultiChartGrid>('1');
-  const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
@@ -294,8 +292,8 @@ export default function TopToolbar() {
 
         {/* Multi-chart layout */}
         <MultiChartLayoutSelector
-          grid={multiGrid}
-          onGridChange={setMultiGrid}
+          gridLayout={gridLayout}
+          onGridLayoutChange={setGridLayout}
           syncOptions={syncOptions}
           onSyncChange={setSyncOptions}
         />

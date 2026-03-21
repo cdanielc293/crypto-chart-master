@@ -431,12 +431,20 @@ function createCoordHelper(
   };
 }
 
-export default function TradingChart() {
+interface TradingChartProps {
+  panelIndex?: number;
+  overrideSymbol?: string;
+  compact?: boolean;
+}
+
+export default function TradingChart({ panelIndex, overrideSymbol, compact }: TradingChartProps = {}) {
+  const ctx = useChart();
+  const symbol = overrideSymbol || ctx.symbol;
   const {
-    symbol, interval, chartType, drawingTool, indicators, drawings,
+    interval, chartType, drawingTool, indicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
-  } = useChart();
+  } = ctx;
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const mainSeriesRef = useRef<any>(null);
