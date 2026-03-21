@@ -374,6 +374,7 @@ export default function TradingChart() {
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridExtendCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replaySelectCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replayTimerRef = useRef<number | null>(null);
   const replayBarRef = useRef(replayBarIndex);
