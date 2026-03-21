@@ -433,28 +433,63 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     previewPointRef.current = null;
   }, [drawingTool]);
 
-  // In cursor modes, always enable pointer events so we can interact with drawings
-  // In drawing modes, always enable so we can place points
-  // The canvas will pass through events to the chart when not hitting a drawing
+  const passThrough = useCallback((e: React.MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.style.pointerEvents = 'none';
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el) {
+      el.dispatchEvent(new MouseEvent('mousedown', {
+        clientX: e.clientX, clientY: e.clientY,
+        bubbles: true, cancelable: true, button: e.button,
+      }));
+    }
+    requestAnimationFrame(() => {
+      if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
+    });
+  }, []);
+
   const isCursorMode = drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor';
+  const hasDrawings = chartDrawings.length > 0;
+
+  // In cursor mode: only capture events if there are drawings to interact with
+  // In drawing mode: always capture to place points
+  const pointerEnabled = !isCursorMode || (hasDrawings && !!selectedDrawingId);
 
   return (
     <>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-20"
-        style={{ pointerEvents: 'auto' }}
+        style={{ pointerEvents: isCursorMode && !hasDrawings ? 'none' : 'auto' }}
         onMouseDown={(e) => {
-          if (isCursorMode && !selectedDrawingId) {
-            // In cursor mode with no selection, only intercept if we hit a drawing
+          if (isCursorMode) {
+            // Hit test: only intercept if clicking on a drawing
             const coords = getMouseCoords(e as unknown as MouseEvent);
-            if (!coords) return; // let chart handle it
+            if (!coords) {
+              // Pass through to chart
+              passThrough(e);
+              return;
+            }
             const { mx, my } = coords;
             const coord = getCoordHelper();
             const container = containerRef.current;
-            if (!coord || !container) return;
+            if (!coord || !container) { passThrough(e); return; }
             const w = container.clientWidth;
             const h = container.clientHeight;
+
+            // Check if clicking on selected drawing's anchor first
+            if (selectedDrawingId) {
+              const sel = chartDrawings.find(d => d.id === selectedDrawingId);
+              if (sel && !sel.locked) {
+                const anchorIdx = hitTestAnchors(sel, mx, my, coord);
+                if (anchorIdx >= 0) {
+                  handleMouseDown(e);
+                  return;
+                }
+              }
+            }
+
             let found = false;
             for (let i = chartDrawings.length - 1; i >= 0; i--) {
               if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
@@ -463,15 +498,20 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
               }
             }
             if (!found) {
-              // Pass through to chart - don't intercept
-              canvasRef.current!.style.pointerEvents = 'none';
-              setTimeout(() => {
-                if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
-              }, 0);
+              // Deselect any selected drawing, then pass through
+              if (selectedDrawingId) {
+                const prev = drawings.find(d => d.id === selectedDrawingId);
+                if (prev) updateDrawing(prev.id, { ...prev, selected: false });
+                setSelectedDrawingId(null);
+                setToolbarPos(null);
+              }
+              passThrough(e);
               return;
             }
+            handleMouseDown(e);
+          } else {
+            handleMouseDown(e);
           }
-          handleMouseDown(e);
         }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
