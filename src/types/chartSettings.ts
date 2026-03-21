@@ -303,7 +303,10 @@ export function normalizeChartSettings(saved: unknown): ChartSettings {
   const s = saved as Partial<ChartSettings>;
 
   return {
-    symbol: mergeSection(DEFAULT_CHART_SETTINGS.symbol, s.symbol),
+    symbol: {
+      ...mergeSection(DEFAULT_CHART_SETTINGS.symbol, s.symbol),
+      pointFigure: mergeSection(DEFAULT_CHART_SETTINGS.symbol.pointFigure, (s.symbol as any)?.pointFigure),
+    },
     candle: mergeSection(DEFAULT_CHART_SETTINGS.candle, s.candle),
     statusLine: mergeSection(DEFAULT_CHART_SETTINGS.statusLine, s.statusLine),
     scalesAndLines: mergeSection(DEFAULT_CHART_SETTINGS.scalesAndLines, s.scalesAndLines),
