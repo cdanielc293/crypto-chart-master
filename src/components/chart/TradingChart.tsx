@@ -10,7 +10,7 @@ import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import DrawingCanvas from './DrawingCanvas';
 import PriceScaleContextMenu from './PriceScaleContextMenu';
-import TimezoneSelector from './TimezoneSelector';
+import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import type { CandleData } from '@/lib/drawing/types';
 
@@ -741,6 +741,14 @@ export default function TradingChart() {
   }, [chartType]);
 
   // Fetch data and connect WebSocket
+  // Compute timezone offset in seconds for shifting candle timestamps
+  const selectedTz = chartSettings.symbol.timezone;
+  const tzOffsetHours = getTimezoneOffsetHours(selectedTz);
+  // lightweight-charts displays timestamps as UTC; to show a custom timezone we shift by offset
+  // We also need to remove the browser's local offset since JS Date applies it
+  const localOffsetHours = -(new Date().getTimezoneOffset() / 60);
+  const tzShiftSeconds = (tzOffsetHours - localOffsetHours) * 3600;
+
   useEffect(() => {
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
@@ -783,7 +791,7 @@ export default function TradingChart() {
         const rawForIndicators: { close: number; time: Time }[] = [];
 
         for (const k of data) {
-          const time = (k[0] / 1000) as Time;
+          const time = (k[0] / 1000 + tzShiftSeconds) as Time;
           const o = parseFloat(k[1]);
           const h = parseFloat(k[2]);
           const l = parseFloat(k[3]);
@@ -833,7 +841,7 @@ export default function TradingChart() {
     fetchData();
 
     return () => {};
-  }, [symbol, interval, chartType]);
+  }, [symbol, interval, chartType, tzShiftSeconds]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
@@ -854,7 +862,7 @@ export default function TradingChart() {
       const k = msg.k;
       if (!k) return;
 
-      const time = (k.t / 1000) as Time;
+      const time = (k.t / 1000 + tzShiftSeconds) as Time;
       const o = parseFloat(k.o);
       const h = parseFloat(k.h);
       const l = parseFloat(k.l);
@@ -876,7 +884,7 @@ export default function TradingChart() {
     };
 
     return () => { ws.close(); wsRef.current = null; };
-  }, [symbol, interval, chartType, replayState]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
@@ -1449,7 +1457,12 @@ export default function TradingChart() {
           />
 
           {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
-          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)}>
+          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={() => {
+            const chart = chartRef.current;
+            if (chart) {
+              chart.timeScale().fitContent();
+            }
+          }}>
             <div
               className="absolute top-0 right-0 bottom-0 z-[15]"
               style={{ width: priceScaleWidth || 55 }}

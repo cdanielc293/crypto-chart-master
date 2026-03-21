@@ -17,9 +17,10 @@ import type { PriceScaleSettings, ScalesAndLinesSettings } from '@/types/chartSe
 interface Props {
   children: React.ReactNode;
   onOpenSettings: () => void;
+  onResetScale?: () => void;
 }
 
-export default function PriceScaleContextMenu({ children, onOpenSettings }: Props) {
+export default function PriceScaleContextMenu({ children, onOpenSettings, onResetScale }: Props) {
   const { chartSettings, setChartSettings } = useChart();
   const ps = chartSettings.priceScale;
   const scales = chartSettings.scalesAndLines;
@@ -39,8 +40,9 @@ export default function PriceScaleContextMenu({ children, onOpenSettings }: Prop
   }, [setChartSettings]);
 
   const resetPriceScale = useCallback(() => {
-    updatePriceScale({ autoScale: true, mode: 'regular' });
-  }, [updatePriceScale]);
+    updatePriceScale({ autoScale: true, mode: 'regular', invertScale: false, scalePriceChartOnly: false });
+    onResetScale?.();
+  }, [updatePriceScale, onResetScale]);
 
   const setMode = useCallback((mode: PriceScaleSettings['mode']) => {
     updatePriceScale({ mode });

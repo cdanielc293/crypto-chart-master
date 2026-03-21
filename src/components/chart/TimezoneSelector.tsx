@@ -90,10 +90,8 @@ const TIMEZONES = [
 ];
 
 export function getTimezoneOffsetHours(tz: string): number {
-  if (tz === 'Exchange' || tz === 'UTC') {
-    const entry = TIMEZONES.find(t => t.label === tz);
-    return entry?.offset ?? 0;
-  }
+  if (tz === 'UTC') return 0;
+  if (tz === 'Exchange') return -(new Date().getTimezoneOffset() / 60); // local timezone for crypto
   const entry = TIMEZONES.find(t => t.label === tz);
   return entry?.offset ?? -(new Date().getTimezoneOffset() / 60);
 }
