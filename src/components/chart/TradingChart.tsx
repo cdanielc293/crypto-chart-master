@@ -329,7 +329,11 @@ const EMA_COLORS: Record<string, string> = {
 };
 
 export default function TradingChart() {
-  const { symbol, interval, chartType, drawingTool, indicators, drawings } = useChart();
+  const {
+    symbol, interval, chartType, drawingTool, indicators, drawings,
+    replayState, setReplayState, replayBarIndex, setReplayBarIndex,
+    replayStartIndex, setReplayStartIndex, replaySpeed,
+  } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const mainSeriesRef = useRef<any>(null);
@@ -338,11 +342,16 @@ export default function TradingChart() {
   const wsRef = useRef<WebSocket | null>(null);
   const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
+  const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const replayTimerRef = useRef<number | null>(null);
+  const replayBarRef = useRef(replayBarIndex);
+  replayBarRef.current = replayBarIndex;
 
+  // Create chart
   // Create chart
   useEffect(() => {
     if (!containerRef.current) return;
@@ -521,6 +530,7 @@ export default function TradingChart() {
 
         rawDataRef.current = rawForIndicators;
         rawCandlesRef.current = candles;
+        allCandlesRef.current = candles;
 
         setChartData(series, candles, volumes, volSeries);
 
@@ -556,8 +566,12 @@ export default function TradingChart() {
 
     fetchData();
 
-    // WebSocket
+    // WebSocket — only connect when not in replay
     if (wsRef.current) wsRef.current.close();
+    if (replayState !== 'off' && replayState !== 'selecting') {
+      // Don't connect WS during replay
+      return;
+    }
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
     wsRef.current = ws;
 
@@ -590,7 +604,7 @@ export default function TradingChart() {
     };
 
     return () => { ws.close(); };
-  }, [symbol, interval, chartType]);
+  }, [symbol, interval, chartType, replayState]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
@@ -803,6 +817,135 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
+  // ─── Replay: click to select start bar ───
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || replayState !== 'selecting') return;
+
+    const handler = (param: any) => {
+      if (!param.time) return;
+      const allCandles = allCandlesRef.current;
+      const idx = allCandles.findIndex(c => c.time === param.time);
+      if (idx < 0) return;
+
+      setReplayStartIndex(idx);
+      setReplayBarIndex(idx);
+      setReplayState('paused');
+
+      // Slice data to start point
+      const sliced = allCandles.slice(0, idx + 1);
+      const series = mainSeriesRef.current;
+      const volSeries = volumeSeriesRef.current;
+      if (series && volSeries) {
+        const volumes = sliced.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+        setChartData(series, sliced, volumes, volSeries);
+        chart.timeScale().fitContent();
+      }
+    };
+
+    chart.subscribeClick(handler);
+    return () => { chart.unsubscribeClick(handler); };
+  }, [replayState]);
+
+  // ─── Replay: apply data slice when barIndex changes ───
+  useEffect(() => {
+    if (replayState !== 'playing' && replayState !== 'paused' && replayState !== 'ready') return;
+    const chart = chartRef.current;
+    const series = mainSeriesRef.current;
+    const volSeries = volumeSeriesRef.current;
+    if (!chart || !series || !volSeries) return;
+
+    const allCandles = allCandlesRef.current;
+    if (replayBarIndex >= allCandles.length) {
+      setReplayState('off');
+      return;
+    }
+
+    const sliced = allCandles.slice(0, replayBarIndex + 1);
+    const volumes = sliced.map(c => ({
+      time: c.time,
+      value: c.volume,
+      color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+    }));
+    setChartData(series, sliced, volumes, volSeries);
+
+    const last = sliced[sliced.length - 1];
+    if (last) {
+      const prev = sliced.length > 1 ? sliced[sliced.length - 2] : undefined;
+      setOhlc({
+        o: last.open, h: last.high, l: last.low, c: last.close,
+        v: last.volume,
+        change: prev ? ((last.close - prev.close) / prev.close) * 100 : 0,
+      });
+    }
+  }, [replayBarIndex, replayState]);
+
+  // ─── Replay: playback timer ───
+  useEffect(() => {
+    if (replayState !== 'playing') {
+      if (replayTimerRef.current) {
+        clearInterval(replayTimerRef.current);
+        replayTimerRef.current = null;
+      }
+      return;
+    }
+
+    const delay = Math.max(50, 500 / replaySpeed);
+    replayTimerRef.current = window.setInterval(() => {
+      const next = replayBarRef.current + 1;
+      if (next >= allCandlesRef.current.length) {
+        setReplayState('paused');
+        return;
+      }
+      replayBarRef.current = next;
+      setReplayBarIndex(next);
+    }, delay);
+
+    return () => {
+      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+    };
+  }, [replayState, replaySpeed]);
+
+  // ─── Replay: keyboard shortcuts ───
+  useEffect(() => {
+    if (replayState === 'off' || replayState === 'selecting') return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        setReplayState(replayState === 'playing' ? 'paused' : 'playing');
+      } else if (e.shiftKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (replayState === 'playing') setReplayState('paused');
+        setReplayBarIndex(replayBarIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [replayState, replayBarIndex]);
+
+  // ─── Replay: restore full data when turning off ───
+  useEffect(() => {
+    if (replayState === 'off' && allCandlesRef.current.length > 0) {
+      const chart = chartRef.current;
+      const series = mainSeriesRef.current;
+      const volSeries = volumeSeriesRef.current;
+      if (chart && series && volSeries) {
+        const candles = allCandlesRef.current;
+        const volumes = candles.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+        setChartData(series, candles, volumes, volSeries);
+        chart.timeScale().fitContent();
+      }
+    }
+  }, [replayState]);
+
   // Prepare candle data for drawing engine
   const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
     time: c.time as number,
@@ -828,7 +971,7 @@ export default function TradingChart() {
   const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
 
   return (
-    <div className="flex-1 flex flex-col relative bg-chart-bg">
+    <div className={`flex-1 flex flex-col relative bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
       <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
         <span className="text-muted-foreground">O</span>
         <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -842,6 +985,13 @@ export default function TradingChart() {
           {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
         </span>
       </div>
+
+      {replayState !== 'off' && replayState !== 'selecting' && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary text-xs px-3 py-1 rounded-full">
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <span>Replay Mode — Bar {replayBarIndex - replayStartIndex + 1}</span>
+        </div>
+      )}
 
       {hint && (
         <div className="absolute top-2 right-3 z-30 bg-primary/20 text-primary text-xs px-2 py-1 rounded">

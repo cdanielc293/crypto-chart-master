@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
 
+export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
+
 interface ChartContextType {
   symbol: string;
   setSymbol: (s: string) => void;
@@ -22,6 +24,15 @@ interface ChartContextType {
   setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
   toggleIndicator: (name: string) => void;
+  // Replay
+  replayState: ReplayState;
+  setReplayState: (s: ReplayState) => void;
+  replayBarIndex: number;
+  setReplayBarIndex: (i: number) => void;
+  replaySpeed: number;
+  setReplaySpeed: (s: number) => void;
+  replayStartIndex: number;
+  setReplayStartIndex: (i: number) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
@@ -44,6 +55,12 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
+
+  // Replay state
+  const [replayState, setReplayState] = useState<ReplayState>('off');
+  const [replayBarIndex, setReplayBarIndex] = useState(0);
+  const [replaySpeed, setReplaySpeed] = useState(1);
+  const [replayStartIndex, setReplayStartIndex] = useState(0);
 
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlist(prev => {
@@ -86,6 +103,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
       indicators, toggleIndicator,
+      replayState, setReplayState,
+      replayBarIndex, setReplayBarIndex,
+      replaySpeed, setReplaySpeed,
+      replayStartIndex, setReplayStartIndex,
     }}>
       {children}
     </ChartContext.Provider>

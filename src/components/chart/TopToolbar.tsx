@@ -3,7 +3,7 @@ import type { Interval, ChartType } from '@/types/chart';
 import { useState } from 'react';
 import {
   Search, ChevronDown, BarChart3, CandlestickChart, LineChart, AreaChart,
-  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star,
+  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star, Rewind,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 
@@ -41,7 +41,7 @@ const chartTypes: { label: string; value: ChartType; group?: string }[] = [
 const indicatorList = ['EMA 9', 'EMA 21', 'EMA 50', 'EMA 200', 'SMA 20', 'SMA 50', 'Bollinger Bands', 'Volume'];
 
 export default function TopToolbar() {
-  const { symbol, interval, setInterval, chartType, setChartType, indicators, toggleIndicator } = useChart();
+  const { symbol, interval, setInterval, chartType, setChartType, indicators, toggleIndicator, replayState, setReplayState } = useChart();
   const [searchOpen, setSearchOpen] = useState(false);
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
@@ -148,6 +148,21 @@ export default function TopToolbar() {
             </div>
           )}
         </div>
+
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Bar Replay */}
+        <button
+          onClick={() => setReplayState(replayState === 'off' ? 'selecting' : 'off')}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+            replayState !== 'off'
+              ? 'bg-primary/20 text-primary'
+              : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
+          }`}
+        >
+          <Rewind size={14} />
+          <span>Replay</span>
+        </button>
       </div>
 
       {/* Close dropdowns on outside click */}
