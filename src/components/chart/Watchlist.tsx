@@ -627,7 +627,7 @@ export default function Watchlist() {
                     </span>
                     {viewMode === 'table' ? (
                       <>
-                        <span className="w-[72px] text-right font-mono text-foreground text-[11px]">
+                        <span className="w-[76px] text-right font-mono text-foreground text-[12px]">
                           {price && price.lastPrice > 0
                             ? price.lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             : '—'}
