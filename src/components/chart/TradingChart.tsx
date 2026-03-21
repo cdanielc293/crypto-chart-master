@@ -396,9 +396,8 @@ export default function TradingChart() {
 
     if (isPnFType) {
       const series = chart.addSeries(LineSeries, {
-        color: 'transparent',
+        color: 'rgba(0,0,0,0)',
         lineWidth: 1 as any,
-        visible: false,
         crosshairMarkerVisible: false,
         lastValueVisible: false,
         priceLineVisible: false,
@@ -472,12 +471,36 @@ export default function TradingChart() {
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
+    const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+
     const fetchData = async () => {
       try {
-        const res = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
-        );
-        const data = await res.json();
+        const endpoints = [
+          'https://api.binance.com',
+          'https://api1.binance.com',
+          'https://api2.binance.com',
+        ];
+
+        let data: any = null;
+        let lastError: unknown = null;
+
+        for (const endpoint of endpoints) {
+          try {
+            const res = await fetch(`${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`);
+            const json = await res.json();
+            if (Array.isArray(json)) {
+              data = json;
+              break;
+            }
+            lastError = new Error(typeof json?.msg === 'string' ? json.msg : 'Invalid kline response');
+          } catch (err) {
+            lastError = err;
+          }
+        }
+
+        if (!Array.isArray(data)) {
+          throw lastError || new Error('Failed to load klines from Binance endpoints');
+        }
 
         const candles: RawCandle[] = [];
         const volumes: any[] = [];
@@ -499,6 +522,10 @@ export default function TradingChart() {
         rawCandlesRef.current = candles;
 
         setChartData(series, candles, volumes, volSeries);
+
+        if (chartType === 'point_figure') {
+          requestAnimationFrame(() => drawPFOverlay());
+        }
 
         const last = candles[candles.length - 1];
         if (last) {
@@ -535,24 +562,24 @@ export default function TradingChart() {
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
 
-      if (isPnFType) {
-        // P&F doesn't do live single-candle updates
-      } else if (isLineType || isAreaType || isBaselineType || isColumnsType) {
-        series.update({ time, value: c });
-      } else if (isBarType || isCandleType) {
-        if (['candles', 'hollow', 'volume_candles', 'bars', 'high_low'].includes(chartType)) {
-          series.update({ time, open: o, high: h, low: l, close: c });
+      // For transformed chart types we avoid direct incremental updates to prevent time-order errors.
+      if (!isTransformType) {
+        if (isLineType || isAreaType || isBaselineType || isColumnsType) {
+          series.update({ time, value: c });
+        } else if (isBarType || isCandleType) {
+          if (['candles', 'hollow', 'volume_candles', 'bars', 'high_low'].includes(chartType)) {
+            series.update({ time, open: o, high: h, low: l, close: c });
+          }
         }
-      }
 
-      if (!isPnFType) {
         volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
       }
+
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
     };
 
     return () => { ws.close(); };
-  }, [symbol, interval, chartType]);
+  }, [symbol, interval, chartType, drawPFOverlay]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
