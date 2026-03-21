@@ -214,7 +214,7 @@ export default function TopToolbar() {
                 <button
                   key={ind}
                   onClick={() => toggleIndicator(ind)}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover ${
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover ${
                     indicators.includes(ind) ? 'text-primary' : 'text-foreground'
                   }`}
                 >
