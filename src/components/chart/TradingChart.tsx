@@ -1646,6 +1646,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       </div>
 
       <ChartSettingsDialog open={settingsOpen} onClose={() => { setSettingsOpen(false); setSettingsDefaultTab(undefined); }} defaultTab={settingsDefaultTab as any} />
+
+      {panelSearchOpen && (
+        <SymbolSearch
+          onClose={() => setPanelSearchOpen(false)}
+          onSelectSymbol={panelIndex !== undefined ? (sym) => ctx.setPanelSymbol(panelIndex, sym) : undefined}
+        />
+      )}
     </div>
   );
 }
