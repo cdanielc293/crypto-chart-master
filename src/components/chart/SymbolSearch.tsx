@@ -44,7 +44,11 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   ).slice(0, 50);
 
   const selectSymbol = (sym: string) => {
-    setSymbol(sym);
+    if (onSelectSymbol) {
+      onSelectSymbol(sym);
+    } else {
+      setSymbol(sym);
+    }
     addToWatchlist(sym);
     onClose();
   };
