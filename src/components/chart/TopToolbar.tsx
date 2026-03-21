@@ -48,6 +48,7 @@ export default function TopToolbar() {
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
