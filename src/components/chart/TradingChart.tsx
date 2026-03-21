@@ -579,7 +579,7 @@ export default function TradingChart() {
     };
 
     return () => { ws.close(); };
-  }, [symbol, interval, chartType, drawPFOverlay]);
+  }, [symbol, interval, chartType]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
