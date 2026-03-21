@@ -563,8 +563,12 @@ export default function TradingChart() {
 
     fetchData();
 
-    // WebSocket
+    // WebSocket — only connect when not in replay
     if (wsRef.current) wsRef.current.close();
+    if (replayState !== 'off' && replayState !== 'selecting') {
+      // Don't connect WS during replay
+      return;
+    }
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
     wsRef.current = ws;
 
@@ -597,7 +601,7 @@ export default function TradingChart() {
     };
 
     return () => { ws.close(); };
-  }, [symbol, interval, chartType]);
+  }, [symbol, interval, chartType, replayState]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
