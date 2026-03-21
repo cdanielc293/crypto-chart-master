@@ -142,7 +142,7 @@ export default function TradingChart() {
     }
 
     if (chartType === 'candles' || chartType === 'hollow') {
-      const series = chart.addCandlestickSeries({
+      const series = chart.addSeries(CandlestickSeries, {
         upColor: chartType === 'hollow' ? 'transparent' : '#26a69a',
         downColor: chartType === 'hollow' ? 'transparent' : '#ef5350',
         borderUpColor: '#26a69a',
