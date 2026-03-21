@@ -128,7 +128,7 @@ export default function TopToolbar() {
                     return (
                       <div
                         key={iv.value}
-                        className={`flex items-center w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover transition-colors cursor-pointer ${
+                        className={`flex items-center w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover transition-colors cursor-pointer ${
                           isActive ? 'text-primary bg-toolbar-hover' : 'text-foreground'
                         }`}
                       >
