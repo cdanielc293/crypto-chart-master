@@ -75,7 +75,7 @@ export default function TopToolbar() {
 
   return (
     <>
-      <div className="flex items-center h-10 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+      <div className="flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
         {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
