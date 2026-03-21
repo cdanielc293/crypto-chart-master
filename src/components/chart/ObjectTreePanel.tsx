@@ -36,7 +36,7 @@ export default function ObjectTreePanel() {
         <div className="flex-1 overflow-y-auto">
           {/* Main symbol */}
           <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-foreground border-b border-chart-border">
-            <Candlestick size={14} className="text-muted-foreground" />
+            <BarChart3 size={14} className="text-muted-foreground" />
             <span>{symbol} · Binance, {interval}</span>
           </div>
 
