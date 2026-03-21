@@ -335,7 +335,7 @@ export default function LeftToolbar() {
   };
 
   return (
-    <div ref={menuRef} className="relative flex flex-col items-center w-11 bg-toolbar-bg border-r border-chart-border py-1 gap-px select-none z-30">
+    <div ref={menuRef} className="relative flex flex-col items-center w-12 bg-toolbar-bg border-r border-chart-border py-1 gap-0.5 select-none z-30">
       {/* Drawing tool categories */}
       {categories.map(cat => (
         <div key={cat.id} className="relative">
