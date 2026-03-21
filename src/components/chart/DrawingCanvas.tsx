@@ -73,11 +73,28 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       if (snapped) return { mx, my, time: snapped.time, price: snapped.price };
     }
 
-    const time = coord.xToTime(mx);
+    let time = coord.xToTime(mx);
     const price = coord.yToPrice(my);
+    
+    // Allow drawing beyond the last candle by extrapolating time
+    if (time === null && candles.length >= 2 && chart) {
+      const lastCandle = candles[candles.length - 1];
+      const prevCandle = candles[candles.length - 2];
+      const lastX = coord.timeToX(lastCandle.time);
+      const prevX = coord.timeToX(prevCandle.time);
+      if (lastX !== null && prevX !== null) {
+        const pixelsPerBar = lastX - prevX;
+        if (pixelsPerBar > 0) {
+          const barsAhead = (mx - lastX) / pixelsPerBar;
+          const timeDelta = lastCandle.time - prevCandle.time;
+          time = lastCandle.time + Math.round(barsAhead) * timeDelta;
+        }
+      }
+    }
+    
     if (time === null || price === null) return null;
     return { mx, my, time, price };
-  }, [getCoordHelper, magnetMode, candles]);
+  }, [getCoordHelper, magnetMode, candles, chart]);
 
   // ─── Render loop ───
   const render = useCallback(() => {
