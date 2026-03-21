@@ -8,11 +8,13 @@ import { Settings } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
+import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
+import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasContextMenu';
 import PriceScaleContextMenu from './PriceScaleContextMenu';
 import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
-import type { CandleData } from '@/lib/drawing/types';
+import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
 
@@ -358,11 +360,56 @@ function mapPriceScaleMode(mode: 'regular' | 'percent' | 'indexed_to_100' | 'log
   return PriceScaleMode.Normal;
 }
 
+function toEngineDrawing(d: Drawing): ChartDrawing {
+  return { ...d, type: d.type as string };
+}
+
+function createCoordHelper(
+  chart: IChartApi,
+  series: ISeriesApi<any>,
+  candles: RawCandle[]
+): CoordHelper | null {
+  if (!chart || !series) return null;
+
+  const getSpacing = () => {
+    if (candles.length < 2) return null;
+    const last = candles[candles.length - 1];
+    const prev = candles[candles.length - 2];
+    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
+    const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
+    const pixelsPerBar = lastX !== null && prevX !== null ? lastX - prevX : 0;
+    const timeDelta = (last.time as number) - (prev.time as number);
+    if (!Number.isFinite(pixelsPerBar) || pixelsPerBar <= 0 || timeDelta <= 0) return null;
+    return { lastX: lastX as number, lastTime: last.time as number, pixelsPerBar, timeDelta };
+  };
+
+  return {
+    timeToX: (t: number) => {
+      const x = chart.timeScale().timeToCoordinate(t as Time);
+      if (x !== null) return x;
+      const spacing = getSpacing();
+      if (!spacing) return null;
+      const barsAhead = (t - spacing.lastTime) / spacing.timeDelta;
+      return spacing.lastX + barsAhead * spacing.pixelsPerBar;
+    },
+    priceToY: (p: number) => series.priceToCoordinate(p),
+    xToTime: (x: number) => {
+      const t = chart.timeScale().coordinateToTime(x);
+      if (t !== null) return t as number;
+      const spacing = getSpacing();
+      if (!spacing) return null;
+      const barsAhead = (x - spacing.lastX) / spacing.pixelsPerBar;
+      return spacing.lastTime + Math.round(barsAhead) * spacing.timeDelta;
+    },
+    yToPrice: (y: number) => series.coordinateToPrice(y),
+  };
+}
+
 export default function TradingChart() {
   const {
     symbol, interval, chartType, drawingTool, indicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
-    replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings,
+    replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -385,6 +432,58 @@ export default function TradingChart() {
   const replayTimerRef = useRef<number | null>(null);
   const replayBarRef = useRef(replayBarIndex);
   replayBarRef.current = replayBarIndex;
+
+  const resetChartView = useCallback(() => {
+    const chart = chartRef.current;
+    if (chart) chart.timeScale().fitContent();
+  }, []);
+
+  const removeAllIndicators = useCallback(() => {
+    if (indicators.length === 0) return;
+    indicators.forEach((name) => toggleIndicator(name));
+  }, [indicators, toggleIndicator]);
+
+  const getCanvasContextMenuOpenMode = useCallback((event: React.MouseEvent<HTMLElement>): CanvasMenuOpenMode => {
+    const container = containerRef.current;
+    const chart = chartRef.current;
+    const series = mainSeriesRef.current;
+    if (!container || !chart || !series) return 'block';
+
+    const rect = container.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const chartAreaWidth = containerWidth - (priceScaleWidth || 55);
+
+    if (mx < 0 || my < 0 || mx > containerWidth || my > containerHeight) return 'block';
+    if (mx >= chartAreaWidth) return 'pass';
+
+    const candles = rawCandlesRef.current;
+    const coord = createCoordHelper(chart, series, candles);
+    if (coord) {
+      for (let i = drawings.length - 1; i >= 0; i--) {
+        if (hitTestDrawing(toEngineDrawing(drawings[i]), mx, my, coord, containerWidth, containerHeight)) {
+          return 'block';
+        }
+      }
+    }
+
+    if (candles.length === 0) return 'open';
+
+    const last = candles[candles.length - 1];
+    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
+    if (lastX === null) return 'block';
+
+    const prev = candles[candles.length - 2];
+    let barSpacing = 8;
+    if (prev) {
+      const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
+      if (prevX !== null) barSpacing = Math.max(2, Math.abs(lastX - prevX));
+    }
+
+    return mx > lastX + barSpacing * 0.5 ? 'open' : 'block';
+  }, [drawings, priceScaleWidth]);
 
   // Create chart (only once)
   useEffect(() => {
@@ -1432,56 +1531,59 @@ export default function TradingChart() {
       )}
 
       <div className="flex-1 min-w-0 relative overflow-hidden flex">
-        <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
-          <canvas
-            ref={gridExtendCanvasRef}
-            className="absolute inset-0 z-[6] pointer-events-none"
-          />
-          <canvas
-            ref={pfCanvasRef}
-            className="absolute inset-0 z-10 pointer-events-none"
-            style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
-          />
-          <canvas
-            ref={replaySelectCanvasRef}
-            className="absolute inset-0 z-20 pointer-events-none"
-            style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
-          />
-          <DrawingCanvas
-            chart={chartRef.current}
-            series={mainSeriesRef.current}
-            candles={candleDataForDrawing}
-            containerRef={containerRef as React.RefObject<HTMLDivElement>}
-            magnetMode={magnetMode}
-          />
-
-          {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
-          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={() => {
-            const chart = chartRef.current;
-            if (chart) {
-              chart.timeScale().fitContent();
-            }
-          }}>
-            <div
-              className="absolute top-0 right-0 bottom-0 z-[15]"
-              style={{ width: priceScaleWidth || 55 }}
+        <ChartCanvasContextMenu
+          getOpenMode={getCanvasContextMenuOpenMode}
+          onResetChartView={resetChartView}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onRemoveIndicators={removeAllIndicators}
+          indicatorCount={indicators.length}
+        >
+          <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
+            <canvas
+              ref={gridExtendCanvasRef}
+              className="absolute inset-0 z-[6] pointer-events-none"
             />
-          </PriceScaleContextMenu>
+            <canvas
+              ref={pfCanvasRef}
+              className="absolute inset-0 z-10 pointer-events-none"
+              style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+            />
+            <canvas
+              ref={replaySelectCanvasRef}
+              className="absolute inset-0 z-20 pointer-events-none"
+              style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
+            />
+            <DrawingCanvas
+              chart={chartRef.current}
+              series={mainSeriesRef.current}
+              candles={candleDataForDrawing}
+              containerRef={containerRef as React.RefObject<HTMLDivElement>}
+              magnetMode={magnetMode}
+            />
 
-          {/* Gear icon at bottom of price scale */}
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="absolute z-[16] right-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            style={{
-              bottom: 28,
-              width: priceScaleWidth || 55,
-              height: 22,
-            }}
-            title="More settings…"
-          >
-            <Settings size={14} />
-          </button>
-        </div>
+            {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
+            <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={resetChartView}>
+              <div
+                className="absolute top-0 right-0 bottom-0 z-[15]"
+                style={{ width: priceScaleWidth || 55 }}
+              />
+            </PriceScaleContextMenu>
+
+            {/* Gear icon at bottom of price scale */}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="absolute z-[16] right-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              style={{
+                bottom: 28,
+                width: priceScaleWidth || 55,
+                height: 22,
+              }}
+              title="More settings…"
+            >
+              <Settings size={14} />
+            </button>
+          </div>
+        </ChartCanvasContextMenu>
       </div>
 
       {/* Bottom bar with timezone selector */}
