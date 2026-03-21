@@ -1376,6 +1376,10 @@ export default function TradingChart() {
 
       <div ref={containerRef} className="flex-1 relative">
         <canvas
+          ref={gridExtendCanvasRef}
+          className="absolute inset-0 z-[6] pointer-events-none"
+        />
+        <canvas
           ref={pfCanvasRef}
           className="absolute inset-0 z-10 pointer-events-none"
           style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
