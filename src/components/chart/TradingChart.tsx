@@ -270,47 +270,69 @@ function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalB
 
   if (!boxSize) {
     const atr = calculateATR(candles, 14);
-    boxSize = Math.max(Math.round(atr), 1);
+    // Use ATR but ensure reasonable number of boxes
+    const prices = candles.map(c => c.close);
+    const range = Math.max(...prices) - Math.min(...prices);
+    // Aim for roughly 20-60 boxes across the price range
+    const atrBased = Math.max(Math.round(atr), 1);
+    const rangeBased = Math.max(Math.round(range / 40), 1);
+    boxSize = Math.min(atrBased, rangeBased);
+    if (boxSize <= 0) boxSize = 1;
   }
 
   const reversalAmount = reversalBoxes * boxSize;
-  const snapUp = (p: number) => Math.ceil(p / boxSize!) * boxSize!;
-  const snapDown = (p: number) => Math.floor(p / boxSize!) * boxSize!;
 
-  interface PFCol { dir: number; top: number; bot: number; }
+  interface PFCol { dir: number; top: number; bot: number; startIdx: number; endIdx: number; }
   const columns: PFCol[] = [];
 
-  let colTop = snapUp(candles[0].high);
-  let colBot = snapDown(candles[0].low);
-  let dir = candles[0].close >= candles[0].open ? 1 : -1;
-  columns.push({ dir, top: colTop, bot: colBot });
+  // Initialize first column
+  const firstClose = candles[0].close;
+  let colTop = Math.ceil(firstClose / boxSize) * boxSize;
+  let colBot = Math.floor(firstClose / boxSize) * boxSize;
+  let dir = 1;
+  columns.push({ dir, top: colTop, bot: colBot, startIdx: 0, endIdx: 0 });
 
   for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
-    const high = snapUp(c.high);
-    const low = snapDown(c.low);
+    const high = Math.ceil(c.high / boxSize) * boxSize;
+    const low = Math.floor(c.low / boxSize) * boxSize;
     const lastCol = columns[columns.length - 1];
 
     if (lastCol.dir === 1) {
-      if (high > lastCol.top) lastCol.top = high;
+      // In an X (up) column
+      if (high > lastCol.top) {
+        lastCol.top = high;
+        lastCol.endIdx = i;
+      }
+      // Check for reversal down
       if (lastCol.top - low >= reversalAmount) {
-        columns.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
+        columns.push({ dir: -1, top: lastCol.top - boxSize, bot: low, startIdx: i, endIdx: i });
       }
     } else {
-      if (low < lastCol.bot) lastCol.bot = low;
+      // In an O (down) column
+      if (low < lastCol.bot) {
+        lastCol.bot = low;
+        lastCol.endIdx = i;
+      }
+      // Check for reversal up
       if (high - lastCol.bot >= reversalAmount) {
-        columns.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
+        columns.push({ dir: 1, top: high, bot: lastCol.bot + boxSize, startIdx: i, endIdx: i });
       }
     }
   }
 
+  // Use evenly spaced times based on actual candle times for proper chart alignment
   const baseTime = candles[0].time as number;
+  const totalTime = (candles[candles.length - 1].time as number) - baseTime;
+  const colCount = columns.length;
+  const timeStep = colCount > 1 ? Math.max(Math.floor(totalTime / colCount), 60) : 86400;
+
   const boxes: PFBox[] = [];
   const lineData: { time: Time; value: number }[] = [];
 
   for (let i = 0; i < columns.length; i++) {
     const col = columns[i];
-    const time = (baseTime + i * 86400) as Time;
+    const time = (baseTime + i * timeStep) as Time;
     const mid = (col.top + col.bot) / 2;
     lineData.push({ time, value: mid });
 
