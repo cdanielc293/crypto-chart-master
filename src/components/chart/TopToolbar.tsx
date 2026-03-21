@@ -1,9 +1,10 @@
 import { useChart } from '@/context/ChartContext';
+import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
