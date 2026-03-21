@@ -150,6 +150,29 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  const [gridLayout, setGridLayoutState] = useState<GridLayout>(ALL_GRID_LAYOUTS[0]);
+  const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
+  const [panelSymbols, setPanelSymbolsState] = useState<string[]>(['BTCUSDT']);
+
+  const setGridLayout = useCallback((layout: GridLayout) => {
+    setGridLayoutState(layout);
+    setPanelSymbolsState(prev => {
+      if (prev.length >= layout.count) return prev;
+      const next = [...prev];
+      while (next.length < layout.count) next.push('BTCUSDT');
+      return next;
+    });
+  }, []);
+
+  const setPanelSymbol = useCallback((index: number, sym: string) => {
+    setPanelSymbolsState(prev => {
+      const next = [...prev];
+      while (next.length <= index) next.push('BTCUSDT');
+      next[index] = sym;
+      return next;
+    });
+  }, []);
+
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlists(prev => prev.map(list => {
       if (list.id !== activeWatchlistId) return list;
