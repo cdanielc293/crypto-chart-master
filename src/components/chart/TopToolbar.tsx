@@ -249,6 +249,36 @@ export default function TopToolbar() {
 
         <div className="w-px h-5 bg-chart-border mx-1" />
 
+        {/* Theme Switcher */}
+        <div className="relative">
+          <button
+            onClick={() => { closeAll(); setThemeOpen(!themeOpen); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+            title="Change theme"
+          >
+            <Palette size={16} />
+          </button>
+          {themeOpen && (
+            <div className="absolute top-full mt-1 right-0 z-50 w-48 rounded-md border bg-popover border-border shadow-lg py-1">
+              {THEMES.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setTheme(t.id); setThemeOpen(false); }}
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover transition-colors ${
+                    theme === t.id ? 'text-primary' : 'text-foreground'
+                  }`}
+                >
+                  <span
+                    className="w-4 h-4 rounded-full border border-border shrink-0"
+                    style={{ background: t.preview }}
+                  />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
@@ -259,7 +289,7 @@ export default function TopToolbar() {
       </div>
 
       {/* Close dropdowns on outside click */}
-      {(chartTypeOpen || indicatorOpen || intervalDropdownOpen) && (
+      {(chartTypeOpen || indicatorOpen || intervalDropdownOpen || themeOpen) && (
         <div className="fixed inset-0 z-40" onClick={closeAll} />
       )}
 
