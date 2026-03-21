@@ -8,6 +8,7 @@ import { Settings } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
+import { getKlines, fetchFromBinance } from '@/lib/klineCache';
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
 import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasContextMenu';
@@ -890,48 +891,18 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const fetchData = async () => {
       try {
-        const endpoints = [
-          'https://data-api.binance.vision',
-          'https://api.binance.com',
-          'https://api1.binance.com',
-          'https://api2.binance.com',
-        ];
-
-        let data: any = null;
-        let lastError: unknown = null;
-
-        for (const endpoint of endpoints) {
-          try {
-            const res = await fetch(`${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`);
-            const json = await res.json();
-            if (Array.isArray(json)) {
-              data = json;
-              break;
-            }
-            lastError = new Error(typeof json?.msg === 'string' ? json.msg : 'Invalid kline response');
-          } catch (err) {
-            lastError = err;
-          }
-        }
-
-        if (!Array.isArray(data)) {
-          throw lastError || new Error('Failed to load klines from Binance endpoints');
-        }
+        // Use cache-first strategy: Supabase cache → Binance fallback
+        const klineData = await getKlines(symbol, interval);
 
         const candles: RawCandle[] = [];
         const volumes: any[] = [];
         const rawForIndicators: { close: number; time: Time }[] = [];
 
-        for (const k of data) {
-          const time = (k[0] / 1000 + tzShiftSeconds) as Time;
-          const o = parseFloat(k[1]);
-          const h = parseFloat(k[2]);
-          const l = parseFloat(k[3]);
-          const c = parseFloat(k[4]);
-          const v = parseFloat(k[5]);
-          candles.push({ time, open: o, high: h, low: l, close: c, volume: v });
-          volumes.push({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
-          rawForIndicators.push({ close: c, time });
+        for (const k of klineData) {
+          const time = (k.time + tzShiftSeconds) as Time;
+          candles.push({ time, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume });
+          volumes.push({ time, value: k.volume, color: k.close >= k.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+          rawForIndicators.push({ close: k.close, time });
         }
 
         rawDataRef.current = rawForIndicators;
