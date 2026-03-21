@@ -176,7 +176,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const w = container?.clientWidth || 0;
     const h = container?.clientHeight || 0;
 
-    if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
       // Check anchor of selected
       if (selectedDrawingId) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
@@ -228,16 +228,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    if (drawingTool === 'eraser') {
-      for (let i = chartDrawings.length - 1; i >= 0; i--) {
-        if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
-          removeDrawing(chartDrawings[i].id);
-          return;
-        }
-      }
-      return;
-    }
-
     // Brush/highlighter
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1) {
@@ -283,6 +273,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      // Auto-switch back to cursor after placing a drawing
+      setDrawingTool('cursor');
     }
 
     e.preventDefault();
@@ -350,7 +342,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const w = container.clientWidth;
     const h = container.clientHeight;
 
-    if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
       let cursor = 'default';
       if (selectedDrawingId) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
@@ -368,8 +360,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
       canvas.style.cursor = cursor;
-    } else if (drawingTool === 'eraser') {
-      canvas.style.cursor = 'crosshair';
     } else {
       canvas.style.cursor = 'crosshair';
     }
@@ -382,6 +372,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     if (isBrushingRef.current) {
       isBrushingRef.current = false;
       brushDrawingIdRef.current = null;
+      // Auto-switch back to cursor after brush/highlighter
+      setDrawingTool('cursor');
     }
   }, []);
 
@@ -401,8 +393,10 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      // Auto-switch back to cursor after multi-point drawing
+      setDrawingTool('cursor');
     }
-  }, [drawingTool, addDrawing]);
+  }, [drawingTool, addDrawing, setDrawingTool]);
 
   // Keyboard
   useEffect(() => {
@@ -441,7 +435,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
   // Determine pointer events: when in cursor mode with no drawing selected,
   // we want chart to handle scroll/zoom, so only intercept when near a drawing
-  const needsPointerEvents = drawingTool !== 'cursor' || selectedDrawingId !== null;
+  const needsPointerEvents = (drawingTool !== 'cursor' && drawingTool !== 'dot' && drawingTool !== 'arrow_cursor') || selectedDrawingId !== null;
 
   return (
     <>
@@ -456,7 +450,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         onDoubleClick={handleDoubleClick}
       />
       {/* Transparent hit-test layer for cursor mode without selection */}
-      {drawingTool === 'cursor' && !selectedDrawingId && (
+      {(drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') && !selectedDrawingId && (
         <canvas
           ref={(el) => {
             // Reuse same canvas ref logic for hit testing on hover

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useChart } from '@/context/ChartContext';
 import type { DrawingTool } from '@/types/chart';
 import {
-  Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation, Eraser,
+  Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation,
   TrendingUp, MoveRight, Info, ArrowRight, Triangle as TriangleIcon,
   Minus, ArrowRightFromLine, ArrowDownUp, X,
   Columns3, TrendingDown, AlignHorizontalSpaceAround, SplitSquareHorizontal,
@@ -58,7 +58,7 @@ const categories: ToolCategory[] = [
         { tool: 'cursor', label: 'Cross', icon: <Crosshair size={16} />, starred: true },
         { tool: 'dot', label: 'Dot', icon: <CircleDot size={16} /> },
         { tool: 'arrow_cursor', label: 'Arrow', icon: <ArrowUpRight size={16} /> },
-        { tool: 'eraser', label: 'Eraser', icon: <Eraser size={16} /> },
+        
       ],
     }],
   },

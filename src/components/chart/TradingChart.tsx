@@ -824,7 +824,6 @@ export default function TradingChart() {
     circle: 'Click center then edge for circle',
     parallelchannel: 'Click 3 points for parallel channel',
     brush: 'Click and drag to draw',
-    eraser: 'Click on a drawing to erase it',
   };
   const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
 
