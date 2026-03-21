@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useChart } from '@/context/ChartContext';
-import { Candlestick, Eye, EyeOff, Trash2, TrendingUp, Minus } from 'lucide-react';
+import { BarChart3, Trash2, TrendingUp, Minus } from 'lucide-react';
 
 export default function ObjectTreePanel() {
   const { symbol, interval, drawings, removeDrawing, indicators, toggleIndicator } = useChart();
