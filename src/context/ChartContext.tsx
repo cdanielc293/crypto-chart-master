@@ -89,6 +89,8 @@ interface ChartContextType {
   // Per-panel symbols for multi-chart
   panelSymbols: string[];
   setPanelSymbol: (index: number, symbol: string) => void;
+  activePanelIndex: number | null;
+  setActivePanelIndex: (index: number | null) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
@@ -153,6 +155,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [gridLayout, setGridLayoutState] = useState<GridLayout>(ALL_GRID_LAYOUTS[0]);
   const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
   const [panelSymbols, setPanelSymbolsState] = useState<string[]>(['BTCUSDT']);
+  const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
 
   const setGridLayout = useCallback((layout: GridLayout) => {
     setGridLayoutState(layout);
@@ -254,6 +257,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       gridLayout, setGridLayout,
       syncOptions, setSyncOptions,
       panelSymbols, setPanelSymbol,
+      activePanelIndex, setActivePanelIndex,
     }}>
       {children}
     </ChartContext.Provider>

@@ -329,7 +329,16 @@ export default function Watchlist() {
     symbol, setSymbol, removeFromWatchlist, addToWatchlist,
     watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId,
     watchlistPrices, setWatchlistPrices,
+    gridLayout, activePanelIndex, setPanelSymbol,
   } = useChart();
+
+  const handleSymbolClick = useCallback((sym: string) => {
+    if (gridLayout.count > 1 && activePanelIndex !== null) {
+      setPanelSymbol(activePanelIndex, sym);
+    } else {
+      setSymbol(sym);
+    }
+  }, [gridLayout.count, activePanelIndex, setPanelSymbol, setSymbol]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -612,7 +621,7 @@ export default function Watchlist() {
                 return (
                   <div
                     key={sym}
-                    onClick={() => setSymbol(sym)}
+                    onClick={() => handleSymbolClick(sym)}
                     onDoubleClick={() => setSelectedSymbol(prev => prev === sym ? null : sym)}
                     className={`flex items-center px-3 py-2 cursor-pointer text-[13px] transition-colors group ${
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
