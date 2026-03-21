@@ -176,7 +176,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const w = container?.clientWidth || 0;
     const h = container?.clientHeight || 0;
 
-    if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
       // Check anchor of selected
       if (selectedDrawingId) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
