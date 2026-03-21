@@ -257,6 +257,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       gridLayout, setGridLayout,
       syncOptions, setSyncOptions,
       panelSymbols, setPanelSymbol,
+      activePanelIndex, setActivePanelIndex,
     }}>
       {children}
     </ChartContext.Provider>
