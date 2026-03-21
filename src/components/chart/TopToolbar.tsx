@@ -56,7 +56,7 @@ export default function TopToolbar() {
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
-  const [multiGrid, setMultiGrid] = useState<MultiChartGrid>('1');
+  const [gridLayout, setGridLayout] = useState<GridLayout>(ALL_GRID_LAYOUTS[0]);
   const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
