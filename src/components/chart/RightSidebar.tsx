@@ -27,7 +27,7 @@ export default function RightSidebar() {
       {activePanel === 'alerts' && <AlertsPanel />}
       {activePanel === 'objects' && <ObjectTreePanel />}
       {activePanel === 'chat' && (
-        <div className="flex flex-col w-[280px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
+        <div className="flex flex-col w-[300px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
           <p className="text-muted-foreground text-xs">Chat coming soon</p>
         </div>
       )}
