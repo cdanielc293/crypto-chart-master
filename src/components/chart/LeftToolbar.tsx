@@ -352,7 +352,7 @@ export default function LeftToolbar() {
               if (tool) setDrawingTool(tool);
             }}
             title={cat.label}
-            className={`w-9 h-9 flex items-center justify-center rounded transition-colors relative ${
+            className={`w-10 h-10 flex items-center justify-center rounded transition-colors relative ${
               isToolActive(cat.id)
                 ? 'bg-toolbar-active text-primary-foreground'
                 : openCategory === cat.id
