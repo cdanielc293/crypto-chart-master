@@ -228,16 +228,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    if (drawingTool === 'eraser') {
-      for (let i = chartDrawings.length - 1; i >= 0; i--) {
-        if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
-          removeDrawing(chartDrawings[i].id);
-          return;
-        }
-      }
-      return;
-    }
-
     // Brush/highlighter
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1) {
