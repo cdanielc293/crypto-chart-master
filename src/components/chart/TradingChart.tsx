@@ -10,7 +10,7 @@ import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import DrawingCanvas from './DrawingCanvas';
 import PriceScaleContextMenu from './PriceScaleContextMenu';
-import TimezoneSelector from './TimezoneSelector';
+import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import type { CandleData } from '@/lib/drawing/types';
 
