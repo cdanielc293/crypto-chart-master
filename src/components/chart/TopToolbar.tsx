@@ -233,13 +233,13 @@ export default function TopToolbar() {
         {/* Bar Replay */}
         <button
           onClick={() => setReplayState(replayState === 'off' ? 'selecting' : 'off')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[13px] transition-colors ${
             replayState !== 'off'
               ? 'bg-primary/20 text-primary'
               : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
           }`}
         >
-          <Rewind size={14} />
+          <Rewind size={16} />
           <span>Replay</span>
         </button>
 
