@@ -332,10 +332,13 @@ const EMA_COLORS: Record<string, string> = {
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const normalized = hex.length === 4
+    ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+    : hex;
+  const r = parseInt(normalized.slice(1, 3), 16);
+  const g = parseInt(normalized.slice(3, 5), 16);
+  const b = parseInt(normalized.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
 }
 
 function mapCrosshairStyle(style: 'dashed' | 'dotted' | 'solid') {
@@ -371,6 +374,7 @@ export default function TradingChart() {
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridExtendCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replaySelectCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replayTimerRef = useRef<number | null>(null);
   const replayBarRef = useRef(replayBarIndex);
@@ -460,6 +464,74 @@ export default function TradingChart() {
       timeScale: { borderColor: linesColor, rightOffset },
     });
   }, [chartSettings.canvas]);
+
+  const drawExtendedGrid = useCallback(() => {
+    const canvas = gridExtendCanvasRef.current;
+    const container = containerRef.current;
+    const chart = chartRef.current;
+    const cs = chartSettings.canvas;
+    if (!canvas || !container || !chart) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!(cs.gridType === 'both' || cs.gridType === 'vert')) return;
+
+    const candles = rawCandlesRef.current;
+    if (candles.length < 2) return;
+
+    const last = candles[candles.length - 1];
+    const prev = candles[candles.length - 2];
+    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
+    const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
+    if (lastX === null || prevX === null) return;
+
+    const step = lastX - prevX;
+    if (!Number.isFinite(step) || step < 4) return;
+
+    ctx.strokeStyle = hexToRgba(sanitizeHexColor(cs.gridVertColor, '#1e222d'), cs.gridVertOpacity / 100);
+    ctx.lineWidth = 1;
+
+    for (let x = lastX + step; x <= w; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x) + 0.5, 0);
+      ctx.lineTo(Math.round(x) + 0.5, h);
+      ctx.stroke();
+    }
+  }, [chartSettings.canvas]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const redraw = () => requestAnimationFrame(drawExtendedGrid);
+    redraw();
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    chart.subscribeCrosshairMove(redraw);
+
+    const observer = new ResizeObserver(redraw);
+    if (containerRef.current) observer.observe(containerRef.current);
+
+    const timer = window.setInterval(redraw, 1000);
+
+    return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(redraw);
+      chart.unsubscribeCrosshairMove(redraw);
+      observer.disconnect();
+      clearInterval(timer);
+    };
+  }, [drawExtendedGrid, symbol, interval, chartType, replayState]);
 
   // Determine which series type to use
   const isLineType = ['line', 'line_markers', 'step_line'].includes(chartType);
@@ -1303,6 +1375,10 @@ export default function TradingChart() {
       )}
 
       <div ref={containerRef} className="flex-1 relative">
+        <canvas
+          ref={gridExtendCanvasRef}
+          className="absolute inset-0 z-[6] pointer-events-none"
+        />
         <canvas
           ref={pfCanvasRef}
           className="absolute inset-0 z-10 pointer-events-none"

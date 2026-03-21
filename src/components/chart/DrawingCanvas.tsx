@@ -48,16 +48,40 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
   const getCoordHelper = useCallback((): CoordHelper | null => {
     if (!chart || !series) return null;
+
+    const getSpacing = () => {
+      if (candles.length < 2) return null;
+      const last = candles[candles.length - 1];
+      const prev = candles[candles.length - 2];
+      const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
+      const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
+      const pixelsPerBar = lastX !== null && prevX !== null ? lastX - prevX : 0;
+      const timeDelta = last.time - prev.time;
+      if (!Number.isFinite(pixelsPerBar) || pixelsPerBar <= 0 || timeDelta <= 0) return null;
+      return { lastX: lastX as number, lastTime: last.time, pixelsPerBar, timeDelta };
+    };
+
     return {
-      timeToX: (t: number) => chart.timeScale().timeToCoordinate(t as Time),
+      timeToX: (t: number) => {
+        const x = chart.timeScale().timeToCoordinate(t as Time);
+        if (x !== null) return x;
+        const spacing = getSpacing();
+        if (!spacing) return null;
+        const barsAhead = (t - spacing.lastTime) / spacing.timeDelta;
+        return spacing.lastX + barsAhead * spacing.pixelsPerBar;
+      },
       priceToY: (p: number) => series.priceToCoordinate(p),
       xToTime: (x: number) => {
         const t = chart.timeScale().coordinateToTime(x);
-        return t !== null ? (t as number) : null;
+        if (t !== null) return t as number;
+        const spacing = getSpacing();
+        if (!spacing) return null;
+        const barsAhead = (x - spacing.lastX) / spacing.pixelsPerBar;
+        return spacing.lastTime + Math.round(barsAhead) * spacing.timeDelta;
       },
       yToPrice: (y: number) => series.coordinateToPrice(y),
     };
-  }, [chart, series]);
+  }, [chart, series, candles]);
 
   const getMouseCoords = useCallback((e: MouseEvent | React.MouseEvent): { mx: number; my: number; time: number; price: number } | null => {
     const canvas = canvasRef.current;
@@ -73,28 +97,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       if (snapped) return { mx, my, time: snapped.time, price: snapped.price };
     }
 
-    let time = coord.xToTime(mx);
+    const time = coord.xToTime(mx);
     const price = coord.yToPrice(my);
-    
-    // Allow drawing beyond the last candle by extrapolating time
-    if (time === null && candles.length >= 2 && chart) {
-      const lastCandle = candles[candles.length - 1];
-      const prevCandle = candles[candles.length - 2];
-      const lastX = coord.timeToX(lastCandle.time);
-      const prevX = coord.timeToX(prevCandle.time);
-      if (lastX !== null && prevX !== null) {
-        const pixelsPerBar = lastX - prevX;
-        if (pixelsPerBar > 0) {
-          const barsAhead = (mx - lastX) / pixelsPerBar;
-          const timeDelta = lastCandle.time - prevCandle.time;
-          time = lastCandle.time + Math.round(barsAhead) * timeDelta;
-        }
-      }
-    }
-    
+
     if (time === null || price === null) return null;
     return { mx, my, time, price };
-  }, [getCoordHelper, magnetMode, candles, chart]);
+  }, [getCoordHelper, magnetMode, candles]);
 
   // ─── Render loop ───
   const render = useCallback(() => {
