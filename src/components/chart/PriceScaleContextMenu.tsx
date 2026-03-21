@@ -40,8 +40,9 @@ export default function PriceScaleContextMenu({ children, onOpenSettings, onRese
   }, [setChartSettings]);
 
   const resetPriceScale = useCallback(() => {
-    updatePriceScale({ autoScale: true, mode: 'regular' });
-  }, [updatePriceScale]);
+    updatePriceScale({ autoScale: true, mode: 'regular', invertScale: false, scalePriceChartOnly: false });
+    onResetScale?.();
+  }, [updatePriceScale, onResetScale]);
 
   const setMode = useCallback((mode: PriceScaleSettings['mode']) => {
     updatePriceScale({ mode });
