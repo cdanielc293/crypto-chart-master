@@ -1423,29 +1423,60 @@ export default function TradingChart() {
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
-        <canvas
-          ref={gridExtendCanvasRef}
-          className="absolute inset-0 z-[6] pointer-events-none"
-        />
-        <canvas
-          ref={pfCanvasRef}
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
-        />
-        <canvas
-          ref={replaySelectCanvasRef}
-          className="absolute inset-0 z-20 pointer-events-none"
-          style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
-        />
-        <DrawingCanvas
-          chart={chartRef.current}
-          series={mainSeriesRef.current}
-          candles={candleDataForDrawing}
-          containerRef={containerRef as React.RefObject<HTMLDivElement>}
-          magnetMode={magnetMode}
-        />
+      <div className="flex-1 min-w-0 relative overflow-hidden flex">
+        <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
+          <canvas
+            ref={gridExtendCanvasRef}
+            className="absolute inset-0 z-[6] pointer-events-none"
+          />
+          <canvas
+            ref={pfCanvasRef}
+            className="absolute inset-0 z-10 pointer-events-none"
+            style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+          />
+          <canvas
+            ref={replaySelectCanvasRef}
+            className="absolute inset-0 z-20 pointer-events-none"
+            style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
+          />
+          <DrawingCanvas
+            chart={chartRef.current}
+            series={mainSeriesRef.current}
+            candles={candleDataForDrawing}
+            containerRef={containerRef as React.RefObject<HTMLDivElement>}
+            magnetMode={magnetMode}
+          />
+
+          {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
+          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)}>
+            <div
+              className="absolute top-0 right-0 bottom-0 z-[15]"
+              style={{ width: priceScaleWidth || 55 }}
+            />
+          </PriceScaleContextMenu>
+
+          {/* Gear icon at bottom of price scale */}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="absolute z-[16] right-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            style={{
+              bottom: 28,
+              width: priceScaleWidth || 55,
+              height: 22,
+            }}
+            title="More settings…"
+          >
+            <Settings size={14} />
+          </button>
+        </div>
       </div>
+
+      {/* Bottom bar with timezone selector */}
+      <div className="flex items-center justify-end h-[26px] border-t border-[hsl(var(--border))] bg-[hsl(var(--card))] px-1">
+        <TimezoneSelector />
+      </div>
+
+      <ChartSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
