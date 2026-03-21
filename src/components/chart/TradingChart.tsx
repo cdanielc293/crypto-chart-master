@@ -1365,7 +1365,7 @@ export default function TradingChart() {
   const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
 
   return (
-    <div className={`flex-1 flex flex-col relative bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
+    <div className={`flex-1 min-w-0 flex flex-col relative overflow-hidden bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
       <div
         className="absolute top-2 left-3 z-10 flex items-center gap-3 rounded px-2 py-1 text-xs font-mono"
         style={{ background: statusLineBackground }}
@@ -1417,7 +1417,7 @@ export default function TradingChart() {
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 relative">
+      <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
         <canvas
           ref={gridExtendCanvasRef}
           className="absolute inset-0 z-[6] pointer-events-none"
