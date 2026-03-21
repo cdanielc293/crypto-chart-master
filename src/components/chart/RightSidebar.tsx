@@ -21,19 +21,19 @@ export default function RightSidebar() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full shrink-0">
       {/* Panel content */}
       {activePanel === 'watchlist' && <Watchlist />}
       {activePanel === 'alerts' && <AlertsPanel />}
       {activePanel === 'objects' && <ObjectTreePanel />}
       {activePanel === 'chat' && (
-        <div className="flex flex-col w-72 bg-toolbar-bg border-l border-chart-border items-center justify-center">
+        <div className="flex flex-col w-[280px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
           <p className="text-muted-foreground text-xs">Chat coming soon</p>
         </div>
       )}
 
       {/* Icon strip */}
-      <div className="flex flex-col items-center w-10 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
+      <div className="flex flex-col items-center w-10 shrink-0 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activePanel === tab.id;
