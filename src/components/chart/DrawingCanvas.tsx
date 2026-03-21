@@ -6,6 +6,7 @@ import { getToolPointCount } from '@/lib/drawing/types';
 import { renderDrawing, getAnchors, renderAnchors } from '@/lib/drawing/renderers';
 import { hitTestDrawing, hitTestAnchors } from '@/lib/drawing/hit-testing';
 import { snapToCandle } from '@/lib/drawing/snap';
+import type { Drawing } from '@/types/chart';
 import FloatingToolbar from './FloatingToolbar';
 
 interface Props {
@@ -14,6 +15,15 @@ interface Props {
   candles: CandleData[];
   containerRef: React.RefObject<HTMLDivElement>;
   magnetMode: boolean;
+}
+
+// Convert Drawing (context) to ChartDrawing (engine)
+function toChartDrawing(d: Drawing): ChartDrawing {
+  return { ...d, type: d.type as string };
+}
+
+function toDrawing(d: ChartDrawing): Drawing {
+  return { ...d, type: d.type as Drawing['type'] };
 }
 
 export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode }: Props) {
@@ -32,6 +42,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const brushDrawingIdRef = useRef<string | null>(null);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+
+  const chartDrawings = drawings.map(toChartDrawing);
 
   const getCoordHelper = useCallback((): CoordHelper | null => {
     if (!chart || !series) return null;
@@ -55,7 +67,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const coord = getCoordHelper();
     if (!coord) return null;
 
-    // Apply magnet if enabled
     if (magnetMode && candles.length > 0) {
       const snapped = snapToCandle(mx, my, candles, coord);
       if (snapped) return { mx, my, time: snapped.time, price: snapped.price };
@@ -89,14 +100,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    // Render all completed drawings
-    for (const d of drawings) {
+    for (const d of chartDrawings) {
       renderDrawing(ctx, d, coord, w, h);
-      // Render anchors for selected drawing
       if (d.id === selectedDrawingId && d.selected) {
         const anchors = getAnchors(d, coord);
         renderAnchors(ctx, anchors);
-        // Update toolbar position
         if (anchors.length > 0 && !isDraggingRef.current) {
           const minY = Math.min(...anchors.map(a => a.y));
           const avgX = anchors.reduce((s, a) => s + a.x, 0) / anchors.length;
@@ -105,7 +113,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       }
     }
 
-    // Render drawing-in-progress preview
+    // Preview
     if (pendingPointsRef.current.length > 0 && drawingTool !== 'cursor') {
       const previewPts = [...pendingPointsRef.current];
       if (previewPointRef.current) previewPts.push(previewPointRef.current);
@@ -124,7 +132,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       renderDrawing(ctx, previewDrawing, coord, w, h);
       ctx.globalAlpha = 1;
 
-      // Draw pending anchor points
       for (const pt of pendingPointsRef.current) {
         const x = coord.timeToX(pt.time);
         const y = coord.priceToY(pt.price);
@@ -136,9 +143,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
     }
-  }, [drawings, selectedDrawingId, drawingTool, getCoordHelper, containerRef]);
+  }, [chartDrawings, selectedDrawingId, drawingTool, getCoordHelper, containerRef]);
 
-  // Animation frame loop
   useEffect(() => {
     let running = true;
     const loop = () => {
@@ -150,7 +156,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     return () => { running = false; cancelAnimationFrame(rafRef.current); };
   }, [render]);
 
-  // Subscribe to chart changes to trigger re-render
   useEffect(() => {
     if (!chart) return;
     const redraw = () => render();
@@ -167,23 +172,21 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const coord = getCoordHelper();
     if (!coord) return;
 
-    const canvas = canvasRef.current;
     const container = containerRef.current;
     const w = container?.clientWidth || 0;
     const h = container?.clientHeight || 0;
 
-    // If in cursor mode, check for selection/dragging
     if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
-      // First check if clicking on an anchor of the selected drawing
+      // Check anchor of selected
       if (selectedDrawingId) {
-        const selectedDrawing = drawings.find(d => d.id === selectedDrawingId);
-        if (selectedDrawing && !selectedDrawing.locked) {
-          const anchorIdx = hitTestAnchors(selectedDrawing, mx, my, coord);
+        const sel = chartDrawings.find(d => d.id === selectedDrawingId);
+        if (sel && !sel.locked) {
+          const anchorIdx = hitTestAnchors(sel, mx, my, coord);
           if (anchorIdx >= 0) {
             isDraggingRef.current = true;
             dragTypeRef.current = 'anchor';
             dragAnchorIdxRef.current = anchorIdx;
-            dragStartRef.current = { mx, my, points: selectedDrawing.points.map(p => ({ ...p })) };
+            dragStartRef.current = { mx, my, points: sel.points.map(p => ({ ...p })) };
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -191,9 +194,9 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
 
-      // Check hit test on all drawings (reverse order = top first)
-      for (let i = drawings.length - 1; i >= 0; i--) {
-        const d = drawings[i];
+      // Hit test all drawings
+      for (let i = chartDrawings.length - 1; i >= 0; i--) {
+        const d = chartDrawings[i];
         if (hitTestDrawing(d, mx, my, coord, w, h)) {
           setSelectedDrawingId(d.id);
           if (!d.locked) {
@@ -201,7 +204,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             dragTypeRef.current = 'move';
             dragStartRef.current = { mx, my, points: d.points.map(p => ({ ...p })) };
           }
-          // Select the drawing
+          // Mark selected
           for (const dd of drawings) {
             if (dd.id === d.id && !dd.selected) {
               updateDrawing(dd.id, { ...dd, selected: true });
@@ -215,7 +218,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
 
-      // Clicked on nothing - deselect
+      // Deselect
       if (selectedDrawingId) {
         const prev = drawings.find(d => d.id === selectedDrawingId);
         if (prev) updateDrawing(prev.id, { ...prev, selected: false });
@@ -225,53 +228,50 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Eraser mode
     if (drawingTool === 'eraser') {
-      for (let i = drawings.length - 1; i >= 0; i--) {
-        if (hitTestDrawing(drawings[i], mx, my, coord, w, h)) {
-          removeDrawing(drawings[i].id);
+      for (let i = chartDrawings.length - 1; i >= 0; i--) {
+        if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
+          removeDrawing(chartDrawings[i].id);
           return;
         }
       }
       return;
     }
 
-    // Brush/highlighter: start freehand
+    // Brush/highlighter
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1) {
       if (['brush', 'highlighter'].includes(drawingTool)) {
         isBrushingRef.current = true;
         const id = `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         brushDrawingIdRef.current = id;
-        addDrawing({
+        const newDrawing: Drawing = {
           id,
-          type: drawingTool,
+          type: drawingTool as Drawing['type'],
           points: [{ time, price }],
           color: drawingTool === 'highlighter' ? '#ffeb3b' : '#2962ff',
           lineWidth: drawingTool === 'highlighter' ? 12 : 2,
           selected: false,
           visible: true,
           locked: false,
-        });
+        };
+        addDrawing(newDrawing);
         e.preventDefault();
         e.stopPropagation();
         return;
       }
-      // Other unlimited-point tools: click to add, double-click to finish
       pendingPointsRef.current = [...pendingPointsRef.current, { time, price }];
       e.preventDefault();
       e.stopPropagation();
       return;
     }
 
-    // Standard multi-click tools
     pendingPointsRef.current = [...pendingPointsRef.current, { time, price }];
 
     if (pendingPointsRef.current.length >= toolPoints) {
-      // Complete the drawing
-      const newDrawing: ChartDrawing = {
+      const newDrawing: Drawing = {
         id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        type: drawingTool,
+        type: drawingTool as Drawing['type'],
         points: [...pendingPointsRef.current],
         color: getDefaultColor(drawingTool),
         lineWidth: 2,
@@ -287,7 +287,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     e.preventDefault();
     e.stopPropagation();
-  }, [drawingTool, drawings, selectedDrawingId, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, containerRef]);
+  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, containerRef]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const coords = getMouseCoords(e as unknown as MouseEvent);
@@ -296,7 +296,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const coord = getCoordHelper();
     if (!coord) return;
 
-    // Brush mode: add points continuously
+    // Brush
     if (isBrushingRef.current && brushDrawingIdRef.current) {
       const existing = drawings.find(d => d.id === brushDrawingIdRef.current);
       if (existing) {
@@ -317,7 +317,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const dy = my - dragStartRef.current.my;
 
       if (dragTypeRef.current === 'anchor') {
-        // Move single anchor
         const idx = dragAnchorIdxRef.current;
         const newPoints = dragStartRef.current.points.map((p, i) => {
           if (i === idx) return { time, price };
@@ -325,7 +324,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         });
         updateDrawing(selected.id, { ...selected, points: newPoints });
       } else {
-        // Move entire drawing
         const newPoints = dragStartRef.current.points.map(p => {
           const origX = coord.timeToX(p.time);
           const origY = coord.priceToY(p.price);
@@ -340,12 +338,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Preview for drawing in progress
+    // Preview
     if (pendingPointsRef.current.length > 0 && drawingTool !== 'cursor') {
       previewPointRef.current = { time, price };
     }
 
-    // Change cursor for hit testing
+    // Cursor
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -354,20 +352,16 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
       let cursor = 'default';
-      // Check anchors of selected drawing
       if (selectedDrawingId) {
-        const sel = drawings.find(d => d.id === selectedDrawingId);
+        const sel = chartDrawings.find(d => d.id === selectedDrawingId);
         if (sel) {
           const anchorIdx = hitTestAnchors(sel, mx, my, coord);
-          if (anchorIdx >= 0) {
-            cursor = 'grab';
-          }
+          if (anchorIdx >= 0) cursor = 'grab';
         }
       }
-      // Check body hit
       if (cursor === 'default') {
-        for (let i = drawings.length - 1; i >= 0; i--) {
-          if (hitTestDrawing(drawings[i], mx, my, coord, w, h)) {
+        for (let i = chartDrawings.length - 1; i >= 0; i--) {
+          if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
             cursor = 'pointer';
             break;
           }
@@ -375,23 +369,16 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       }
       canvas.style.cursor = cursor;
     } else if (drawingTool === 'eraser') {
-      canvas.style.cursor = 'not-allowed';
-      for (let i = drawings.length - 1; i >= 0; i--) {
-        if (hitTestDrawing(drawings[i], mx, my, coord, w, h)) {
-          canvas.style.cursor = 'pointer';
-          break;
-        }
-      }
+      canvas.style.cursor = 'crosshair';
     } else {
       canvas.style.cursor = 'crosshair';
     }
-  }, [drawingTool, drawings, selectedDrawingId, getMouseCoords, getCoordHelper, updateDrawing, containerRef]);
+  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, updateDrawing, containerRef]);
 
   const handleMouseUp = useCallback(() => {
     isDraggingRef.current = false;
     dragStartRef.current = null;
     dragAnchorIdxRef.current = -1;
-
     if (isBrushingRef.current) {
       isBrushingRef.current = false;
       brushDrawingIdRef.current = null;
@@ -399,12 +386,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   }, []);
 
   const handleDoubleClick = useCallback(() => {
-    // Finish unlimited-point tools
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1 && pendingPointsRef.current.length >= 2) {
-      const newDrawing: ChartDrawing = {
+      const newDrawing: Drawing = {
         id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        type: drawingTool,
+        type: drawingTool as Drawing['type'],
         points: [...pendingPointsRef.current],
         color: getDefaultColor(drawingTool),
         lineWidth: 2,
@@ -418,10 +404,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     }
   }, [drawingTool, addDrawing]);
 
-  // Keyboard handler (Delete key)
+  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
+        // Don't delete if focused on an input
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         const sel = drawings.find(d => d.id === selectedDrawingId);
         if (sel && !sel.locked) {
           removeDrawing(selectedDrawingId);
@@ -429,7 +417,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           setToolbarPos(null);
         }
       }
-      // Escape to cancel drawing in progress
       if (e.key === 'Escape') {
         if (pendingPointsRef.current.length > 0) {
           pendingPointsRef.current = [];
@@ -447,24 +434,59 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     return () => window.removeEventListener('keydown', handler);
   }, [selectedDrawingId, drawings, removeDrawing, setSelectedDrawingId, updateDrawing]);
 
-  // Reset pending when tool changes
   useEffect(() => {
     pendingPointsRef.current = [];
     previewPointRef.current = null;
   }, [drawingTool]);
+
+  // Determine pointer events: when in cursor mode with no drawing selected,
+  // we want chart to handle scroll/zoom, so only intercept when near a drawing
+  const needsPointerEvents = drawingTool !== 'cursor' || drawingTool === 'eraser' || selectedDrawingId !== null;
 
   return (
     <>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-20"
-        style={{ pointerEvents: (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'eraser' && drawings.some(d => d.selected)) || drawingTool !== 'cursor' ? 'auto' : 'auto' }}
+        style={{ pointerEvents: needsPointerEvents ? 'auto' : 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
       />
+      {/* Transparent hit-test layer for cursor mode without selection */}
+      {drawingTool === 'cursor' && !selectedDrawingId && (
+        <canvas
+          ref={(el) => {
+            // Reuse same canvas ref logic for hit testing on hover
+            if (!el) return;
+            const onMove = (e: MouseEvent) => {
+              const rect = el.getBoundingClientRect();
+              const mx = e.clientX - rect.left;
+              const my = e.clientY - rect.top;
+              const coord = getCoordHelper();
+              const container = containerRef.current;
+              if (!coord || !container) return;
+              const w = container.clientWidth;
+              const h = container.clientHeight;
+              let found = false;
+              for (let i = chartDrawings.length - 1; i >= 0; i--) {
+                if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
+                  found = true;
+                  break;
+                }
+              }
+              el.style.pointerEvents = found ? 'auto' : 'none';
+              el.style.cursor = found ? 'pointer' : 'default';
+            };
+            el.addEventListener('mousemove', onMove);
+          }}
+          className="absolute inset-0 z-20"
+          style={{ pointerEvents: 'none' }}
+          onMouseDown={handleMouseDown}
+        />
+      )}
       {selectedDrawingId && toolbarPos && (
         <FloatingToolbar
           x={toolbarPos.x}
@@ -477,7 +499,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           onClone={() => {
             const d = drawings.find(dd => dd.id === selectedDrawingId);
             if (d) {
-              const clone: ChartDrawing = {
+              const clone: Drawing = {
                 ...d,
                 id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                 points: d.points.map(p => ({ ...p })),
@@ -499,20 +521,10 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
 function getDefaultColor(tool: string): string {
   switch (tool) {
-    case 'fibonacci':
-    case 'fibextension':
-      return '#787b86';
-    case 'highlighter':
-      return '#ffeb3b';
-    case 'arrowmarkup':
-      return '#26a69a';
-    case 'arrowmarkdown':
-      return '#ef5350';
-    case 'longposition':
-      return '#26a69a';
-    case 'shortposition':
-      return '#ef5350';
-    default:
-      return '#2962ff';
+    case 'fibonacci': case 'fibextension': return '#787b86';
+    case 'highlighter': return '#ffeb3b';
+    case 'arrowmarkup': case 'longposition': return '#26a69a';
+    case 'arrowmarkdown': case 'shortposition': return '#ef5350';
+    default: return '#2962ff';
   }
 }
