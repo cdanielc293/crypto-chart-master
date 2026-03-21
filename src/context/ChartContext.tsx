@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
+import type { ChartSettings } from '@/types/chartSettings';
+import { DEFAULT_CHART_SETTINGS } from '@/types/chartSettings';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -36,6 +38,8 @@ interface ChartContextType {
   setReplaySpeed: (s: number) => void;
   replayStartIndex: number;
   setReplayStartIndex: (i: number) => void;
+  chartSettings: ChartSettings;
+  setChartSettings: (s: ChartSettings) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
@@ -68,6 +72,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [replayBarIndex, setReplayBarIndex] = useState(0);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [replayStartIndex, setReplayStartIndex] = useState(0);
+  const [chartSettings, setChartSettings] = useState<ChartSettings>(() => {
+    const saved = localStorage.getItem('chartSettings');
+    return saved ? { ...DEFAULT_CHART_SETTINGS, ...JSON.parse(saved) } : DEFAULT_CHART_SETTINGS;
+  });
 
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlist(prev => {
@@ -123,6 +131,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       replayBarIndex, setReplayBarIndex,
       replaySpeed, setReplaySpeed,
       replayStartIndex, setReplayStartIndex,
+      chartSettings, setChartSettings,
     }}>
       {children}
     </ChartContext.Provider>

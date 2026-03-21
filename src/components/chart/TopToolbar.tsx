@@ -3,9 +3,10 @@ import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
+import ChartSettingsDialog from './ChartSettingsDialog';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
@@ -47,6 +48,7 @@ export default function TopToolbar() {
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
@@ -240,6 +242,16 @@ export default function TopToolbar() {
           <Rewind size={14} />
           <span>Replay</span>
         </button>
+
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Settings */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+        >
+          <Settings size={14} />
+        </button>
       </div>
 
       {/* Close dropdowns on outside click */}
@@ -248,6 +260,7 @@ export default function TopToolbar() {
       )}
 
       {searchOpen && <SymbolSearch onClose={() => setSearchOpen(false)} />}
+      <ChartSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

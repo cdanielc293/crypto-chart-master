@@ -332,7 +332,7 @@ export default function TradingChart() {
   const {
     symbol, interval, chartType, drawingTool, indicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
-    replayStartIndex, setReplayStartIndex, replaySpeed,
+    replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings,
   } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -356,22 +356,24 @@ export default function TradingChart() {
   // Create chart
   useEffect(() => {
     if (!containerRef.current) return;
+    const cs = chartSettings.canvas;
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#131722' },
-        textColor: '#787b86',
+        background: { type: ColorType.Solid, color: cs.backgroundColor },
+        textColor: cs.scaleTextColor,
+        fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: '#1e222d' },
-        horzLines: { color: '#1e222d' },
+        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
+        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
-        horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
+        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
       },
-      rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.2 } },
-      timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
+      timeScale: { borderColor: cs.scaleLinesColor, timeVisible: true, secondsVisible: false, rightOffset: cs.marginRight },
       handleScroll: true,
       handleScale: true,
     });
@@ -385,7 +387,7 @@ export default function TradingChart() {
     });
     observer.observe(containerRef.current);
     return () => { observer.disconnect(); chart.remove(); chartRef.current = null; };
-  }, []);
+  }, [chartSettings.canvas]);
 
   // Determine which series type to use
   const isLineType = ['line', 'line_markers', 'step_line'].includes(chartType);
@@ -416,13 +418,14 @@ export default function TradingChart() {
       mainSeriesRef.current = series;
     } else if (isCandleType) {
       const isHollow = chartType === 'hollow';
+      const cc = chartSettings.candle;
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : '#26a69a',
-        downColor: isHollow ? 'transparent' : '#ef5350',
-        borderUpColor: '#26a69a',
-        borderDownColor: '#ef5350',
-        wickUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
+        upColor: isHollow ? 'transparent' : cc.bodyUp,
+        downColor: isHollow ? 'transparent' : cc.bodyDown,
+        borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
+        borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
+        wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
+        wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
       });
       mainSeriesRef.current = series;
     } else if (isBarType) {
@@ -474,7 +477,7 @@ export default function TradingChart() {
     });
     volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
     volumeSeriesRef.current = volSeries;
-  }, [chartType]);
+  }, [chartType, chartSettings.candle]);
 
   // Fetch data and connect WebSocket
   useEffect(() => {
