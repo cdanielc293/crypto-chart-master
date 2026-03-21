@@ -167,6 +167,18 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
     adjustForDividends: false,
     precision: 2,
     timezone: 'Exchange',
+    pointFigure: {
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      projUpColor: '#26a69a80',
+      projDownColor: '#ef535080',
+      source: 'close',
+      boxMethod: 'atr',
+      atrLength: 14,
+      boxSize: 100,
+      reversalAmount: 3,
+      oneStepBack: false,
+    },
   },
   candle: {
     bodyUp: '#26a69a',
