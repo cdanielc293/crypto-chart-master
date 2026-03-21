@@ -469,20 +469,8 @@ export default function TradingChart() {
       }
     }
 
-    if (candles.length === 0) return 'open';
-
-    const last = candles[candles.length - 1];
-    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
-    if (lastX === null) return 'block';
-
-    const prev = candles[candles.length - 2];
-    let barSpacing = 8;
-    if (prev) {
-      const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
-      if (prevX !== null) barSpacing = Math.max(2, Math.abs(lastX - prevX));
-    }
-
-    return mx > lastX + barSpacing * 0.5 ? 'open' : 'block';
+    // Any area that's not a drawing or the price scale is "empty" — show chart context menu
+    return 'open';
   }, [drawings, priceScaleWidth]);
 
   // Create chart (only once)
