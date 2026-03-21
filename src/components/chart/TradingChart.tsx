@@ -1525,7 +1525,18 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         style={{ background: statusLineBackground }}
       >
         {statusLine.showLogo && <span className="text-muted-foreground">◉</span>}
-        {statusLine.showTitle && <span className="text-foreground font-semibold">{symbolTitle}</span>}
+        {statusLine.showTitle && (
+          panelIndex !== undefined ? (
+            <button
+              onClick={() => setPanelSearchOpen(true)}
+              className="text-foreground font-semibold hover:text-primary transition-colors cursor-pointer"
+            >
+              {symbolTitle}
+            </button>
+          ) : (
+            <span className="text-foreground font-semibold">{symbolTitle}</span>
+          )
+        )}
         {statusLine.showOpenMarketStatus && <span className="text-chart-bull">● Open</span>}
 
         {showStatusValues && (
