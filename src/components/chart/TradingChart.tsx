@@ -566,12 +566,20 @@ export default function TradingChart() {
 
     fetchData();
 
-    // WebSocket — only connect when not in replay
-    if (wsRef.current) wsRef.current.close();
-    if (replayState !== 'off' && replayState !== 'selecting') {
-      // Don't connect WS during replay
-      return;
-    }
+    return () => {};
+  }, [symbol, interval, chartType]);
+
+  // ─── WebSocket (separate from data fetch, respects replay) ───
+  useEffect(() => {
+    if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+
+    // Don't connect WS during active replay
+    if (replayState !== 'off' && replayState !== 'selecting') return;
+
+    const series = mainSeriesRef.current;
+    const volSeries = volumeSeriesRef.current;
+    if (!series || !volSeries) return;
+
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
     wsRef.current = ws;
 
@@ -587,7 +595,6 @@ export default function TradingChart() {
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
 
-      // For transformed chart types we avoid direct incremental updates to prevent time-order errors.
       if (!isTransformType) {
         if (isLineType || isAreaType || isBaselineType || isColumnsType) {
           series.update({ time, value: c });
@@ -596,14 +603,13 @@ export default function TradingChart() {
             series.update({ time, open: o, high: h, low: l, close: c });
           }
         }
-
         volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
       }
 
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
     };
 
-    return () => { ws.close(); };
+    return () => { ws.close(); wsRef.current = null; };
   }, [symbol, interval, chartType, replayState]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
