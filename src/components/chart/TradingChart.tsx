@@ -460,6 +460,8 @@ export default function TradingChart() {
     const series = mainSeriesRef.current;
     if (!series || !isCandleType) return;
     const cc = chartSettings.candle;
+    const precision = clamp(chartSettings.symbol.precision, 0, 8);
+    const minMove = precision === 0 ? 1 : Number((1 / 10 ** precision).toFixed(8));
     const isHollow = chartType === 'hollow';
     try {
       series.applyOptions({
@@ -469,9 +471,56 @@ export default function TradingChart() {
         borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
         wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
         wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
+        priceFormat: {
+          type: 'price',
+          precision,
+          minMove,
+        },
       });
     } catch {}
-  }, [chartSettings.candle, chartType, isCandleType]);
+  }, [chartSettings.candle, chartSettings.symbol.precision, chartType, isCandleType]);
+
+  // Apply scale and label settings
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const scales = chartSettings.scalesAndLines;
+    const priceScale = chartSettings.priceScale;
+    const showLeft = scales.scalesPlacement === 'left';
+    const showRight = scales.scalesPlacement !== 'left';
+    const mode = mapPriceScaleMode(priceScale.mode);
+
+    chart.applyOptions({
+      rightPriceScale: {
+        visible: showRight,
+        mode,
+        autoScale: priceScale.autoScale,
+        invertScale: priceScale.invertScale,
+        alignLabels: scales.noOverlappingLabels,
+      },
+      leftPriceScale: {
+        visible: showLeft,
+        mode,
+        autoScale: priceScale.autoScale,
+        invertScale: priceScale.invertScale,
+        alignLabels: scales.noOverlappingLabels,
+      },
+      timeScale: {
+        secondsVisible: interval.includes('s'),
+      },
+    });
+
+    const mainSeries = mainSeriesRef.current;
+    if (mainSeries) {
+      try {
+        mainSeries.applyOptions({
+          priceLineVisible: scales.symbolDisplay !== 'hidden',
+          lastValueVisible: scales.symbolDisplay !== 'hidden',
+        });
+      } catch {}
+    }
+  }, [chartSettings.scalesAndLines, chartSettings.priceScale, interval]);
 
   // Create series based on chart type
   useEffect(() => {
