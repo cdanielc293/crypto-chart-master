@@ -263,17 +263,16 @@ interface PFResult {
   lineData: { time: Time; value: number }[];
   boxes: PFBox[];
   boxSize: number;
+  volumes: { time: Time; value: number; color: string }[];
 }
 
-function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3): PFResult {
-  if (candles.length < 2) return { lineData: [], boxes: [], boxSize: boxSize || 100 };
+function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3, atrLength = 14, method: string = 'atr'): PFResult {
+  if (candles.length < 2) return { lineData: [], boxes: [], boxSize: boxSize || 100, volumes: [] };
 
-  if (!boxSize) {
-    const atr = calculateATR(candles, 14);
-    // Use ATR but ensure reasonable number of boxes
+  if (method === 'atr' || !boxSize) {
+    const atr = calculateATR(candles, atrLength);
     const prices = candles.map(c => c.close);
     const range = Math.max(...prices) - Math.min(...prices);
-    // Aim for roughly 20-60 boxes across the price range
     const atrBased = Math.max(Math.round(atr), 1);
     const rangeBased = Math.max(Math.round(range / 40), 1);
     boxSize = Math.min(atrBased, rangeBased);
@@ -285,12 +284,10 @@ function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalB
   interface PFCol { dir: number; top: number; bot: number; startIdx: number; endIdx: number; }
   const columns: PFCol[] = [];
 
-  // Initialize first column
   const firstClose = candles[0].close;
   let colTop = Math.ceil(firstClose / boxSize) * boxSize;
   let colBot = Math.floor(firstClose / boxSize) * boxSize;
-  let dir = 1;
-  columns.push({ dir, top: colTop, bot: colBot, startIdx: 0, endIdx: 0 });
+  columns.push({ dir: 1, top: colTop, bot: colBot, startIdx: 0, endIdx: 0 });
 
   for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
@@ -299,29 +296,24 @@ function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalB
     const lastCol = columns[columns.length - 1];
 
     if (lastCol.dir === 1) {
-      // In an X (up) column
       if (high > lastCol.top) {
         lastCol.top = high;
         lastCol.endIdx = i;
       }
-      // Check for reversal down
       if (lastCol.top - low >= reversalAmount) {
         columns.push({ dir: -1, top: lastCol.top - boxSize, bot: low, startIdx: i, endIdx: i });
       }
     } else {
-      // In an O (down) column
       if (low < lastCol.bot) {
         lastCol.bot = low;
         lastCol.endIdx = i;
       }
-      // Check for reversal up
       if (high - lastCol.bot >= reversalAmount) {
         columns.push({ dir: 1, top: high, bot: lastCol.bot + boxSize, startIdx: i, endIdx: i });
       }
     }
   }
 
-  // Use evenly spaced times based on actual candle times for proper chart alignment
   const baseTime = candles[0].time as number;
   const totalTime = (candles[candles.length - 1].time as number) - baseTime;
   const colCount = columns.length;
@@ -329,12 +321,24 @@ function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalB
 
   const boxes: PFBox[] = [];
   const lineData: { time: Time; value: number }[] = [];
+  const volumes: { time: Time; value: number; color: string }[] = [];
 
   for (let i = 0; i < columns.length; i++) {
     const col = columns[i];
     const time = (baseTime + i * timeStep) as Time;
     const mid = (col.top + col.bot) / 2;
     lineData.push({ time, value: mid });
+
+    // Aggregate volume for this column
+    let colVol = 0;
+    for (let j = col.startIdx; j <= Math.min(col.endIdx, candles.length - 1); j++) {
+      colVol += candles[j].volume;
+    }
+    volumes.push({
+      time,
+      value: colVol,
+      color: col.dir === 1 ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+    });
 
     for (let p = col.bot; p < col.top; p += boxSize) {
       boxes.push({
@@ -345,7 +349,7 @@ function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalB
     }
   }
 
-  return { lineData, boxes, boxSize };
+  return { lineData, boxes, boxSize, volumes };
 }
 
 const EMA_COLORS: Record<string, string> = {
