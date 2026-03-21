@@ -40,6 +40,7 @@ type TemplateMap = Record<string, ChartSettings>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  defaultTab?: TabId;
 }
 
 function loadTemplates(): TemplateMap {
@@ -181,9 +182,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function ChartSettingsDialog({ open, onClose }: Props) {
-  const { chartSettings, setChartSettings } = useChart();
-  const [tab, setTab] = useState<TabId>('symbol');
+export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props) {
+  const { chartSettings, setChartSettings, chartType } = useChart();
+  const [tab, setTab] = useState<TabId>(defaultTab || 'symbol');
   const [templateName, setTemplateName] = useState('');
   const [templates, setTemplates] = useState<TemplateMap>({});
   const originalRef = useRef<ChartSettings>(chartSettings);
@@ -192,7 +193,8 @@ export default function ChartSettingsDialog({ open, onClose }: Props) {
     if (!open) return;
     originalRef.current = JSON.parse(JSON.stringify(chartSettings));
     setTemplates(loadTemplates());
-  }, [open, chartSettings]);
+    if (defaultTab) setTab(defaultTab);
+  }, [open, chartSettings, defaultTab]);
 
   const updateSection = <K extends keyof ChartSettings>(section: K, patch: Partial<ChartSettings[K]>) => {
     setChartSettings(prev => ({
@@ -282,7 +284,7 @@ export default function ChartSettingsDialog({ open, onClose }: Props) {
           </div>
 
           <div className="min-h-[420px] flex-1 overflow-y-auto px-6 py-4">
-            {tab === 'symbol' && <SymbolTab settings={chartSettings} updateSection={updateSection} />}
+            {tab === 'symbol' && <SymbolTab settings={chartSettings} updateSection={updateSection} chartType={chartType} />}
             {tab === 'statusline' && <StatusLineTab settings={chartSettings} updateSection={updateSection} />}
             {tab === 'scales' && <ScalesTab settings={chartSettings} updateSection={updateSection} />}
             {tab === 'canvas' && <CanvasTab settings={chartSettings} updateSection={updateSection} />}
@@ -346,45 +348,117 @@ export default function ChartSettingsDialog({ open, onClose }: Props) {
 function SymbolTab({
   settings,
   updateSection,
+  chartType,
 }: {
   settings: ChartSettings;
   updateSection: <K extends keyof ChartSettings>(section: K, patch: Partial<ChartSettings[K]>) => void;
+  chartType: string;
 }) {
   const c = settings.candle;
   const s = settings.symbol;
+  const pf = s.pointFigure;
+
+  const updatePF = (patch: Partial<typeof pf>) => {
+    updateSection('symbol', { pointFigure: { ...pf, ...patch } } as any);
+  };
 
   return (
     <>
-      <SectionTitle>CANDLES</SectionTitle>
-      <CheckRow
-        label="Color bars based on previous close"
-        checked={c.colorByPrevClose}
-        onChange={v => updateSection('candle', { colorByPrevClose: v })}
-      />
+      {chartType === 'point_figure' ? (
+        <>
+          <SectionTitle>POINT &amp; FIGURE</SectionTitle>
+          <Row label="Up bars">
+            <ColorSwatch color={pf.upColor} onChange={v => updatePF({ upColor: v })} />
+          </Row>
+          <Row label="Down bars">
+            <ColorSwatch color={pf.downColor} onChange={v => updatePF({ downColor: v })} />
+          </Row>
+          <Row label="Projection up bars">
+            <ColorSwatch color={pf.projUpColor} onChange={v => updatePF({ projUpColor: v })} />
+          </Row>
+          <Row label="Projection down bars">
+            <ColorSwatch color={pf.projDownColor} onChange={v => updatePF({ projDownColor: v })} />
+          </Row>
+          <Row label="Source">
+            <Select value={pf.source} onValueChange={v => updatePF({ source: v as 'close' | 'hl' })}>
+              <SelectTrigger className="h-8 w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="close">Close</SelectItem>
+                <SelectItem value="hl">High/Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </Row>
+          <Row label="Box size assignment method">
+            <Select value={pf.boxMethod} onValueChange={v => updatePF({ boxMethod: v as 'atr' | 'traditional' | 'percentage' })}>
+              <SelectTrigger className="h-8 w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="atr">ATR</SelectItem>
+                <SelectItem value="traditional">Traditional</SelectItem>
+                <SelectItem value="percentage">Percentage (LTP)</SelectItem>
+              </SelectContent>
+            </Select>
+          </Row>
+          {pf.boxMethod === 'atr' && (
+            <Row label="ATR length">
+              <Input
+                type="number" value={pf.atrLength} min={1} max={200}
+                onChange={e => updatePF({ atrLength: Math.max(1, Number(e.target.value)) })}
+                className="h-8 w-[170px]"
+              />
+            </Row>
+          )}
+          {pf.boxMethod === 'traditional' && (
+            <Row label="Box size">
+              <Input
+                type="number" value={pf.boxSize} min={1}
+                onChange={e => updatePF({ boxSize: Math.max(1, Number(e.target.value)) })}
+                className="h-8 w-[170px]"
+              />
+            </Row>
+          )}
+          <Row label="Reversal amount">
+            <Input
+              type="number" value={pf.reversalAmount} min={1} max={20}
+              onChange={e => updatePF({ reversalAmount: Math.max(1, Number(e.target.value)) })}
+              className="h-8 w-[170px]"
+            />
+          </Row>
+          <CheckRow label="One step back building" checked={pf.oneStepBack} onChange={v => updatePF({ oneStepBack: v })} />
+        </>
+      ) : (
+        <>
+          <SectionTitle>CANDLES</SectionTitle>
+          <CheckRow
+            label="Color bars based on previous close"
+            checked={c.colorByPrevClose}
+            onChange={v => updateSection('candle', { colorByPrevClose: v })}
+          />
 
-      <Row label="Body">
-        <div className="flex items-center gap-2">
-          <Checkbox checked={c.showBody} onCheckedChange={v => updateSection('candle', { showBody: Boolean(v) })} />
-          <ColorSwatch color={c.bodyUp} onChange={v => updateSection('candle', { bodyUp: v })} />
-          <ColorSwatch color={c.bodyDown} onChange={v => updateSection('candle', { bodyDown: v })} />
-        </div>
-      </Row>
+          <Row label="Body">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={c.showBody} onCheckedChange={v => updateSection('candle', { showBody: Boolean(v) })} />
+              <ColorSwatch color={c.bodyUp} onChange={v => updateSection('candle', { bodyUp: v })} />
+              <ColorSwatch color={c.bodyDown} onChange={v => updateSection('candle', { bodyDown: v })} />
+            </div>
+          </Row>
 
-      <Row label="Borders">
-        <div className="flex items-center gap-2">
-          <Checkbox checked={c.showBorders} onCheckedChange={v => updateSection('candle', { showBorders: Boolean(v) })} />
-          <ColorSwatch color={c.borderUp} onChange={v => updateSection('candle', { borderUp: v })} />
-          <ColorSwatch color={c.borderDown} onChange={v => updateSection('candle', { borderDown: v })} />
-        </div>
-      </Row>
+          <Row label="Borders">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={c.showBorders} onCheckedChange={v => updateSection('candle', { showBorders: Boolean(v) })} />
+              <ColorSwatch color={c.borderUp} onChange={v => updateSection('candle', { borderUp: v })} />
+              <ColorSwatch color={c.borderDown} onChange={v => updateSection('candle', { borderDown: v })} />
+            </div>
+          </Row>
 
-      <Row label="Wick">
-        <div className="flex items-center gap-2">
-          <Checkbox checked={c.showWick} onCheckedChange={v => updateSection('candle', { showWick: Boolean(v) })} />
-          <ColorSwatch color={c.wickUp} onChange={v => updateSection('candle', { wickUp: v })} />
-          <ColorSwatch color={c.wickDown} onChange={v => updateSection('candle', { wickDown: v })} />
-        </div>
-      </Row>
+          <Row label="Wick">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={c.showWick} onCheckedChange={v => updateSection('candle', { showWick: Boolean(v) })} />
+              <ColorSwatch color={c.wickUp} onChange={v => updateSection('candle', { wickUp: v })} />
+              <ColorSwatch color={c.wickDown} onChange={v => updateSection('candle', { wickDown: v })} />
+            </div>
+          </Row>
+        </>
+      )}
 
       <SectionTitle>DATA MODIFICATION</SectionTitle>
       <Row label="Session">

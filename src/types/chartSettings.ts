@@ -11,12 +11,26 @@ export interface CandleColors {
   colorByPrevClose: boolean;
 }
 
+export interface PointFigureSettings {
+  upColor: string;
+  downColor: string;
+  projUpColor: string;
+  projDownColor: string;
+  source: 'close' | 'hl';
+  boxMethod: 'atr' | 'traditional' | 'percentage';
+  atrLength: number;
+  boxSize: number;
+  reversalAmount: number;
+  oneStepBack: boolean;
+}
+
 export interface SymbolSettings {
   session: 'regular' | 'extended';
   backAdjustment: boolean;
   adjustForDividends: boolean;
   precision: number;
   timezone: string;
+  pointFigure: PointFigureSettings;
 }
 
 export interface StatusLineSettings {
@@ -153,6 +167,18 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
     adjustForDividends: false,
     precision: 2,
     timezone: 'Exchange',
+    pointFigure: {
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      projUpColor: '#26a69a80',
+      projDownColor: '#ef535080',
+      source: 'close',
+      boxMethod: 'atr',
+      atrLength: 14,
+      boxSize: 100,
+      reversalAmount: 3,
+      oneStepBack: false,
+    },
   },
   candle: {
     bodyUp: '#26a69a',
@@ -277,7 +303,10 @@ export function normalizeChartSettings(saved: unknown): ChartSettings {
   const s = saved as Partial<ChartSettings>;
 
   return {
-    symbol: mergeSection(DEFAULT_CHART_SETTINGS.symbol, s.symbol),
+    symbol: {
+      ...mergeSection(DEFAULT_CHART_SETTINGS.symbol, s.symbol),
+      pointFigure: mergeSection(DEFAULT_CHART_SETTINGS.symbol.pointFigure, (s.symbol as any)?.pointFigure),
+    },
     candle: mergeSection(DEFAULT_CHART_SETTINGS.candle, s.candle),
     statusLine: mergeSection(DEFAULT_CHART_SETTINGS.statusLine, s.statusLine),
     scalesAndLines: mergeSection(DEFAULT_CHART_SETTINGS.scalesAndLines, s.scalesAndLines),
