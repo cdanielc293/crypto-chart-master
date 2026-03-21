@@ -14,6 +14,7 @@ import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasCo
 import PriceScaleContextMenu from './PriceScaleContextMenu';
 import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
+import SymbolSearch from './SymbolSearch';
 import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
@@ -459,6 +460,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<string | undefined>(undefined);
+  const [panelSearchOpen, setPanelSearchOpen] = useState(false);
   const [priceScaleWidth, setPriceScaleWidth] = useState(55);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1523,7 +1525,18 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         style={{ background: statusLineBackground }}
       >
         {statusLine.showLogo && <span className="text-muted-foreground">◉</span>}
-        {statusLine.showTitle && <span className="text-foreground font-semibold">{symbolTitle}</span>}
+        {statusLine.showTitle && (
+          panelIndex !== undefined ? (
+            <button
+              onClick={() => setPanelSearchOpen(true)}
+              className="text-foreground font-semibold hover:text-primary transition-colors cursor-pointer"
+            >
+              {symbolTitle}
+            </button>
+          ) : (
+            <span className="text-foreground font-semibold">{symbolTitle}</span>
+          )
+        )}
         {statusLine.showOpenMarketStatus && <span className="text-chart-bull">● Open</span>}
 
         {showStatusValues && (
@@ -1633,6 +1646,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       </div>
 
       <ChartSettingsDialog open={settingsOpen} onClose={() => { setSettingsOpen(false); setSettingsDefaultTab(undefined); }} defaultTab={settingsDefaultTab as any} />
+
+      {panelSearchOpen && (
+        <SymbolSearch
+          onClose={() => setPanelSearchOpen(false)}
+          onSelectSymbol={panelIndex !== undefined ? (sym) => ctx.setPanelSymbol(panelIndex, sym) : undefined}
+        />
+      )}
     </div>
   );
 }

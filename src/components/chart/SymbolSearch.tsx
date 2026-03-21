@@ -10,9 +10,10 @@ interface ExchangeSymbol {
 
 interface Props {
   onClose: () => void;
+  onSelectSymbol?: (symbol: string) => void;
 }
 
-export default function SymbolSearch({ onClose }: Props) {
+export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const { setSymbol, addToWatchlist } = useChart();
   const [query, setQuery] = useState('');
   const [symbols, setSymbols] = useState<ExchangeSymbol[]>([]);
@@ -43,7 +44,11 @@ export default function SymbolSearch({ onClose }: Props) {
   ).slice(0, 50);
 
   const selectSymbol = (sym: string) => {
-    setSymbol(sym);
+    if (onSelectSymbol) {
+      onSelectSymbol(sym);
+    } else {
+      setSymbol(sym);
+    }
     addToWatchlist(sym);
     onClose();
   };
