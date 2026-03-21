@@ -9,6 +9,7 @@ import { snapToCandle } from '@/lib/drawing/snap';
 import type { Drawing } from '@/types/chart';
 import FloatingToolbar from './FloatingToolbar';
 import DrawingContextMenu from './DrawingContextMenu';
+import DrawingSettingsDialog from './DrawingSettingsDialog';
 
 interface Props {
   chart: IChartApi | null;
@@ -45,6 +46,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
   const [drawingCtxMenu, setDrawingCtxMenu] = useState<{ x: number; y: number; drawingId: string } | null>(null);
+  const [settingsDrawingId, setSettingsDrawingId] = useState<string | null>(null);
 
   const chartDrawings = useMemo(() => drawings.map(toChartDrawing), [drawings]);
 
@@ -576,6 +578,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             setSelectedDrawingId(null);
             setToolbarPos(null);
           }}
+          onOpenSettings={() => setSettingsDrawingId(selectedDrawingId)}
         />
       )}
       <DrawingContextMenu
@@ -602,6 +605,20 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             removeDrawing(ctxDrawing.id);
             setSelectedDrawingId(null);
             setToolbarPos(null);
+          }
+        }}
+        onOpenSettings={() => {
+          if (ctxDrawing) setSettingsDrawingId(ctxDrawing.id);
+        }}
+      />
+      <DrawingSettingsDialog
+        open={!!settingsDrawingId}
+        drawing={settingsDrawingId ? drawings.find(d => d.id === settingsDrawingId) || null : null}
+        onClose={() => setSettingsDrawingId(null)}
+        onUpdate={(updates) => {
+          if (settingsDrawingId) {
+            const d = drawings.find(dd => dd.id === settingsDrawingId);
+            if (d) updateDrawing(d.id, { ...d, ...updates });
           }
         }}
       />
