@@ -1,22 +1,11 @@
 import { useChart } from '@/context/ChartContext';
 import type { Interval, ChartType } from '@/types/chart';
-import { useState } from 'react';
+import { ALL_INTERVALS } from '@/types/chart';
+import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, LineChart, AreaChart,
-  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star, Rewind,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
-
-const intervals: { label: string; value: Interval }[] = [
-  { label: '1m', value: '1m' },
-  { label: '5m', value: '5m' },
-  { label: '15m', value: '15m' },
-  { label: '1h', value: '1h' },
-  { label: '4h', value: '4h' },
-  { label: 'D', value: '1d' },
-  { label: 'W', value: '1w' },
-  { label: 'M', value: '1M' },
-];
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
@@ -40,18 +29,52 @@ const chartTypes: { label: string; value: ChartType; group?: string }[] = [
 
 const indicatorList = ['EMA 9', 'EMA 21', 'EMA 50', 'EMA 200', 'SMA 20', 'SMA 50', 'Bollinger Bands', 'Volume'];
 
+// Short labels for the toolbar buttons
+const shortLabel: Record<string, string> = {
+  '1s': '1s', '5s': '5s', '10s': '10s', '15s': '15s', '30s': '30s', '45s': '45s',
+  '1m': '1m', '2m': '2m', '3m': '3m', '5m': '5m', '10m': '10m', '15m': '15m', '30m': '30m', '45m': '45m',
+  '1h': '1h', '2h': '2h', '3h': '3h', '4h': '4h',
+  '1d': 'D', '1w': 'W', '1M': 'M', '3M': '3M', '6M': '6M', '12M': '12M',
+};
+
 export default function TopToolbar() {
-  const { symbol, interval, setInterval, chartType, setChartType, indicators, toggleIndicator, replayState, setReplayState } = useChart();
+  const {
+    symbol, interval, setInterval, chartType, setChartType,
+    indicators, toggleIndicator, replayState, setReplayState,
+    favoriteIntervals, toggleFavoriteInterval,
+  } = useChart();
   const [searchOpen, setSearchOpen] = useState(false);
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
+  const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
 
+  // Group intervals for dropdown
+  const groupedIntervals = useMemo(() => {
+    const groups: { label: string; items: typeof ALL_INTERVALS }[] = [];
+    let currentGroup = '';
+    for (const iv of ALL_INTERVALS) {
+      if (iv.group !== currentGroup) {
+        currentGroup = iv.group;
+        groups.push({ label: currentGroup, items: [] });
+      }
+      groups[groups.length - 1].items.push(iv);
+    }
+    return groups;
+  }, []);
+
+  const closeAll = () => {
+    setChartTypeOpen(false);
+    setIndicatorOpen(false);
+    setIntervalDropdownOpen(false);
+  };
+
   return (
     <>
       <div className="flex items-center h-10 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+        {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1 rounded hover:bg-toolbar-hover text-foreground font-semibold"
@@ -63,26 +86,80 @@ export default function TopToolbar() {
 
         <div className="w-px h-5 bg-chart-border mx-1" />
 
-        {intervals.map(i => (
+        {/* Favorite intervals in toolbar */}
+        {favoriteIntervals.map(iv => (
           <button
-            key={i.value}
-            onClick={() => setInterval(i.value)}
+            key={iv}
+            onClick={() => setInterval(iv)}
             className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-              interval === i.value
+              interval === iv
                 ? 'bg-toolbar-active text-primary-foreground'
                 : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
             }`}
           >
-            {i.label}
+            {shortLabel[iv] || iv}
           </button>
         ))}
+
+        {/* Dropdown toggle for all intervals */}
+        <div className="relative">
+          <button
+            onClick={() => { setIntervalDropdownOpen(!intervalDropdownOpen); setChartTypeOpen(false); setIndicatorOpen(false); }}
+            className={`flex items-center px-1.5 py-1 rounded text-xs transition-colors ${
+              intervalDropdownOpen
+                ? 'bg-toolbar-active text-primary-foreground'
+                : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
+            }`}
+          >
+            <ChevronDown size={14} />
+          </button>
+          {intervalDropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[220px] max-h-[500px] overflow-y-auto">
+              {groupedIntervals.map(group => (
+                <div key={group.label}>
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">
+                    {group.label}
+                  </div>
+                  {group.items.map(iv => {
+                    const isFav = favoriteIntervals.includes(iv.value);
+                    const isActive = interval === iv.value;
+                    return (
+                      <div
+                        key={iv.value}
+                        className={`flex items-center w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover transition-colors cursor-pointer ${
+                          isActive ? 'text-primary bg-toolbar-hover' : 'text-foreground'
+                        }`}
+                      >
+                        <span
+                          className="flex-1 text-left"
+                          onClick={() => { setInterval(iv.value); setIntervalDropdownOpen(false); }}
+                        >
+                          {iv.label}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFavoriteInterval(iv.value); }}
+                          className="ml-2 p-0.5 rounded hover:bg-muted"
+                        >
+                          <Star
+                            size={12}
+                            className={isFav ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="w-px h-5 bg-chart-border mx-1" />
 
         {/* Chart Type */}
         <div className="relative">
           <button
-            onClick={() => { setChartTypeOpen(!chartTypeOpen); setIndicatorOpen(false); }}
+            onClick={() => { setChartTypeOpen(!chartTypeOpen); setIndicatorOpen(false); setIntervalDropdownOpen(false); }}
             className="flex items-center gap-1.5 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
           >
             <CandlestickChart size={14} />
@@ -118,7 +195,7 @@ export default function TopToolbar() {
         {/* Indicators */}
         <div className="relative">
           <button
-            onClick={() => { setIndicatorOpen(!indicatorOpen); setChartTypeOpen(false); }}
+            onClick={() => { setIndicatorOpen(!indicatorOpen); setChartTypeOpen(false); setIntervalDropdownOpen(false); }}
             className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
           >
             <BarChart3 size={14} />
@@ -166,8 +243,8 @@ export default function TopToolbar() {
       </div>
 
       {/* Close dropdowns on outside click */}
-      {(chartTypeOpen || indicatorOpen) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setChartTypeOpen(false); setIndicatorOpen(false); }} />
+      {(chartTypeOpen || indicatorOpen || intervalDropdownOpen) && (
+        <div className="fixed inset-0 z-40" onClick={closeAll} />
       )}
 
       {searchOpen && <SymbolSearch onClose={() => setSearchOpen(false)} />}

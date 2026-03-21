@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
+import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -24,6 +25,8 @@ interface ChartContextType {
   setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
   toggleIndicator: (name: string) => void;
+  favoriteIntervals: Interval[];
+  toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
   replayState: ReplayState;
   setReplayState: (s: ReplayState) => void;
@@ -55,6 +58,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
+  const [favoriteIntervals, setFavoriteIntervals] = useState<Interval[]>(() => {
+    const saved = localStorage.getItem('favoriteIntervals');
+    return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
+  });
 
   // Replay state
   const [replayState, setReplayState] = useState<ReplayState>('off');
@@ -92,6 +99,14 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   }, []);
 
+  const toggleFavoriteInterval = useCallback((iv: Interval) => {
+    setFavoriteIntervals(prev => {
+      const next = prev.includes(iv) ? prev.filter(i => i !== iv) : [...prev, iv];
+      localStorage.setItem('favoriteIntervals', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
     <ChartContext.Provider value={{
       symbol, setSymbol,
@@ -103,6 +118,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
       indicators, toggleIndicator,
+      favoriteIntervals, toggleFavoriteInterval,
       replayState, setReplayState,
       replayBarIndex, setReplayBarIndex,
       replaySpeed, setReplaySpeed,
