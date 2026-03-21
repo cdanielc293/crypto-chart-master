@@ -329,6 +329,21 @@ const EMA_COLORS: Record<string, string> = {
   'SMA 50': '#4caf50',
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+function mapCrosshairStyle(style: 'dashed' | 'dotted' | 'solid') {
+  if (style === 'dashed') return LineStyle.Dashed;
+  if (style === 'dotted') return LineStyle.Dotted;
+  return LineStyle.Solid;
+}
+
+function mapPriceScaleMode(mode: 'regular' | 'percent' | 'indexed_to_100' | 'logarithmic') {
+  if (mode === 'percent') return PriceScaleMode.Percentage;
+  if (mode === 'indexed_to_100') return PriceScaleMode.IndexedTo100;
+  if (mode === 'logarithmic') return PriceScaleMode.Logarithmic;
+  return PriceScaleMode.Normal;
+}
+
 export default function TradingChart() {
   const {
     symbol, interval, chartType, drawingTool, indicators, drawings,
