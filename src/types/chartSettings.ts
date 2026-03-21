@@ -11,12 +11,26 @@ export interface CandleColors {
   colorByPrevClose: boolean;
 }
 
+export interface PointFigureSettings {
+  upColor: string;
+  downColor: string;
+  projUpColor: string;
+  projDownColor: string;
+  source: 'close' | 'hl';
+  boxMethod: 'atr' | 'traditional' | 'percentage';
+  atrLength: number;
+  boxSize: number;
+  reversalAmount: number;
+  oneStepBack: boolean;
+}
+
 export interface SymbolSettings {
   session: 'regular' | 'extended';
   backAdjustment: boolean;
   adjustForDividends: boolean;
   precision: number;
   timezone: string;
+  pointFigure: PointFigureSettings;
 }
 
 export interface StatusLineSettings {
