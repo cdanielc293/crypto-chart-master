@@ -644,7 +644,7 @@ export default function Watchlist() {
                         </span>
                       </>
                     ) : (
-                      <span className={`font-mono text-[11px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                      <span className={`font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                         {price && price.lastPrice > 0
                           ? `${price.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                           : '—'}
