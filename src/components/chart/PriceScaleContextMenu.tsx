@@ -20,7 +20,7 @@ interface Props {
   onResetScale?: () => void;
 }
 
-export default function PriceScaleContextMenu({ children, onOpenSettings }: Props) {
+export default function PriceScaleContextMenu({ children, onOpenSettings, onResetScale }: Props) {
   const { chartSettings, setChartSettings } = useChart();
   const ps = chartSettings.priceScale;
   const scales = chartSettings.scalesAndLines;
