@@ -4,10 +4,14 @@ import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
+import LayoutManager from './LayoutManager';
+import MultiChartLayoutSelector from './MultiChartLayoutSelector';
+import type { MultiChartGrid, LayoutSyncOptions } from '@/types/layout';
+import { DEFAULT_SYNC_OPTIONS } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
@@ -52,6 +56,8 @@ export default function TopToolbar() {
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [multiGrid, setMultiGrid] = useState<MultiChartGrid>('1');
+  const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
@@ -80,6 +86,17 @@ export default function TopToolbar() {
   return (
     <>
       <div className="flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+        {/* Layout Manager */}
+        <LayoutManager />
+        <div className="w-px h-5 bg-chart-border mx-1" />
+        {/* Multi-chart layout */}
+        <MultiChartLayoutSelector
+          grid={multiGrid}
+          onGridChange={setMultiGrid}
+          syncOptions={syncOptions}
+          onSyncChange={setSyncOptions}
+        />
+        <div className="w-px h-5 bg-chart-border mx-1" />
         {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
@@ -278,6 +295,26 @@ export default function TopToolbar() {
             </div>
           )}
         </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Screenshot */}
+        <button
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Take a snapshot"
+        >
+          <Camera size={16} />
+        </button>
+
+        {/* Fullscreen */}
+        <button
+          onClick={() => document.documentElement.requestFullscreen?.()}
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Fullscreen"
+        >
+          <Fullscreen size={16} />
+        </button>
 
         {/* Settings */}
         <button
