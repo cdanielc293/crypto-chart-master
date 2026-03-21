@@ -42,6 +42,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const brushDrawingIdRef = useRef<string | null>(null);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
+  const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
 
   const chartDrawings = drawings.map(toChartDrawing);
 
@@ -433,94 +434,61 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     previewPointRef.current = null;
   }, [drawingTool]);
 
-  const passingThroughRef = useRef(false);
-
-  const passThrough = useCallback((e: React.MouseEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    // Disable pointer events so ALL subsequent mouse events (move, up) go to the chart
-    canvas.style.pointerEvents = 'none';
-    passingThroughRef.current = true;
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (el) {
-      el.dispatchEvent(new MouseEvent('mousedown', {
-        clientX: e.clientX, clientY: e.clientY,
-        bubbles: true, cancelable: true, button: e.button,
-      }));
-    }
-    // Re-enable on mouseup (when chart drag ends)
-    const onUp = () => {
-      if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
-      passingThroughRef.current = false;
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mouseup', onUp);
-  }, []);
-
   const isCursorMode = drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor';
-  const hasDrawings = chartDrawings.length > 0;
 
-  // In cursor mode: only capture events if there are drawings to interact with
-  // In drawing mode: always capture to place points
-  const pointerEnabled = !isCursorMode || (hasDrawings && !!selectedDrawingId);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!isCursorMode || selectedDrawingId) {
+      setIsHoveringDrawing(false);
+      return;
+    }
+
+    const handleHoverMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const coord = getCoordHelper();
+      if (!coord) {
+        setIsHoveringDrawing(false);
+        return;
+      }
+
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      let found = false;
+
+      for (let i = chartDrawings.length - 1; i >= 0; i--) {
+        if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
+          found = true;
+          break;
+        }
+      }
+
+      setIsHoveringDrawing(prev => (prev === found ? prev : found));
+    };
+
+    const handleLeave = () => setIsHoveringDrawing(false);
+
+    container.addEventListener('mousemove', handleHoverMove);
+    container.addEventListener('mouseleave', handleLeave);
+
+    return () => {
+      container.removeEventListener('mousemove', handleHoverMove);
+      container.removeEventListener('mouseleave', handleLeave);
+    };
+  }, [isCursorMode, selectedDrawingId, chartDrawings, getCoordHelper, containerRef]);
+
+  const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || isHoveringDrawing;
 
   return (
     <>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-20"
-        style={{ pointerEvents: isCursorMode && !hasDrawings ? 'none' : 'auto' }}
-        onMouseDown={(e) => {
-          if (isCursorMode) {
-            // Hit test: only intercept if clicking on a drawing
-            const coords = getMouseCoords(e as unknown as MouseEvent);
-            if (!coords) {
-              // Pass through to chart
-              passThrough(e);
-              return;
-            }
-            const { mx, my } = coords;
-            const coord = getCoordHelper();
-            const container = containerRef.current;
-            if (!coord || !container) { passThrough(e); return; }
-            const w = container.clientWidth;
-            const h = container.clientHeight;
-
-            // Check if clicking on selected drawing's anchor first
-            if (selectedDrawingId) {
-              const sel = chartDrawings.find(d => d.id === selectedDrawingId);
-              if (sel && !sel.locked) {
-                const anchorIdx = hitTestAnchors(sel, mx, my, coord);
-                if (anchorIdx >= 0) {
-                  handleMouseDown(e);
-                  return;
-                }
-              }
-            }
-
-            let found = false;
-            for (let i = chartDrawings.length - 1; i >= 0; i--) {
-              if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              // Deselect any selected drawing, then pass through
-              if (selectedDrawingId) {
-                const prev = drawings.find(d => d.id === selectedDrawingId);
-                if (prev) updateDrawing(prev.id, { ...prev, selected: false });
-                setSelectedDrawingId(null);
-                setToolbarPos(null);
-              }
-              passThrough(e);
-              return;
-            }
-            handleMouseDown(e);
-          } else {
-            handleMouseDown(e);
-          }
-        }}
+        style={{ pointerEvents: shouldCapturePointer ? 'auto' : 'none' }}
+        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
