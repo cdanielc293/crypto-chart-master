@@ -348,6 +348,7 @@ export default function TradingChart() {
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replayTimerRef = useRef<number | null>(null);
+  const replayBarRef = useRef(replayBarIndex);
 
   // Create chart
   useEffect(() => {
