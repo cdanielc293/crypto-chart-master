@@ -387,7 +387,7 @@ export default function TradingChart() {
     });
     observer.observe(containerRef.current);
     return () => { observer.disconnect(); chart.remove(); chartRef.current = null; };
-  }, []);
+  }, [chartSettings.canvas]);
 
   // Determine which series type to use
   const isLineType = ['line', 'line_markers', 'step_line'].includes(chartType);
