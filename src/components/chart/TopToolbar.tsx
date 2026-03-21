@@ -294,8 +294,8 @@ export default function TopToolbar() {
 
         {/* Multi-chart layout */}
         <MultiChartLayoutSelector
-          grid={multiGrid}
-          onGridChange={setMultiGrid}
+          gridLayout={gridLayout}
+          onGridLayoutChange={setGridLayout}
           syncOptions={syncOptions}
           onSyncChange={setSyncOptions}
         />
