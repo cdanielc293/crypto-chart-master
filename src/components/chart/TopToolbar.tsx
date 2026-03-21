@@ -178,7 +178,7 @@ export default function TopToolbar() {
                     {showSep && <div className="h-px bg-chart-border my-1" />}
                     <button
                       onClick={() => { setChartType(ct.value); setChartTypeOpen(false); }}
-                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-toolbar-hover transition-colors ${
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover transition-colors ${
                         chartType === ct.value ? 'text-primary bg-toolbar-hover' : 'text-foreground'
                       }`}
                     >
