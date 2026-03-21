@@ -825,6 +825,82 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
+  // ─── Replay: blue vertical line following mouse during selection ───
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = replaySelectCanvasRef.current;
+    if (!container || !canvas || replayState !== 'selecting') {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+
+    const draw = (mouseX: number) => {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      // Blue vertical line
+      ctx.strokeStyle = '#2962ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(mouseX, 0);
+      ctx.lineTo(mouseX, h);
+      ctx.stroke();
+
+      // Scissors icon (✂) near mouse
+      ctx.fillStyle = '#2962ff';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('✂', mouseX - 8, h / 2);
+
+      // Date label at bottom
+      const chart = chartRef.current;
+      if (chart) {
+        const timeCoord = chart.timeScale().coordinateToTime(mouseX);
+        if (timeCoord) {
+          const date = new Date((timeCoord as number) * 1000);
+          const label = `Re: ${date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' })}`;
+          ctx.fillStyle = '#2962ff';
+          const textW = ctx.measureText(label).width;
+          ctx.fillRect(mouseX - textW / 2 - 6, h - 22, textW + 12, 20);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '11px sans-serif';
+          ctx.fillText(label, mouseX - textW / 2, h - 8);
+        }
+      }
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      draw(e.clientX - rect.left);
+    };
+
+    const onLeave = () => {
+      const ctx = canvas.getContext('2d');
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    container.addEventListener('mousemove', onMove);
+    container.addEventListener('mouseleave', onLeave);
+    return () => {
+      container.removeEventListener('mousemove', onMove);
+      container.removeEventListener('mouseleave', onLeave);
+      onLeave();
+    };
+  }, [replayState]);
+
   // ─── Replay: click to select start bar ───
   useEffect(() => {
     const chart = chartRef.current;
@@ -839,6 +915,9 @@ export default function TradingChart() {
       setReplayStartIndex(idx);
       setReplayBarIndex(idx);
       setReplayState('paused');
+
+      // Close WS
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
 
       // Slice data to start point
       const sliced = allCandles.slice(0, idx + 1);
