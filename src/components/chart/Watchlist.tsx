@@ -637,7 +637,7 @@ export default function Watchlist() {
                             ? `${isPositive ? '' : ''}${price.priceChange.toFixed(1)}`
                             : '—'}
                         </span>
-                        <span className={`w-14 text-right font-mono text-[11px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                        <span className={`w-16 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                           {price && price.lastPrice > 0
                             ? `${isPositive ? '' : ''}${price.priceChangePercent.toFixed(2)}%`
                             : '—'}
