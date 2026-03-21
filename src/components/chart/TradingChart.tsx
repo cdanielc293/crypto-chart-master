@@ -394,6 +394,7 @@ export default function TradingChart() {
   const isBarType = chartType === 'bars' || chartType === 'high_low';
   const isPnFType = chartType === 'point_figure';
   const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi'].includes(chartType);
+  const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
 
   // Create series based on chart type
   useEffect(() => {
