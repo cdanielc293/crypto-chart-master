@@ -741,6 +741,14 @@ export default function TradingChart() {
   }, [chartType]);
 
   // Fetch data and connect WebSocket
+  // Compute timezone offset in seconds for shifting candle timestamps
+  const selectedTz = chartSettings.symbol.timezone;
+  const tzOffsetHours = getTimezoneOffsetHours(selectedTz);
+  // lightweight-charts displays timestamps as UTC; to show a custom timezone we shift by offset
+  // We also need to remove the browser's local offset since JS Date applies it
+  const localOffsetHours = -(new Date().getTimezoneOffset() / 60);
+  const tzShiftSeconds = (tzOffsetHours - localOffsetHours) * 3600;
+
   useEffect(() => {
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
@@ -783,7 +791,7 @@ export default function TradingChart() {
         const rawForIndicators: { close: number; time: Time }[] = [];
 
         for (const k of data) {
-          const time = (k[0] / 1000) as Time;
+          const time = (k[0] / 1000 + tzShiftSeconds) as Time;
           const o = parseFloat(k[1]);
           const h = parseFloat(k[2]);
           const l = parseFloat(k[3]);
@@ -833,7 +841,7 @@ export default function TradingChart() {
     fetchData();
 
     return () => {};
-  }, [symbol, interval, chartType]);
+  }, [symbol, interval, chartType, tzShiftSeconds]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
