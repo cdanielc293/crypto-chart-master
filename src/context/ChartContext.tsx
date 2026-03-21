@@ -159,6 +159,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setGridLayout = useCallback((layout: GridLayout) => {
     setGridLayoutState(layout);
+    setActivePanelIndex(layout.count > 1 ? 0 : null);
     setPanelSymbolsState(prev => {
       if (prev.length >= layout.count) return prev;
       const next = [...prev];

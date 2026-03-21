@@ -333,8 +333,9 @@ export default function Watchlist() {
   } = useChart();
 
   const handleSymbolClick = useCallback((sym: string) => {
-    if (gridLayout.count > 1 && activePanelIndex !== null) {
-      setPanelSymbol(activePanelIndex, sym);
+    if (gridLayout.count > 1) {
+      const idx = activePanelIndex ?? 0;
+      setPanelSymbol(idx, sym);
     } else {
       setSymbol(sym);
     }
