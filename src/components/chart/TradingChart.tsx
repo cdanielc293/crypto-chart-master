@@ -323,7 +323,7 @@ export default function TradingChart() {
         const colors = ['#e91e63', '#2196f3', '#e91e63'];
         const names = ['BB Upper', 'BB Middle', 'BB Lower'];
         [bb.upper, bb.middle, bb.lower].forEach((d, i) => {
-          const s = chart.addLineSeries({
+          const s = chart.addSeries(LineSeries, {
             color: colors[i],
             lineWidth: 1,
             lineStyle: i === 1 ? 0 : 2,
