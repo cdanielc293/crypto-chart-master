@@ -481,7 +481,7 @@ export default function TradingChart() {
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
-    const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+    // isTransformType is now at component scope
 
     const fetchData = async () => {
       try {
