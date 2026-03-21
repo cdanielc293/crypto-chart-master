@@ -48,6 +48,7 @@ export default function TopToolbar() {
     symbol, interval, setInterval, chartType, setChartType,
     indicators, toggleIndicator, replayState, setReplayState,
     favoriteIntervals, toggleFavoriteInterval,
+    gridLayout, setGridLayout, syncOptions, setSyncOptions,
   } = useChart();
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -56,8 +57,6 @@ export default function TopToolbar() {
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
-  const [gridLayout, setGridLayout] = useState<GridLayout>(ALL_GRID_LAYOUTS[0]);
-  const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
