@@ -887,12 +887,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
+    let cancelled = false;
+
     // isTransformType is now at component scope
 
     const fetchData = async () => {
       try {
         // Use cache-first strategy: Supabase cache → Binance fallback
         const klineData = await getKlines(symbol, interval);
+
+        if (cancelled) return; // chart may have been disposed
 
         const candles: RawCandle[] = [];
         const volumes: any[] = [];
@@ -905,6 +909,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           rawForIndicators.push({ close: k.close, time });
         }
 
+        if (cancelled) return;
+
         rawDataRef.current = rawForIndicators;
         rawCandlesRef.current = candles;
         allCandlesRef.current = candles;
@@ -912,7 +918,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         setChartData(series, candles, volumes, volSeries);
 
         if (chartType === 'point_figure') {
-          requestAnimationFrame(() => drawPFOverlay());
+          requestAnimationFrame(() => { if (!cancelled) drawPFOverlay(); });
         }
 
         const last = candles[candles.length - 1];
@@ -924,6 +930,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
             change: prev ? ((last.close - prev.close) / prev.close) * 100 : 0,
           });
         }
+
+        if (cancelled) return;
 
         if (chartType === 'point_figure') {
           const pointCount = pfDataRef.current?.lineData.length ?? 0;
@@ -937,13 +945,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           chartRef.current?.timeScale().fitContent();
         }
       } catch (err) {
-        console.error('Failed to fetch klines:', err);
+        if (!cancelled) console.error('Failed to fetch klines:', err);
       }
     };
 
     fetchData();
 
-    return () => {};
+    return () => { cancelled = true; };
   }, [symbol, interval, chartType, tzShiftSeconds]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
