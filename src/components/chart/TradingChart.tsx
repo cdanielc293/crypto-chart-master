@@ -687,7 +687,7 @@ export default function TradingChart() {
       const x0 = chart.timeScale().timeToCoordinate(pfData.lineData[0].time);
       const x1 = chart.timeScale().timeToCoordinate(pfData.lineData[1].time);
       if (x0 !== null && x1 !== null) {
-        cellWidth = Math.max(Math.abs(x1 - x0) * 0.85, 4);
+        cellWidth = Math.max(Math.abs(x1 - x0) * 0.95, 8);
       }
     }
 
@@ -697,11 +697,11 @@ export default function TradingChart() {
       const y0 = series.priceToCoordinate(boxes[0].price - boxSize / 2);
       const y1 = series.priceToCoordinate(boxes[0].price + boxSize / 2);
       if (y0 !== null && y1 !== null) {
-        cellHeight = Math.abs(y1 - y0) * 0.85;
+        cellHeight = Math.max(Math.abs(y1 - y0) * 0.95, 8);
       }
     }
 
-    const symbolSize = Math.min(cellWidth, cellHeight, 40) / 2;
+    const symbolSize = Math.min(cellWidth, cellHeight, 42) / 2;
 
     for (const box of boxes) {
       const x = chart.timeScale().timeToCoordinate(box.time);
@@ -709,7 +709,7 @@ export default function TradingChart() {
       const y = series.priceToCoordinate(box.price);
       if (y === null || y < -50 || y > h + 50) continue;
 
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
 
       if (box.type === 'X') {
         ctx.strokeStyle = '#26a69a';
