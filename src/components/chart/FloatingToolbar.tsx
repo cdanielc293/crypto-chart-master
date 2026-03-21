@@ -24,6 +24,9 @@ export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDe
   const [showColors, setShowColors] = useState(false);
   const [showLineStyles, setShowLineStyles] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const textInputRef = useRef<HTMLInputElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
