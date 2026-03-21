@@ -508,9 +508,11 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     return 'open';
   }, [drawings, priceScaleWidth]);
 
-  // Create chart (only once)
+  // Create chart (only once per mount)
+  const disposedRef = useRef(false);
   useEffect(() => {
     if (!containerRef.current) return;
+    disposedRef.current = false;
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: '#131722' },
@@ -535,13 +537,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     chartRef.current = chart;
 
     const observer = new ResizeObserver(() => {
-      if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
-        try { setPriceScaleWidth(chart.priceScale('right').width?.() ?? 55); } catch {}
+      if (containerRef.current && !disposedRef.current) {
+        try {
+          chart.applyOptions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
+          setPriceScaleWidth(chart.priceScale('right').width?.() ?? 55);
+        } catch {}
       }
     });
     observer.observe(containerRef.current);
-    return () => { observer.disconnect(); chart.remove(); chartRef.current = null; };
+    return () => {
+      disposedRef.current = true;
+      observer.disconnect();
+      try { chart.remove(); } catch {}
+      chartRef.current = null;
+    };
   }, []);
 
   // Apply canvas settings dynamically (no chart recreation)
