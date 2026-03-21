@@ -3,9 +3,10 @@ import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
+import ChartSettingsDialog from './ChartSettingsDialog';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
