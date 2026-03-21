@@ -898,16 +898,11 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const volumes: any[] = [];
         const rawForIndicators: { close: number; time: Time }[] = [];
 
-        for (const k of data) {
-          const time = (k[0] / 1000 + tzShiftSeconds) as Time;
-          const o = parseFloat(k[1]);
-          const h = parseFloat(k[2]);
-          const l = parseFloat(k[3]);
-          const c = parseFloat(k[4]);
-          const v = parseFloat(k[5]);
-          candles.push({ time, open: o, high: h, low: l, close: c, volume: v });
-          volumes.push({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
-          rawForIndicators.push({ close: c, time });
+        for (const k of klineData) {
+          const time = (k.time + tzShiftSeconds) as Time;
+          candles.push({ time, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume });
+          volumes.push({ time, value: k.volume, color: k.close >= k.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+          rawForIndicators.push({ close: k.close, time });
         }
 
         rawDataRef.current = rawForIndicators;
