@@ -1,10 +1,41 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type { Interval, DrawingTool, ChartType, WatchlistItem, WatchlistList, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
 import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSettings';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
+
+const DEFAULT_WATCHLISTS: WatchlistList[] = [
+  {
+    id: 'private',
+    name: 'Private',
+    favorite: true,
+    sections: [
+      {
+        id: 'default',
+        name: 'IN A TRADE',
+        collapsed: false,
+        symbols: ['BTCUSDT', 'ETHUSDT'],
+      },
+    ],
+  },
+];
+
+function loadWatchlists(): WatchlistList[] {
+  const saved = localStorage.getItem('watchlists');
+  if (!saved) return DEFAULT_WATCHLISTS;
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_WATCHLISTS;
+  } catch {
+    return DEFAULT_WATCHLISTS;
+  }
+}
+
+function saveWatchlists(lists: WatchlistList[]) {
+  localStorage.setItem('watchlists', JSON.stringify(lists));
+}
 
 interface ChartContextType {
   symbol: string;
@@ -15,10 +46,19 @@ interface ChartContextType {
   setChartType: (t: ChartType) => void;
   drawingTool: DrawingTool;
   setDrawingTool: (t: DrawingTool) => void;
+  // Watchlist
+  watchlists: WatchlistList[];
+  setWatchlists: React.Dispatch<React.SetStateAction<WatchlistList[]>>;
+  activeWatchlistId: string;
+  setActiveWatchlistId: (id: string) => void;
+  watchlistPrices: Map<string, WatchlistItem>;
+  setWatchlistPrices: React.Dispatch<React.SetStateAction<Map<string, WatchlistItem>>>;
+  // Legacy compat
   watchlist: WatchlistItem[];
   setWatchlist: React.Dispatch<React.SetStateAction<WatchlistItem[]>>;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
+  // Drawings
   drawings: Drawing[];
   addDrawing: (d: Drawing) => void;
   updateDrawing: (id: string, d: Drawing) => void;
@@ -55,10 +95,30 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [interval, setInterval] = useState<Interval>('1d');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [drawingTool, setDrawingTool] = useState<DrawingTool>('cursor');
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([
-    { symbol: 'BTCUSDT', lastPrice: 0, priceChange: 0, priceChangePercent: 0 },
-    { symbol: 'ETHUSDT', lastPrice: 0, priceChange: 0, priceChangePercent: 0 },
-  ]);
+
+  // New multi-list watchlists
+  const [watchlists, setWatchlists] = useState<WatchlistList[]>(loadWatchlists);
+  const [activeWatchlistId, setActiveWatchlistId] = useState<string>(() => {
+    const lists = loadWatchlists();
+    return lists[0]?.id || 'private';
+  });
+  const [watchlistPrices, setWatchlistPrices] = useState<Map<string, WatchlistItem>>(new Map());
+
+  // Persist watchlists
+  useEffect(() => {
+    saveWatchlists(watchlists);
+  }, [watchlists]);
+
+  // Legacy compat: derive flat watchlist from active list
+  const activeList = watchlists.find(l => l.id === activeWatchlistId) || watchlists[0];
+  const allSymbols = activeList ? activeList.sections.flatMap(s => s.symbols) : [];
+  const watchlist: WatchlistItem[] = allSymbols.map(sym => {
+    const price = watchlistPrices.get(sym);
+    return price || { symbol: sym, lastPrice: 0, priceChange: 0, priceChangePercent: 0 };
+  });
+
+  const setWatchlist: React.Dispatch<React.SetStateAction<WatchlistItem[]>> = () => {};
+
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
@@ -67,7 +127,6 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
   });
 
-  // Replay state
   const [replayState, setReplayState] = useState<ReplayState>('off');
   const [replayBarIndex, setReplayBarIndex] = useState(0);
   const [replaySpeed, setReplaySpeed] = useState(1);
@@ -83,15 +142,35 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const addToWatchlist = useCallback((sym: string) => {
-    setWatchlist(prev => {
-      if (prev.find(w => w.symbol === sym)) return prev;
-      return [...prev, { symbol: sym, lastPrice: 0, priceChange: 0, priceChangePercent: 0 }];
-    });
-  }, []);
+    setWatchlists(prev => prev.map(list => {
+      if (list.id !== activeWatchlistId) return list;
+      const allSyms = list.sections.flatMap(s => s.symbols);
+      if (allSyms.includes(sym)) return list;
+      const sections = [...list.sections];
+      if (sections.length === 0) {
+        sections.push({ id: 'default', name: 'DEFAULT', collapsed: false, symbols: [sym] });
+      } else {
+        sections[sections.length - 1] = {
+          ...sections[sections.length - 1],
+          symbols: [...sections[sections.length - 1].symbols, sym],
+        };
+      }
+      return { ...list, sections };
+    }));
+  }, [activeWatchlistId]);
 
   const removeFromWatchlist = useCallback((sym: string) => {
-    setWatchlist(prev => prev.filter(w => w.symbol !== sym));
-  }, []);
+    setWatchlists(prev => prev.map(list => {
+      if (list.id !== activeWatchlistId) return list;
+      return {
+        ...list,
+        sections: list.sections.map(s => ({
+          ...s,
+          symbols: s.symbols.filter(ss => ss !== sym),
+        })),
+      };
+    }));
+  }, [activeWatchlistId]);
 
   const addDrawing = useCallback((d: Drawing) => {
     setDrawings(prev => [...prev, d]);
@@ -126,6 +205,9 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       interval, setInterval,
       chartType, setChartType,
       drawingTool, setDrawingTool,
+      watchlists, setWatchlists,
+      activeWatchlistId, setActiveWatchlistId,
+      watchlistPrices, setWatchlistPrices,
       watchlist, setWatchlist,
       addToWatchlist, removeFromWatchlist,
       drawings, addDrawing, updateDrawing, removeDrawing,
