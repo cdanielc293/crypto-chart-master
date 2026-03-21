@@ -1449,7 +1449,12 @@ export default function TradingChart() {
           />
 
           {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
-          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)}>
+          <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={() => {
+            const chart = chartRef.current;
+            if (chart) {
+              chart.timeScale().fitContent();
+            }
+          }}>
             <div
               className="absolute top-0 right-0 bottom-0 z-[15]"
               style={{ width: priceScaleWidth || 55 }}
