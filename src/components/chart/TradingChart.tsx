@@ -450,6 +450,7 @@ export default function TradingChart() {
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDefaultTab, setSettingsDefaultTab] = useState<string | undefined>(undefined);
   const [priceScaleWidth, setPriceScaleWidth] = useState(55);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
