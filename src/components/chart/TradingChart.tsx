@@ -891,33 +891,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const fetchData = async () => {
       try {
-        const endpoints = [
-          'https://data-api.binance.vision',
-          'https://api.binance.com',
-          'https://api1.binance.com',
-          'https://api2.binance.com',
-        ];
-
-        let data: any = null;
-        let lastError: unknown = null;
-
-        for (const endpoint of endpoints) {
-          try {
-            const res = await fetch(`${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`);
-            const json = await res.json();
-            if (Array.isArray(json)) {
-              data = json;
-              break;
-            }
-            lastError = new Error(typeof json?.msg === 'string' ? json.msg : 'Invalid kline response');
-          } catch (err) {
-            lastError = err;
-          }
-        }
-
-        if (!Array.isArray(data)) {
-          throw lastError || new Error('Failed to load klines from Binance endpoints');
-        }
+        // Use cache-first strategy: Supabase cache → Binance fallback
+        const klineData = await getKlines(symbol, interval);
 
         const candles: RawCandle[] = [];
         const volumes: any[] = [];
