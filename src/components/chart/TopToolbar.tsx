@@ -163,6 +163,7 @@ export default function TopToolbar() {
           <Rewind size={14} />
           <span>Replay</span>
         </button>
+      </div>
 
       {/* Close dropdowns on outside click */}
       {(chartTypeOpen || indicatorOpen) && (
