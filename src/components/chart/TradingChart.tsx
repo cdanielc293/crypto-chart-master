@@ -1169,6 +1169,17 @@ export default function TradingChart() {
   }));
 
   const isPositive = ohlc.c >= ohlc.o;
+  const statusLine = chartSettings.statusLine;
+  const showStatusValues = statusLine.showChartValues;
+  const symbolTitle = statusLine.titleMode === 'ticker' ? symbol : symbol.replace('USDT', ' / TetherUS');
+  const statusLineBackground = statusLine.showBackground
+    ? `hsl(var(--card) / ${clamp(statusLine.backgroundOpacity, 0, 100) / 100})`
+    : 'transparent';
+  const watermarkText = chartSettings.canvas.watermarkMode === 'none'
+    ? ''
+    : chartSettings.canvas.watermarkMode === 'replay'
+      ? (replayState !== 'off' ? 'REPLAY' : '')
+      : `${symbol} · ${interval}`;
 
   const toolHints: Record<string, string> = {
     trendline: 'Click two points for trend line',
@@ -1185,19 +1196,40 @@ export default function TradingChart() {
 
   return (
     <div className={`flex-1 flex flex-col relative bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
-      <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
-        <span className="text-muted-foreground">O</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">H</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.h.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">L</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.l.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">C</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.c.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>
-          {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
-        </span>
+      <div
+        className="absolute top-2 left-3 z-10 flex items-center gap-3 rounded px-2 py-1 text-xs font-mono"
+        style={{ background: statusLineBackground }}
+      >
+        {statusLine.showLogo && <span className="text-muted-foreground">◉</span>}
+        {statusLine.showTitle && <span className="text-foreground font-semibold">{symbolTitle}</span>}
+        {statusLine.showOpenMarketStatus && <span className="text-chart-bull">● Open</span>}
+
+        {showStatusValues && (
+          <>
+            <span className="text-muted-foreground">O</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">H</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.h.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">L</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.l.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">C</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.c.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+          </>
+        )}
+
+        {statusLine.showBarChangeValues && (
+          <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>
+            {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
+          </span>
+        )}
+        {statusLine.showVolume && <span className="text-muted-foreground">Vol {ohlc.v.toLocaleString()}</span>}
       </div>
+
+      {watermarkText && (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+          <span className="text-6xl font-semibold tracking-widest text-muted-foreground/20">{watermarkText}</span>
+        </div>
+      )}
 
       {replayState !== 'off' && replayState !== 'selecting' && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary text-xs px-3 py-1 rounded-full">
