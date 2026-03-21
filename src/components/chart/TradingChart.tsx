@@ -299,7 +299,7 @@ export default function TradingChart() {
       if (ind.startsWith('EMA')) {
         const period = parseInt(ind.split(' ')[1]);
         const emaData = calculateEMA(data, period);
-        const s = chart.addLineSeries({
+        const s = chart.addSeries(LineSeries, {
           color: EMA_COLORS[ind] || '#ffffff',
           lineWidth: 1,
           priceLineVisible: false,
