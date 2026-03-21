@@ -1,7 +1,10 @@
 import { useChart } from '@/context/ChartContext';
 import type { Interval, ChartType } from '@/types/chart';
 import { useState } from 'react';
-import { Search, ChevronDown, BarChart3, CandlestickChart, LineChart, AreaChart } from 'lucide-react';
+import {
+  Search, ChevronDown, BarChart3, CandlestickChart, LineChart, AreaChart,
+  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star,
+} from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 
 const intervals: { label: string; value: Interval }[] = [
@@ -15,11 +18,24 @@ const intervals: { label: string; value: Interval }[] = [
   { label: 'M', value: '1M' },
 ];
 
-const chartTypes: { label: string; value: ChartType; icon: React.ReactNode }[] = [
-  { label: 'Candles', value: 'candles', icon: <CandlestickChart size={14} /> },
-  { label: 'Hollow', value: 'hollow', icon: <CandlestickChart size={14} /> },
-  { label: 'Line', value: 'line', icon: <LineChart size={14} /> },
-  { label: 'Area', value: 'area', icon: <AreaChart size={14} /> },
+const chartTypes: { label: string; value: ChartType; group?: string }[] = [
+  { label: 'Bars', value: 'bars' },
+  { label: 'Candles', value: 'candles' },
+  { label: 'Hollow candles', value: 'hollow' },
+  { label: 'Volume candles', value: 'volume_candles' },
+  { label: 'Line', value: 'line' },
+  { label: 'Line with markers', value: 'line_markers' },
+  { label: 'Step line', value: 'step_line' },
+  { label: 'Area', value: 'area' },
+  { label: 'HLC area', value: 'hlc_area' },
+  { label: 'Baseline', value: 'baseline' },
+  { label: 'Columns', value: 'columns' },
+  { label: 'High-low', value: 'high_low' },
+  { label: 'Heikin Ashi', value: 'heikin_ashi', group: 'special' },
+  { label: 'Renko', value: 'renko', group: 'special' },
+  { label: 'Line break', value: 'line_break', group: 'special' },
+  { label: 'Kagi', value: 'kagi', group: 'special' },
+  { label: 'Point & Figure', value: 'point_figure', group: 'special' },
 ];
 
 const indicatorList = ['EMA 9', 'EMA 21', 'EMA 50', 'EMA 200', 'SMA 20', 'SMA 50', 'Bollinger Bands', 'Volume'];
@@ -31,11 +47,11 @@ export default function TopToolbar() {
   const [indicatorOpen, setIndicatorOpen] = useState(false);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
+  const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
 
   return (
     <>
       <div className="flex items-center h-10 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
-        {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1 rounded hover:bg-toolbar-hover text-foreground font-semibold"
@@ -47,7 +63,6 @@ export default function TopToolbar() {
 
         <div className="w-px h-5 bg-chart-border mx-1" />
 
-        {/* Intervals */}
         {intervals.map(i => (
           <button
             key={i.value}
@@ -67,25 +82,33 @@ export default function TopToolbar() {
         {/* Chart Type */}
         <div className="relative">
           <button
-            onClick={() => setChartTypeOpen(!chartTypeOpen)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground"
+            onClick={() => { setChartTypeOpen(!chartTypeOpen); setIndicatorOpen(false); }}
+            className="flex items-center gap-1.5 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
           >
-            {chartTypes.find(c => c.value === chartType)?.icon}
+            <CandlestickChart size={14} />
+            <span>{currentChartLabel}</span>
             <ChevronDown size={12} />
           </button>
           {chartTypeOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-lg z-50 py-1 min-w-[140px]">
-              {chartTypes.map(ct => (
-                <button
-                  key={ct.value}
-                  onClick={() => { setChartType(ct.value); setChartTypeOpen(false); }}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover ${
-                    chartType === ct.value ? 'text-primary' : 'text-foreground'
-                  }`}
-                >
-                  {ct.icon} {ct.label}
-                </button>
-              ))}
+            <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[200px] max-h-[420px] overflow-y-auto">
+              {chartTypes.map((ct, i) => {
+                const prevGroup = i > 0 ? chartTypes[i - 1].group : undefined;
+                const showSep = ct.group !== prevGroup && i > 0;
+                return (
+                  <div key={ct.value}>
+                    {showSep && <div className="h-px bg-chart-border my-1" />}
+                    <button
+                      onClick={() => { setChartType(ct.value); setChartTypeOpen(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-toolbar-hover transition-colors ${
+                        chartType === ct.value ? 'text-primary bg-toolbar-hover' : 'text-foreground'
+                      }`}
+                    >
+                      <span className="flex-1 text-left">{ct.label}</span>
+                      {chartType === ct.value && <Star size={10} className="text-primary fill-primary" />}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -95,7 +118,7 @@ export default function TopToolbar() {
         {/* Indicators */}
         <div className="relative">
           <button
-            onClick={() => setIndicatorOpen(!indicatorOpen)}
+            onClick={() => { setIndicatorOpen(!indicatorOpen); setChartTypeOpen(false); }}
             className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
           >
             <BarChart3 size={14} />
@@ -107,7 +130,7 @@ export default function TopToolbar() {
             )}
           </button>
           {indicatorOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-lg z-50 py-1 min-w-[180px] max-h-[300px] overflow-y-auto">
+            <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[180px] max-h-[300px] overflow-y-auto">
               {indicatorList.map(ind => (
                 <button
                   key={ind}
@@ -125,9 +148,12 @@ export default function TopToolbar() {
             </div>
           )}
         </div>
-
-        {/* OHLC will be shown in chart component */}
       </div>
+
+      {/* Close dropdowns on outside click */}
+      {(chartTypeOpen || indicatorOpen) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setChartTypeOpen(false); setIndicatorOpen(false); }} />
+      )}
 
       {searchOpen && <SymbolSearch onClose={() => setSearchOpen(false)} />}
     </>
