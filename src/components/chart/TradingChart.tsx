@@ -376,6 +376,8 @@ export default function TradingChart() {
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [priceScaleWidth, setPriceScaleWidth] = useState(55);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const gridExtendCanvasRef = useRef<HTMLCanvasElement | null>(null);
