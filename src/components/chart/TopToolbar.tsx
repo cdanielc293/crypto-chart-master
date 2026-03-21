@@ -41,7 +41,7 @@ const chartTypes: { label: string; value: ChartType; group?: string }[] = [
 const indicatorList = ['EMA 9', 'EMA 21', 'EMA 50', 'EMA 200', 'SMA 20', 'SMA 50', 'Bollinger Bands', 'Volume'];
 
 export default function TopToolbar() {
-  const { symbol, interval, setInterval, chartType, setChartType, indicators, toggleIndicator } = useChart();
+  const { symbol, interval, setInterval, chartType, setChartType, indicators, toggleIndicator, replayState, setReplayState } = useChart();
   const [searchOpen, setSearchOpen] = useState(false);
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
