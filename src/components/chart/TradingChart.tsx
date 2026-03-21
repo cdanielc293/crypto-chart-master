@@ -884,7 +884,7 @@ export default function TradingChart() {
     };
 
     return () => { ws.close(); wsRef.current = null; };
-  }, [symbol, interval, chartType, replayState]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
