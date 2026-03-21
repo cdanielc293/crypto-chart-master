@@ -24,6 +24,9 @@ export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDe
   const [showColors, setShowColors] = useState(false);
   const [showLineStyles, setShowLineStyles] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const textInputRef = useRef<HTMLInputElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
@@ -108,20 +111,64 @@ export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDe
 
       <div className="w-px h-5 bg-chart-border mx-0.5" />
 
-      {/* Text toggle */}
-      <button
-        onClick={() => {
-          if (hasText) {
-            updateProps({ text: '' });
-          } else {
-            updateProps({ text: 'Text' });
-          }
-        }}
-        className={`w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors ${hasText ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-        title="Add text"
-      >
-        <Type size={13} />
-      </button>
+      {/* Text toggle + input */}
+      <div className="relative">
+        <button
+          onClick={() => {
+            if (showTextInput) {
+              setShowTextInput(false);
+            } else {
+              setTextValue(drawing.props?.text || '');
+              setShowTextInput(true);
+              setShowColors(false);
+              setShowLineStyles(false);
+              setShowMore(false);
+              setTimeout(() => textInputRef.current?.focus(), 50);
+            }
+          }}
+          className={`w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors ${hasText ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          title="Add text"
+        >
+          <Type size={13} />
+        </button>
+        {showTextInput && (
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-card border border-chart-border rounded-md shadow-xl p-2 min-w-[200px]">
+            <input
+              ref={textInputRef}
+              type="text"
+              value={textValue}
+              onChange={e => setTextValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  updateProps({ text: textValue });
+                  setShowTextInput(false);
+                } else if (e.key === 'Escape') {
+                  setShowTextInput(false);
+                }
+                e.stopPropagation();
+              }}
+              placeholder="Enter text..."
+              className="w-full bg-muted border border-border rounded px-2 py-1 text-sm text-foreground focus:border-primary focus:outline-none"
+            />
+            <div className="flex justify-end gap-1 mt-1.5">
+              {hasText && (
+                <button
+                  onClick={() => { updateProps({ text: '' }); setShowTextInput(false); }}
+                  className="text-xs text-destructive hover:text-destructive/80 px-2 py-0.5"
+                >
+                  Remove
+                </button>
+              )}
+              <button
+                onClick={() => { updateProps({ text: textValue }); setShowTextInput(false); }}
+                className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded hover:bg-primary/90"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="w-px h-5 bg-chart-border mx-0.5" />
 
