@@ -1,4 +1,4 @@
-export type Interval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w' | '1M';
+export type Interval = '1s' | '5s' | '10s' | '15s' | '30s' | '45s' | '1m' | '2m' | '3m' | '5m' | '10m' | '15m' | '30m' | '45m' | '1h' | '2h' | '3h' | '4h' | '1d' | '1w' | '1M' | '3M' | '6M' | '12M';
 
 export type DrawingTool =
   // Cursor group
