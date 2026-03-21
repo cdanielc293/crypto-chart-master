@@ -372,6 +372,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     if (isBrushingRef.current) {
       isBrushingRef.current = false;
       brushDrawingIdRef.current = null;
+      // Auto-switch back to cursor after brush/highlighter
+      setDrawingTool('cursor');
     }
   }, []);
 
