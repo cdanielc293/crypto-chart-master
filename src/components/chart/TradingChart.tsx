@@ -367,6 +367,7 @@ export default function TradingChart() {
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
+  const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
