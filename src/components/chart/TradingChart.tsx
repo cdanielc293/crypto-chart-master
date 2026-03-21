@@ -418,13 +418,14 @@ export default function TradingChart() {
       mainSeriesRef.current = series;
     } else if (isCandleType) {
       const isHollow = chartType === 'hollow';
+      const cc = chartSettings.candle;
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : '#26a69a',
-        downColor: isHollow ? 'transparent' : '#ef5350',
-        borderUpColor: '#26a69a',
-        borderDownColor: '#ef5350',
-        wickUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
+        upColor: isHollow ? 'transparent' : cc.bodyUp,
+        downColor: isHollow ? 'transparent' : cc.bodyDown,
+        borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
+        borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
+        wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
+        wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
       });
       mainSeriesRef.current = series;
     } else if (isBarType) {
