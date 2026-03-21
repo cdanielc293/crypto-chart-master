@@ -1556,9 +1556,11 @@ export default function TradingChart() {
         <ChartCanvasContextMenu
           getOpenMode={getCanvasContextMenuOpenMode}
           onResetChartView={resetChartView}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => { setSettingsDefaultTab(undefined); setSettingsOpen(true); }}
+          onOpenSymbolSettings={() => { setSettingsDefaultTab('symbol'); setSettingsOpen(true); }}
           onRemoveIndicators={removeAllIndicators}
           indicatorCount={indicators.length}
+          chartTypeLabel={chartType === 'point_figure' ? 'Point & Figure' : chartType === 'heikin_ashi' ? 'Heikin Ashi' : chartType === 'renko' ? 'Renko' : chartType === 'kagi' ? 'Kagi' : chartType === 'line_break' ? 'Line Break' : 'Candles'}
         >
           <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
             <canvas
