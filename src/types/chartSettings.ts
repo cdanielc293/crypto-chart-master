@@ -64,7 +64,9 @@ export interface CanvasSettings {
   // Grid
   gridType: 'both' | 'vert' | 'horz' | 'none';
   gridVertColor: string;
+  gridVertOpacity: number;
   gridHorzColor: string;
+  gridHorzOpacity: number;
   // Crosshair
   crosshairColor: string;
   crosshairStyle: 'dashed' | 'dotted' | 'solid';
