@@ -867,36 +867,6 @@ export default function TradingChart() {
     </div>
   );
 }
-        if (drawing.points.length >= 2) {
-          const s = chart.addSeries(LineSeries, {
-            color: drawing.color, lineWidth: 2,
-            priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-          });
-          let lineData: LineData[];
-          if (drawing.type === 'ray') {
-            const p1 = drawing.points[0], p2 = drawing.points[1];
-            const dt = p2.time - p1.time, dp = p2.price - p1.price;
-            lineData = [
-              { time: p1.time as Time, value: p1.price },
-              { time: p2.time as Time, value: p2.price },
-              { time: (p2.time + dt * 100) as Time, value: p2.price + dp * 100 },
-            ];
-          } else {
-            lineData = drawing.points.map(p => ({ time: p.time as Time, value: p.price }));
-          }
-          s.setData(lineData);
-          drawingSeriesRef.current.set(drawing.id, s);
-        }
-      } else if (drawing.type === 'horizontalline') {
-        if (drawing.points.length >= 1 && mainSeriesRef.current) {
-          const priceLine = mainSeriesRef.current.createPriceLine({
-            price: drawing.points[0].price, color: drawing.color,
-            lineWidth: 2, lineStyle: 0, axisLabelVisible: true,
-          });
-          drawingSeriesRef.current.set(drawing.id, priceLine);
-        }
-      } else if (drawing.type === 'fibonacci') {
-        if (drawing.points.length >= 2) {
           const p1 = drawing.points[0].price, p2 = drawing.points[1].price;
           const diff = p2 - p1;
           const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
