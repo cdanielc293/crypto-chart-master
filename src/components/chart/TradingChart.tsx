@@ -352,28 +352,26 @@ export default function TradingChart() {
   const replayBarRef = useRef(replayBarIndex);
   replayBarRef.current = replayBarIndex;
 
-  // Create chart
-  // Create chart
+  // Create chart (only once)
   useEffect(() => {
     if (!containerRef.current) return;
-    const cs = chartSettings.canvas;
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: cs.backgroundColor },
-        textColor: cs.scaleTextColor,
-        fontSize: cs.scaleTextSize,
+        background: { type: ColorType.Solid, color: '#131722' },
+        textColor: '#787b86',
+        fontSize: 12,
       },
       grid: {
-        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
-        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
+        vertLines: { color: '#1e222d' },
+        horzLines: { color: '#1e222d' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
-        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
+        vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+        horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
       },
-      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
-      timeScale: { borderColor: cs.scaleLinesColor, timeVisible: true, secondsVisible: false, rightOffset: cs.marginRight },
+      rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.08 } },
+      timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 10 },
       handleScroll: true,
       handleScale: true,
     });
@@ -387,6 +385,30 @@ export default function TradingChart() {
     });
     observer.observe(containerRef.current);
     return () => { observer.disconnect(); chart.remove(); chartRef.current = null; };
+  }, []);
+
+  // Apply canvas settings dynamically (no chart recreation)
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const cs = chartSettings.canvas;
+    chart.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: cs.backgroundColor },
+        textColor: cs.scaleTextColor,
+        fontSize: cs.scaleTextSize,
+      },
+      grid: {
+        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
+        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
+      },
+      crosshair: {
+        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
+        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
+      },
+      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
+      timeScale: { borderColor: cs.scaleLinesColor, rightOffset: cs.marginRight },
+    });
   }, [chartSettings.canvas]);
 
   // Determine which series type to use
@@ -398,6 +420,24 @@ export default function TradingChart() {
   const isPnFType = chartType === 'point_figure';
   const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi'].includes(chartType);
   const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+
+  // Apply candle settings dynamically (no series recreation)
+  useEffect(() => {
+    const series = mainSeriesRef.current;
+    if (!series || !isCandleType) return;
+    const cc = chartSettings.candle;
+    const isHollow = chartType === 'hollow';
+    try {
+      series.applyOptions({
+        upColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyUp : 'transparent'),
+        downColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyDown : 'transparent'),
+        borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
+        borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
+        wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
+        wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
+      });
+    } catch {}
+  }, [chartSettings.candle, chartType, isCandleType]);
 
   // Create series based on chart type
   useEffect(() => {
@@ -420,8 +460,8 @@ export default function TradingChart() {
       const isHollow = chartType === 'hollow';
       const cc = chartSettings.candle;
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : cc.bodyUp,
-        downColor: isHollow ? 'transparent' : cc.bodyDown,
+        upColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyUp : 'transparent'),
+        downColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyDown : 'transparent'),
         borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
         borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
         wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
@@ -477,7 +517,7 @@ export default function TradingChart() {
     });
     volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
     volumeSeriesRef.current = volSeries;
-  }, [chartType, chartSettings.candle]);
+  }, [chartType]);
 
   // Fetch data and connect WebSocket
   useEffect(() => {
