@@ -131,6 +131,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       replayBarIndex, setReplayBarIndex,
       replaySpeed, setReplaySpeed,
       replayStartIndex, setReplayStartIndex,
+      chartSettings, setChartSettings,
     }}>
       {children}
     </ChartContext.Provider>
