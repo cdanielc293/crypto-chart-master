@@ -10,8 +10,7 @@ import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import LayoutManager from './LayoutManager';
 import MultiChartLayoutSelector from './MultiChartLayoutSelector';
-import type { LayoutSyncOptions, GridLayout } from '@/types/layout';
-import { DEFAULT_SYNC_OPTIONS, ALL_GRID_LAYOUTS } from '@/types/layout';
+import type { LayoutSyncOptions } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
