@@ -477,7 +477,7 @@ export default function TradingChart() {
     });
     volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
     volumeSeriesRef.current = volSeries;
-  }, [chartType]);
+  }, [chartType, chartSettings.candle]);
 
   // Fetch data and connect WebSocket
   useEffect(() => {
