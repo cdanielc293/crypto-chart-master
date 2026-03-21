@@ -184,9 +184,9 @@ function WatchlistRow({
   );
 }
 
-// ─── Dropdown Menu ───
+// ─── Combined Dropdown Menu (opens from list name OR ⋯ button) ───
 
-function DropdownMenu({
+function WatchlistDropdown({
   open,
   anchorRef,
   onClose,
@@ -196,6 +196,9 @@ function DropdownMenu({
   onCreateNew,
   onOpenManager,
   onDuplicate,
+  watchlists,
+  activeId,
+  onSelectList,
 }: {
   open: boolean;
   anchorRef: React.RefObject<HTMLElement>;
@@ -206,6 +209,9 @@ function DropdownMenu({
   onCreateNew: () => void;
   onOpenManager: () => void;
   onDuplicate: () => void;
+  watchlists: WatchlistList[];
+  activeId: string;
+  onSelectList: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -223,37 +229,61 @@ function DropdownMenu({
 
   if (!open) return null;
 
-  const items = [
-    { icon: <FolderPlus size={13} />, label: 'Add section', action: onAddSection },
-    { icon: <Copy size={13} />, label: 'Make a copy...', action: onDuplicate },
-    { icon: <Edit3 size={13} />, label: 'Rename', action: onRename },
-    { icon: <Trash2 size={13} />, label: 'Clear list', action: onClearList },
-    'sep' as const,
-    { icon: <Plus size={13} />, label: 'Create new list...', action: onCreateNew },
-    { icon: <Upload size={13} />, label: 'Upload list...', action: () => onClose() },
-    'sep' as const,
-    { icon: <List size={13} />, label: 'Open list...', action: onOpenManager },
-  ];
+  const MenuItem = ({ icon, label, action, shortcut }: { icon: React.ReactNode; label: string; action: () => void; shortcut?: string }) => (
+    <button
+      onClick={() => { action(); onClose(); }}
+      className="flex w-full items-center gap-2.5 px-3 py-[6px] text-[13px] text-foreground hover:bg-toolbar-hover"
+    >
+      <span className="text-muted-foreground w-4 flex items-center justify-center">{icon}</span>
+      <span className="flex-1 text-left">{label}</span>
+      {shortcut && <span className="text-[11px] text-muted-foreground">{shortcut}</span>}
+    </button>
+  );
+
+  const Separator = () => <div className="mx-2 my-1 border-t border-chart-border" />;
 
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-chart-border bg-card py-1 shadow-xl"
+      className="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded-lg border border-chart-border bg-card py-1 shadow-xl"
     >
-      {items.map((item, i) =>
-        item === 'sep' ? (
-          <div key={i} className="mx-2 my-1 border-t border-chart-border" />
-        ) : (
-          <button
-            key={i}
-            onClick={() => { (item as any).action(); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm text-foreground hover:bg-toolbar-hover"
-          >
-            <span className="text-muted-foreground">{(item as any).icon}</span>
-            <span>{(item as any).label}</span>
-          </button>
-        )
+      <MenuItem icon={<Copy size={13} />} label="Make a copy..." action={onDuplicate} />
+      <MenuItem icon={<Edit3 size={13} />} label="Rename" action={onRename} />
+      <MenuItem icon={<FolderPlus size={13} />} label="Add section" action={onAddSection} />
+      <MenuItem icon={<Trash2 size={13} />} label="Clear list" action={onClearList} />
+      <Separator />
+      <MenuItem icon={<Plus size={13} />} label="Create new list..." action={onCreateNew} />
+      <MenuItem icon={<Upload size={13} />} label="Upload list..." action={() => onClose()} />
+
+      {watchlists.length > 0 && (
+        <>
+          <Separator />
+          <div className="px-3 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+            Recently used
+          </div>
+          {watchlists.map(list => {
+            const isActive = list.id === activeId;
+            return (
+              <button
+                key={list.id}
+                onClick={() => { onSelectList(list.id); onClose(); }}
+                className={`flex w-full items-center gap-2.5 px-3 py-[6px] text-[13px] transition-colors ${
+                  isActive ? 'bg-toolbar-hover text-foreground font-medium' : 'text-foreground hover:bg-toolbar-hover'
+                }`}
+              >
+                <span className="flex-1 text-left truncate">{list.name}</span>
+                <Star
+                  size={12}
+                  className={`shrink-0 ${list.favorite ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground opacity-0 group-hover:opacity-100'}`}
+                />
+              </button>
+            );
+          })}
+        </>
       )}
+
+      <Separator />
+      <MenuItem icon={<List size={13} />} label="Open list..." action={onOpenManager} shortcut="Shift + W" />
     </div>
   );
 }
