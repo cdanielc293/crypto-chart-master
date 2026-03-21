@@ -1,4 +1,4 @@
-import type { ChartDrawing, CoordHelper } from './types';
+import type { ChartDrawing, CoordHelper, AnchorPoint } from './types';
 
 type Renderer = (
   ctx: CanvasRenderingContext2D,
