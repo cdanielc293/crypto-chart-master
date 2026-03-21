@@ -248,9 +248,9 @@ export default function TopToolbar() {
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
         >
-          <Settings size={14} />
+          <Settings size={16} />
         </button>
       </div>
 
