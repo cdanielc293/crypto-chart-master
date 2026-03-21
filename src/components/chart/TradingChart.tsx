@@ -1010,10 +1010,12 @@ export default function TradingChart() {
     } else if (chartType === 'kagi') {
       displayCandles = toKagi(candles);
     } else if (chartType === 'point_figure') {
-      const pfResult = computePointAndFigure(candles);
+      const pf = chartSettings.symbol.pointFigure;
+      const pfBoxSize = pf.boxMethod === 'traditional' ? pf.boxSize : undefined;
+      const pfResult = computePointAndFigure(candles, pfBoxSize, pf.reversalAmount, pf.atrLength, pf.boxMethod);
       pfDataRef.current = pfResult;
       series.setData(pfResult.lineData);
-      volSeries.setData([]);
+      volSeries.setData(pfResult.volumes);
       return;
     }
 
