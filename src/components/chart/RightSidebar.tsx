@@ -33,7 +33,7 @@ export default function RightSidebar() {
       )}
 
       {/* Icon strip */}
-      <div className="flex flex-col items-center w-10 shrink-0 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
+      <div className="flex flex-col items-center w-11 shrink-0 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activePanel === tab.id;
