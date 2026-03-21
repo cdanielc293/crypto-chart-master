@@ -894,14 +894,13 @@ export default function TradingChart() {
 
     const delay = Math.max(50, 500 / replaySpeed);
     replayTimerRef.current = window.setInterval(() => {
-      setReplayBarIndex(prev => {
-        const next = prev + 1;
-        if (next >= allCandlesRef.current.length) {
-          setReplayState('paused');
-          return prev;
-        }
-        return next;
-      });
+      const next = replayBarRef.current + 1;
+      if (next >= allCandlesRef.current.length) {
+        setReplayState('paused');
+        return;
+      }
+      replayBarRef.current = next;
+      setReplayBarIndex(next);
     }, delay);
 
     return () => {
