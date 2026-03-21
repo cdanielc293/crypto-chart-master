@@ -388,13 +388,15 @@ export default function TradingChart() {
 
     if (isCandleType) {
       const isHollow = chartType === 'hollow';
+      const isPnF = chartType === 'point_figure';
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : '#26a69a',
-        downColor: isHollow ? 'transparent' : '#ef5350',
+        upColor: isPnF ? 'rgba(38,166,154,0.15)' : (isHollow ? 'transparent' : '#26a69a'),
+        downColor: isPnF ? 'rgba(239,83,80,0.15)' : (isHollow ? 'transparent' : '#ef5350'),
         borderUpColor: '#26a69a',
         borderDownColor: '#ef5350',
-        wickUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
+        wickUpColor: isPnF ? '#26a69a' : '#26a69a',
+        wickDownColor: isPnF ? '#ef5350' : '#ef5350',
+        wickVisible: !isPnF,
       });
       mainSeriesRef.current = series;
     } else if (isBarType) {
