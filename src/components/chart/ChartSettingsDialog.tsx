@@ -193,7 +193,8 @@ export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props
     if (!open) return;
     originalRef.current = JSON.parse(JSON.stringify(chartSettings));
     setTemplates(loadTemplates());
-  }, [open, chartSettings]);
+    if (defaultTab) setTab(defaultTab);
+  }, [open, chartSettings, defaultTab]);
 
   const updateSection = <K extends keyof ChartSettings>(section: K, patch: Partial<ChartSettings[K]>) => {
     setChartSettings(prev => ({
