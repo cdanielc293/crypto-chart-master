@@ -243,7 +243,7 @@ function toPointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes 
   }
 
   const reversal = reversalBoxes * boxSize;
-  const columns: { direction: 1 | -1; high: number; low: number }[] = [];
+  const columns: { direction: number; high: number; low: number }[] = [];
   let currentDir = 0; // 0=init, 1=up, -1=down
   let colHigh = 0;
   let colLow = Infinity;
