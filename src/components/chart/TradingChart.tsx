@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   createChart, ColorType, CrosshairMode,
   CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, BarSeries, BaselineSeries,
@@ -137,7 +137,6 @@ function toLineBreak(candles: RawCandle[], lineCount = 3): RawCandle[] {
       });
       timeIdx++;
     } else {
-      // Check reversal
       const lookback = lines.slice(-lineCount);
       const maxHigh = Math.max(...lookback.map(l => Math.max(l.open, l.close)));
       const minLow = Math.min(...lookback.map(l => Math.min(l.open, l.close)));
@@ -165,7 +164,7 @@ function toLineBreak(candles: RawCandle[], lineCount = 3): RawCandle[] {
 function toKagi(candles: RawCandle[], reversalPercent = 0.04): RawCandle[] {
   if (candles.length === 0) return [];
   const lines: RawCandle[] = [];
-  let direction = 0; // 1=up, -1=down
+  let direction = 0;
   let lastPrice = candles[0].close;
   let currentHigh = lastPrice;
   let currentLow = lastPrice;
@@ -225,6 +224,8 @@ function toKagi(candles: RawCandle[], reversalPercent = 0.04): RawCandle[] {
   return lines;
 }
 
+// ─── Point & Figure ───
+
 function calculateATR(candles: RawCandle[], period = 14): number {
   if (candles.length < 2) return 1;
   const trs: number[] = [];
@@ -243,29 +244,35 @@ function calculateATR(candles: RawCandle[], period = 14): number {
   return atr;
 }
 
-function toPointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3): RawCandle[] {
-  if (candles.length < 2) return [];
+interface PFBox {
+  time: Time;
+  price: number;
+  type: 'X' | 'O';
+}
 
-  // Use ATR-based box size for dynamic scaling
+interface PFResult {
+  lineData: { time: Time; value: number }[];
+  boxes: PFBox[];
+  boxSize: number;
+}
+
+function computePointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3): PFResult {
+  if (candles.length < 2) return { lineData: [], boxes: [], boxSize: boxSize || 100 };
+
   if (!boxSize) {
     const atr = calculateATR(candles, 14);
     boxSize = Math.max(Math.round(atr), 1);
   }
 
   const reversalAmount = reversalBoxes * boxSize;
-
-  // Each column: direction (1=X up, -1=O down), top box price, bottom box price
-  interface PFColumn { dir: number; top: number; bot: number; }
-  const columns: PFColumn[] = [];
-
-  // Snap price to box grid
   const snapUp = (p: number) => Math.ceil(p / boxSize!) * boxSize!;
   const snapDown = (p: number) => Math.floor(p / boxSize!) * boxSize!;
 
-  // Initialize first column from first candle
+  interface PFCol { dir: number; top: number; bot: number; }
+  const columns: PFCol[] = [];
+
   let colTop = snapUp(candles[0].high);
   let colBot = snapDown(candles[0].low);
-  // Determine initial direction
   let dir = candles[0].close >= candles[0].open ? 1 : -1;
   columns.push({ dir, top: colTop, bot: colBot });
 
@@ -276,40 +283,38 @@ function toPointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes 
     const lastCol = columns[columns.length - 1];
 
     if (lastCol.dir === 1) {
-      // X column (rising) - check if price extends up
-      if (high > lastCol.top) {
-        lastCol.top = high; // extend column up
-      }
-      // Check for reversal down
+      if (high > lastCol.top) lastCol.top = high;
       if (lastCol.top - low >= reversalAmount) {
-        // Start new O column, one box below the top of X
         columns.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
       }
     } else {
-      // O column (falling) - check if price extends down
-      if (low < lastCol.bot) {
-        lastCol.bot = low; // extend column down
-      }
-      // Check for reversal up
+      if (low < lastCol.bot) lastCol.bot = low;
       if (high - lastCol.bot >= reversalAmount) {
-        // Start new X column, one box above the bottom of O
         columns.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
       }
     }
   }
 
-  // Convert columns to candle representation
-  // X columns: open=bot, close=top (bullish candle)
-  // O columns: open=top, close=bot (bearish candle)
   const baseTime = candles[0].time as number;
-  return columns.map((col, i) => ({
-    time: (baseTime + i * 86400) as Time,
-    open: col.dir === 1 ? col.bot : col.top,
-    close: col.dir === 1 ? col.top : col.bot,
-    high: col.top,
-    low: col.bot,
-    volume: 0,
-  }));
+  const boxes: PFBox[] = [];
+  const lineData: { time: Time; value: number }[] = [];
+
+  for (let i = 0; i < columns.length; i++) {
+    const col = columns[i];
+    const time = (baseTime + i * 86400) as Time;
+    const mid = (col.top + col.bot) / 2;
+    lineData.push({ time, value: mid });
+
+    for (let p = col.bot; p < col.top; p += boxSize) {
+      boxes.push({
+        time,
+        price: p + boxSize / 2,
+        type: col.dir === 1 ? 'X' : 'O',
+      });
+    }
+  }
+
+  return { lineData, boxes, boxSize };
 }
 
 const EMA_COLORS: Record<string, string> = {
@@ -335,6 +340,8 @@ export default function TradingChart() {
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const drawingStartRef = useRef<{ time: number; price: number } | null>(null);
   const previewSeriesRef = useRef<any>(null);
+  const pfDataRef = useRef<PFResult | null>(null);
+  const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Create chart
   useEffect(() => {
@@ -370,13 +377,14 @@ export default function TradingChart() {
     return () => { observer.disconnect(); chart.remove(); chartRef.current = null; };
   }, []);
 
-  // Determine which series type to use for chart type
+  // Determine which series type to use
   const isLineType = ['line', 'line_markers', 'step_line'].includes(chartType);
   const isAreaType = ['area', 'hlc_area'].includes(chartType);
   const isBaselineType = chartType === 'baseline';
   const isColumnsType = chartType === 'columns';
   const isBarType = chartType === 'bars' || chartType === 'high_low';
-  const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+  const isPnFType = chartType === 'point_figure';
+  const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi'].includes(chartType);
 
   // Create series based on chart type
   useEffect(() => {
@@ -386,17 +394,24 @@ export default function TradingChart() {
     if (mainSeriesRef.current) { try { chart.removeSeries(mainSeriesRef.current); } catch {} }
     if (volumeSeriesRef.current) { try { chart.removeSeries(volumeSeriesRef.current); } catch {} }
 
-    if (isCandleType) {
+    if (isPnFType) {
+      const series = chart.addSeries(LineSeries, {
+        color: 'transparent',
+        lineWidth: 0,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      mainSeriesRef.current = series;
+    } else if (isCandleType) {
       const isHollow = chartType === 'hollow';
-      const isPnF = chartType === 'point_figure';
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isPnF ? 'rgba(38,166,154,0.15)' : (isHollow ? 'transparent' : '#26a69a'),
-        downColor: isPnF ? 'rgba(239,83,80,0.15)' : (isHollow ? 'transparent' : '#ef5350'),
+        upColor: isHollow ? 'transparent' : '#26a69a',
+        downColor: isHollow ? 'transparent' : '#ef5350',
         borderUpColor: '#26a69a',
         borderDownColor: '#ef5350',
-        wickUpColor: isPnF ? '#26a69a' : '#26a69a',
-        wickDownColor: isPnF ? '#ef5350' : '#ef5350',
-        wickVisible: !isPnF,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
       });
       mainSeriesRef.current = series;
     } else if (isBarType) {
@@ -519,18 +534,19 @@ export default function TradingChart() {
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
 
-      // For special chart types, we'd need to recalculate from all data
-      // For standard types, just update
-      if (isLineType || isAreaType || isBaselineType || isColumnsType) {
+      if (isPnFType) {
+        // P&F doesn't do live single-candle updates
+      } else if (isLineType || isAreaType || isBaselineType || isColumnsType) {
         series.update({ time, value: c });
       } else if (isBarType || isCandleType) {
-        // For transformed types (HA, Renko, P&F, etc.), skip live update of individual candle
         if (['candles', 'hollow', 'volume_candles', 'bars', 'high_low'].includes(chartType)) {
           series.update({ time, open: o, high: h, low: l, close: c });
         }
       }
 
-      volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+      if (!isPnFType) {
+        volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+      }
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
     };
 
@@ -540,7 +556,6 @@ export default function TradingChart() {
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
 
-    // Transform data for special chart types
     if (chartType === 'heikin_ashi') {
       displayCandles = toHeikinAshi(candles);
     } else if (chartType === 'renko') {
@@ -550,8 +565,15 @@ export default function TradingChart() {
     } else if (chartType === 'kagi') {
       displayCandles = toKagi(candles);
     } else if (chartType === 'point_figure') {
-      displayCandles = toPointAndFigure(candles);
+      const pfResult = computePointAndFigure(candles);
+      pfDataRef.current = pfResult;
+      series.setData(pfResult.lineData);
+      volSeries.setData([]);
+      return;
     }
+
+    // Clear P&F data when not in P&F mode
+    pfDataRef.current = null;
 
     if (isLineType || isAreaType || isBaselineType) {
       series.setData(candles.map((c: RawCandle) => ({ time: c.time, value: c.close })));
@@ -564,20 +586,17 @@ export default function TradingChart() {
       })));
       volSeries.setData(volumes);
     } else if (chartType === 'volume_candles') {
-      // Volume candles: width proportional to volume (approximated by opacity)
       series.setData(candles.map((c: RawCandle) => ({
         time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
       })));
       volSeries.setData(volumes);
     } else {
-      // Candle/bar types (including transformed ones)
       const transformed = displayCandles !== candles;
       series.setData(displayCandles.map((c: RawCandle) => ({
         time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
       })));
 
       if (transformed) {
-        // For transformed types, build matching volume data
         const transformedVols = displayCandles.map((c: RawCandle) => ({
           time: c.time,
           value: c.volume,
@@ -589,6 +608,117 @@ export default function TradingChart() {
       }
     }
   }
+
+  // ─── P&F Canvas Overlay Drawing ───
+  const drawPFOverlay = useCallback(() => {
+    const canvas = pfCanvasRef.current;
+    const chart = chartRef.current;
+    const series = mainSeriesRef.current;
+    const pfData = pfDataRef.current;
+
+    if (!canvas || !chart || !series || !pfData || chartType !== 'point_figure') {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const { boxes, boxSize } = pfData;
+
+    // Calculate cell width from adjacent columns
+    let cellWidth = 16;
+    if (pfData.lineData.length >= 2) {
+      const x0 = chart.timeScale().timeToCoordinate(pfData.lineData[0].time);
+      const x1 = chart.timeScale().timeToCoordinate(pfData.lineData[1].time);
+      if (x0 !== null && x1 !== null) {
+        cellWidth = Math.max(Math.abs(x1 - x0) * 0.85, 4);
+      }
+    }
+
+    // Calculate cell height from box size
+    let cellHeight = 16;
+    if (boxes.length > 0) {
+      const y0 = series.priceToCoordinate(boxes[0].price - boxSize / 2);
+      const y1 = series.priceToCoordinate(boxes[0].price + boxSize / 2);
+      if (y0 !== null && y1 !== null) {
+        cellHeight = Math.abs(y1 - y0) * 0.85;
+      }
+    }
+
+    const symbolSize = Math.min(cellWidth, cellHeight, 40) / 2;
+
+    for (const box of boxes) {
+      const x = chart.timeScale().timeToCoordinate(box.time);
+      if (x === null || x < -50 || x > w + 50) continue;
+      const y = series.priceToCoordinate(box.price);
+      if (y === null || y < -50 || y > h + 50) continue;
+
+      ctx.lineWidth = 1.5;
+
+      if (box.type === 'X') {
+        ctx.strokeStyle = '#26a69a';
+        ctx.beginPath();
+        ctx.moveTo(x - symbolSize, y - symbolSize);
+        ctx.lineTo(x + symbolSize, y + symbolSize);
+        ctx.moveTo(x + symbolSize, y - symbolSize);
+        ctx.lineTo(x - symbolSize, y + symbolSize);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#ef5350';
+        ctx.beginPath();
+        ctx.arc(x, y, symbolSize, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }, [chartType]);
+
+  // Subscribe to chart changes to redraw P&F overlay
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || chartType !== 'point_figure') {
+      const canvas = pfCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const redraw = () => requestAnimationFrame(drawPFOverlay);
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    chart.subscribeCrosshairMove(redraw);
+
+    // Redraw on resize
+    const observer = new ResizeObserver(redraw);
+    if (containerRef.current) observer.observe(containerRef.current);
+
+    const timer = setTimeout(redraw, 150);
+
+    return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(redraw);
+      chart.unsubscribeCrosshairMove(redraw);
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [chartType, drawPFOverlay, symbol, interval]);
 
   // Apply indicators
   useEffect(() => {
@@ -788,7 +918,13 @@ export default function TradingChart() {
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1" style={{ cursor: drawingTool !== 'cursor' ? 'crosshair' : 'default' }} />
+      <div ref={containerRef} className="flex-1 relative" style={{ cursor: drawingTool !== 'cursor' ? 'crosshair' : 'default' }}>
+        <canvas
+          ref={pfCanvasRef}
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+        />
+      </div>
     </div>
   );
 }
