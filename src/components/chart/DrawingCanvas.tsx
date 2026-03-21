@@ -342,7 +342,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const w = container.clientWidth;
     const h = container.clientHeight;
 
-    if (drawingTool === 'cursor' || drawingTool === 'arrow_cursor') {
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
       let cursor = 'default';
       if (selectedDrawingId) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
@@ -360,8 +360,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
       canvas.style.cursor = cursor;
-    } else if (drawingTool === 'eraser') {
-      canvas.style.cursor = 'crosshair';
     } else {
       canvas.style.cursor = 'crosshair';
     }
