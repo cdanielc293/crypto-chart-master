@@ -14,6 +14,7 @@ import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasCo
 import PriceScaleContextMenu from './PriceScaleContextMenu';
 import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
+import SymbolSearch from './SymbolSearch';
 import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
