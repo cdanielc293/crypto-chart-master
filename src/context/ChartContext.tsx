@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
+import type { ChartSettings } from '@/types/chartSettings';
+import { DEFAULT_CHART_SETTINGS } from '@/types/chartSettings';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
