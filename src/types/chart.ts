@@ -2,7 +2,7 @@ export type Interval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w' | '1M';
 
 export type DrawingTool =
   // Cursor group
-  | 'cursor' | 'dot' | 'arrow_cursor' | 'eraser'
+  | 'cursor' | 'dot' | 'arrow_cursor'
   // Lines
   | 'trendline' | 'ray' | 'infoline' | 'extendedline' | 'trendangle'
   | 'horizontalline' | 'horizontalray' | 'verticalline' | 'crossline'

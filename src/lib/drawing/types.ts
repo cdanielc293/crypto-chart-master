@@ -41,7 +41,7 @@ export const TOOL_POINT_COUNT: Record<string, number> = {
   cursor: 0,
   dot: 0,
   arrow_cursor: 0,
-  eraser: 0,
+  
   // Single-point
   horizontalline: 1,
   verticalline: 1,

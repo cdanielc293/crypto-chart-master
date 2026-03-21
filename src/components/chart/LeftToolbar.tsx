@@ -58,7 +58,7 @@ const categories: ToolCategory[] = [
         { tool: 'cursor', label: 'Cross', icon: <Crosshair size={16} />, starred: true },
         { tool: 'dot', label: 'Dot', icon: <CircleDot size={16} /> },
         { tool: 'arrow_cursor', label: 'Arrow', icon: <ArrowUpRight size={16} /> },
-        { tool: 'eraser', label: 'Eraser', icon: <Eraser size={16} /> },
+        
       ],
     }],
   },
