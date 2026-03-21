@@ -744,10 +744,9 @@ export default function TradingChart() {
   // Compute timezone offset in seconds for shifting candle timestamps
   const selectedTz = chartSettings.symbol.timezone;
   const tzOffsetHours = getTimezoneOffsetHours(selectedTz);
-  // lightweight-charts displays timestamps as UTC; to show a custom timezone we shift by offset
-  // We also need to remove the browser's local offset since JS Date applies it
-  const localOffsetHours = -(new Date().getTimezoneOffset() / 60);
-  const tzShiftSeconds = (tzOffsetHours - localOffsetHours) * 3600;
+  // Binance returns UTC timestamps; lightweight-charts displays them as-is (UTC)
+  // To show a specific timezone, simply shift by the desired offset
+  const tzShiftSeconds = tzOffsetHours * 3600;
 
   useEffect(() => {
     const series = mainSeriesRef.current;
