@@ -198,9 +198,9 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setIndicatorOpen(!indicatorOpen); setChartTypeOpen(false); setIntervalDropdownOpen(false); }}
-            className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
           >
-            <BarChart3 size={14} />
+            <BarChart3 size={16} />
             <span>Indicators</span>
             {indicators.length > 0 && (
               <span className="bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">
