@@ -17,6 +17,7 @@ import type { PriceScaleSettings, ScalesAndLinesSettings } from '@/types/chartSe
 interface Props {
   children: React.ReactNode;
   onOpenSettings: () => void;
+  onResetScale?: () => void;
 }
 
 export default function PriceScaleContextMenu({ children, onOpenSettings }: Props) {
