@@ -167,7 +167,7 @@ export default function TradingChart() {
       mainSeriesRef.current = series as any;
     }
 
-    const volSeries = chart.addHistogramSeries({
+    const volSeries = chart.addSeries(HistogramSeries, {
       color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
