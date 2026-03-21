@@ -407,23 +407,41 @@ export default function TradingChart() {
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
+
     const cs = chartSettings.canvas;
+    const backgroundColor = sanitizeHexColor(cs.backgroundColor, '#131722');
+    const gradientTop = sanitizeHexColor(cs.backgroundGradientTop, '#131722');
+    const gradientBottom = sanitizeHexColor(cs.backgroundGradientBottom, '#1e222d');
+    const textColor = sanitizeHexColor(cs.scaleTextColor, '#787b86');
+    const gridVert = sanitizeHexColor(cs.gridVertColor, '#1e222d');
+    const gridHorz = sanitizeHexColor(cs.gridHorzColor, '#1e222d');
+    const crosshairColor = sanitizeHexColor(cs.crosshairColor, '#758696');
+    const linesColor = sanitizeHexColor(cs.scaleLinesColor, '#2a2e39');
+
+    const topMargin = clamp(cs.marginTop / 100, 0, 0.8);
+    const bottomMargin = clamp(cs.marginBottom / 100, 0, 0.8);
+    const rightOffset = clamp(cs.marginRight, 0, 100);
+
     chart.applyOptions({
       layout: {
-        background: { type: ColorType.Solid, color: cs.backgroundColor },
-        textColor: cs.scaleTextColor,
+        background:
+          cs.backgroundType === 'gradient'
+            ? { type: ColorType.VerticalGradient, topColor: gradientTop, bottomColor: gradientBottom }
+            : { type: ColorType.Solid, color: backgroundColor },
+        textColor,
         fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
-        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
+        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? gridVert : 'transparent' },
+        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? gridHorz : 'transparent' },
       },
       crosshair: {
-        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
-        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
+        vertLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
+        horzLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
       },
-      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
-      timeScale: { borderColor: cs.scaleLinesColor, rightOffset: cs.marginRight },
+      rightPriceScale: { borderColor: linesColor, scaleMargins: { top: topMargin, bottom: bottomMargin } },
+      leftPriceScale: { borderColor: linesColor, scaleMargins: { top: topMargin, bottom: bottomMargin } },
+      timeScale: { borderColor: linesColor, rightOffset },
     });
   }, [chartSettings.canvas]);
 
