@@ -814,6 +814,136 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
+  // ─── Replay: click to select start bar ───
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || replayState !== 'selecting') return;
+
+    const handler = (param: any) => {
+      if (!param.time) return;
+      const allCandles = allCandlesRef.current;
+      const idx = allCandles.findIndex(c => c.time === param.time);
+      if (idx < 0) return;
+
+      setReplayStartIndex(idx);
+      setReplayBarIndex(idx);
+      setReplayState('paused');
+
+      // Slice data to start point
+      const sliced = allCandles.slice(0, idx + 1);
+      const series = mainSeriesRef.current;
+      const volSeries = volumeSeriesRef.current;
+      if (series && volSeries) {
+        const volumes = sliced.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+        setChartData(series, sliced, volumes, volSeries);
+        chart.timeScale().fitContent();
+      }
+    };
+
+    chart.subscribeClick(handler);
+    return () => { chart.unsubscribeClick(handler); };
+  }, [replayState]);
+
+  // ─── Replay: apply data slice when barIndex changes ───
+  useEffect(() => {
+    if (replayState !== 'playing' && replayState !== 'paused' && replayState !== 'ready') return;
+    const chart = chartRef.current;
+    const series = mainSeriesRef.current;
+    const volSeries = volumeSeriesRef.current;
+    if (!chart || !series || !volSeries) return;
+
+    const allCandles = allCandlesRef.current;
+    if (replayBarIndex >= allCandles.length) {
+      setReplayState('off');
+      return;
+    }
+
+    const sliced = allCandles.slice(0, replayBarIndex + 1);
+    const volumes = sliced.map(c => ({
+      time: c.time,
+      value: c.volume,
+      color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+    }));
+    setChartData(series, sliced, volumes, volSeries);
+
+    const last = sliced[sliced.length - 1];
+    if (last) {
+      const prev = sliced.length > 1 ? sliced[sliced.length - 2] : undefined;
+      setOhlc({
+        o: last.open, h: last.high, l: last.low, c: last.close,
+        v: last.volume,
+        change: prev ? ((last.close - prev.close) / prev.close) * 100 : 0,
+      });
+    }
+  }, [replayBarIndex, replayState]);
+
+  // ─── Replay: playback timer ───
+  useEffect(() => {
+    if (replayState !== 'playing') {
+      if (replayTimerRef.current) {
+        clearInterval(replayTimerRef.current);
+        replayTimerRef.current = null;
+      }
+      return;
+    }
+
+    const delay = Math.max(50, 500 / replaySpeed);
+    replayTimerRef.current = window.setInterval(() => {
+      setReplayBarIndex(prev => {
+        const next = prev + 1;
+        if (next >= allCandlesRef.current.length) {
+          setReplayState('paused');
+          return prev;
+        }
+        return next;
+      });
+    }, delay);
+
+    return () => {
+      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+    };
+  }, [replayState, replaySpeed]);
+
+  // ─── Replay: keyboard shortcuts ───
+  useEffect(() => {
+    if (replayState === 'off' || replayState === 'selecting') return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === 'ArrowDown') {
+        e.preventDefault();
+        setReplayState(replayState === 'playing' ? 'paused' : 'playing');
+      } else if (e.shiftKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (replayState === 'playing') setReplayState('paused');
+        setReplayBarIndex(replayBarIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [replayState, replayBarIndex]);
+
+  // ─── Replay: restore full data when turning off ───
+  useEffect(() => {
+    if (replayState === 'off' && allCandlesRef.current.length > 0) {
+      const chart = chartRef.current;
+      const series = mainSeriesRef.current;
+      const volSeries = volumeSeriesRef.current;
+      if (chart && series && volSeries) {
+        const candles = allCandlesRef.current;
+        const volumes = candles.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+        setChartData(series, candles, volumes, volSeries);
+        chart.timeScale().fitContent();
+      }
+    }
+  }, [replayState]);
+
   // Prepare candle data for drawing engine
   const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
     time: c.time as number,
