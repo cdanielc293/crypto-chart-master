@@ -332,7 +332,7 @@ export default function TradingChart() {
   const {
     symbol, interval, chartType, drawingTool, indicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
-    replayStartIndex, setReplayStartIndex, replaySpeed,
+    replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings,
   } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
