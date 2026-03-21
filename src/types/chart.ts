@@ -57,6 +57,11 @@ export interface Drawing {
   type: DrawingTool;
   points: { time: number; price: number }[];
   color: string;
+  lineWidth: number;
+  selected: boolean;
+  visible: boolean;
+  locked: boolean;
+  props?: Record<string, any>;
 }
 
 export interface BinanceKline {

@@ -16,7 +16,10 @@ interface ChartContextType {
   removeFromWatchlist: (symbol: string) => void;
   drawings: Drawing[];
   addDrawing: (d: Drawing) => void;
+  updateDrawing: (id: string, d: Drawing) => void;
   removeDrawing: (id: string) => void;
+  selectedDrawingId: string | null;
+  setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
   toggleIndicator: (name: string) => void;
 }
@@ -39,6 +42,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     { symbol: 'ETHUSDT', lastPrice: 0, priceChange: 0, priceChangePercent: 0 },
   ]);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
 
   const addToWatchlist = useCallback((sym: string) => {
@@ -56,8 +60,13 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDrawings(prev => [...prev, d]);
   }, []);
 
+  const updateDrawing = useCallback((id: string, d: Drawing) => {
+    setDrawings(prev => prev.map(dd => dd.id === id ? d : dd));
+  }, []);
+
   const removeDrawing = useCallback((id: string) => {
     setDrawings(prev => prev.filter(d => d.id !== id));
+    setSelectedDrawingId(prev => prev === id ? null : prev);
   }, []);
 
   const toggleIndicator = useCallback((name: string) => {
@@ -74,7 +83,8 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       drawingTool, setDrawingTool,
       watchlist, setWatchlist,
       addToWatchlist, removeFromWatchlist,
-      drawings, addDrawing, removeDrawing,
+      drawings, addDrawing, updateDrawing, removeDrawing,
+      selectedDrawingId, setSelectedDrawingId,
       indicators, toggleIndicator,
     }}>
       {children}

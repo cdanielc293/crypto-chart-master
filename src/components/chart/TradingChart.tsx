@@ -6,6 +6,8 @@ import {
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
+import DrawingCanvas from './DrawingCanvas';
+import type { CandleData } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
 
@@ -327,19 +329,17 @@ const EMA_COLORS: Record<string, string> = {
 };
 
 export default function TradingChart() {
-  const { symbol, interval, chartType, drawingTool, indicators, drawings, addDrawing } = useChart();
+  const { symbol, interval, chartType, drawingTool, indicators, drawings } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const mainSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   const indicatorSeriesRef = useRef<Map<string, any>>(new Map());
-  const drawingSeriesRef = useRef<Map<string, any>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
   const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
-  const drawingStartRef = useRef<{ time: number; price: number } | null>(null);
-  const previewSeriesRef = useRef<any>(null);
+  const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -803,137 +803,33 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
-  // Render existing drawings
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    drawingSeriesRef.current.forEach((s) => { try { chart.removeSeries(s); } catch {} });
-    drawingSeriesRef.current.clear();
-
-    for (const drawing of drawings) {
-      if (drawing.type === 'trendline' || drawing.type === 'ray') {
-        if (drawing.points.length >= 2) {
-          const s = chart.addSeries(LineSeries, {
-            color: drawing.color, lineWidth: 2,
-            priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-          });
-          let lineData: LineData[];
-          if (drawing.type === 'ray') {
-            const p1 = drawing.points[0], p2 = drawing.points[1];
-            const dt = p2.time - p1.time, dp = p2.price - p1.price;
-            lineData = [
-              { time: p1.time as Time, value: p1.price },
-              { time: p2.time as Time, value: p2.price },
-              { time: (p2.time + dt * 100) as Time, value: p2.price + dp * 100 },
-            ];
-          } else {
-            lineData = drawing.points.map(p => ({ time: p.time as Time, value: p.price }));
-          }
-          s.setData(lineData);
-          drawingSeriesRef.current.set(drawing.id, s);
-        }
-      } else if (drawing.type === 'horizontalline') {
-        if (drawing.points.length >= 1 && mainSeriesRef.current) {
-          const priceLine = mainSeriesRef.current.createPriceLine({
-            price: drawing.points[0].price, color: drawing.color,
-            lineWidth: 2, lineStyle: 0, axisLabelVisible: true,
-          });
-          drawingSeriesRef.current.set(drawing.id, priceLine);
-        }
-      } else if (drawing.type === 'fibonacci') {
-        if (drawing.points.length >= 2) {
-          const p1 = drawing.points[0].price, p2 = drawing.points[1].price;
-          const diff = p2 - p1;
-          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
-          const colors = ['#787b86', '#f44336', '#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#787b86'];
-          levels.forEach((level, i) => {
-            if (mainSeriesRef.current) {
-              const pl = mainSeriesRef.current.createPriceLine({
-                price: p1 + diff * level, color: colors[i],
-                lineWidth: 1, lineStyle: 2, axisLabelVisible: true,
-                title: `${(level * 100).toFixed(1)}%`,
-              });
-              drawingSeriesRef.current.set(`${drawing.id}_${i}`, pl);
-            }
-          });
-        }
-      }
-    }
-  }, [drawings]);
-
-  // Handle drawing clicks
-  useEffect(() => {
-    const chart = chartRef.current;
-    const series = mainSeriesRef.current;
-    if (!chart || !series || drawingTool === 'cursor') return;
-
-    const handleClick = (param: any) => {
-      if (!param.time || !param.point) return;
-      const price = series.coordinateToPrice(param.point.y);
-      if (price === null) return;
-      const time = param.time as number;
-
-      if (drawingTool === 'horizontalline') {
-        addDrawing({ id: `d_${Date.now()}`, type: 'horizontalline', points: [{ time, price }], color: '#2962ff' });
-      } else if (drawingTool === 'trendline' || drawingTool === 'ray' || drawingTool === 'fibonacci') {
-        if (!drawingStartRef.current) {
-          drawingStartRef.current = { time, price };
-          const ps = chart.addSeries(LineSeries, {
-            color: '#2962ff', lineWidth: 1, lineStyle: 2,
-            priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-          });
-          ps.setData([{ time: time as Time, value: price }]);
-          previewSeriesRef.current = ps;
-        } else {
-          const start = drawingStartRef.current;
-          const points = start.time <= time
-            ? [start, { time, price }]
-            : [{ time, price }, start];
-          addDrawing({
-            id: `d_${Date.now()}`, type: drawingTool, points,
-            color: drawingTool === 'fibonacci' ? '#787b86' : '#2962ff',
-          });
-          drawingStartRef.current = null;
-          if (previewSeriesRef.current) {
-            try { chart.removeSeries(previewSeriesRef.current); } catch {}
-            previewSeriesRef.current = null;
-          }
-        }
-      }
-    };
-
-    const handleMove = (param: any) => {
-      if (!drawingStartRef.current || !previewSeriesRef.current || !param.time || !param.point) return;
-      const price = series.coordinateToPrice(param.point.y);
-      if (price === null) return;
-      const start = drawingStartRef.current;
-      const time = param.time as number;
-      const points = start.time <= time
-        ? [{ time: start.time as Time, value: start.price }, { time: time as Time, value: price }]
-        : [{ time: time as Time, value: price }, { time: start.time as Time, value: start.price }];
-      previewSeriesRef.current.setData(points);
-    };
-
-    chart.subscribeClick(handleClick);
-    chart.subscribeCrosshairMove(handleMove);
-
-    return () => {
-      chart.unsubscribeClick(handleClick);
-      chart.unsubscribeCrosshairMove(handleMove);
-      if (previewSeriesRef.current) {
-        try { chart.removeSeries(previewSeriesRef.current); } catch {}
-        previewSeriesRef.current = null;
-      }
-      drawingStartRef.current = null;
-    };
-  }, [drawingTool, addDrawing]);
+  // Prepare candle data for drawing engine
+  const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
+    time: c.time as number,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }));
 
   const isPositive = ohlc.c >= ohlc.o;
 
+  const toolHints: Record<string, string> = {
+    trendline: 'Click two points for trend line',
+    horizontalline: 'Click to place horizontal line',
+    verticalline: 'Click to place vertical line',
+    ray: 'Click two points for ray',
+    fibonacci: 'Click two points for Fibonacci',
+    rectangle: 'Click two corners for rectangle',
+    circle: 'Click center then edge for circle',
+    parallelchannel: 'Click 3 points for parallel channel',
+    brush: 'Click and drag to draw',
+    eraser: 'Click on a drawing to erase it',
+  };
+  const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
+
   return (
     <div className="flex-1 flex flex-col relative bg-chart-bg">
-      {/* OHLC bar */}
       <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
         <span className="text-muted-foreground">O</span>
         <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -948,20 +844,24 @@ export default function TradingChart() {
         </span>
       </div>
 
-      {drawingTool !== 'cursor' && (
-        <div className="absolute top-2 right-3 z-10 bg-primary/20 text-primary text-xs px-2 py-1 rounded">
-          {drawingTool === 'trendline' && 'Click two points for trend line'}
-          {drawingTool === 'horizontalline' && 'Click to place horizontal line'}
-          {drawingTool === 'ray' && 'Click two points for ray'}
-          {drawingTool === 'fibonacci' && 'Click two points for Fibonacci'}
+      {hint && (
+        <div className="absolute top-2 right-3 z-30 bg-primary/20 text-primary text-xs px-2 py-1 rounded">
+          {hint}
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 relative" style={{ cursor: drawingTool !== 'cursor' ? 'crosshair' : 'default' }}>
+      <div ref={containerRef} className="flex-1 relative">
         <canvas
           ref={pfCanvasRef}
           className="absolute inset-0 z-10 pointer-events-none"
           style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+        />
+        <DrawingCanvas
+          chart={chartRef.current}
+          series={mainSeriesRef.current}
+          candles={candleDataForDrawing}
+          containerRef={containerRef as React.RefObject<HTMLDivElement>}
+          magnetMode={magnetMode}
         />
       </div>
     </div>
