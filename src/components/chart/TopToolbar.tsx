@@ -107,13 +107,13 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setIntervalDropdownOpen(!intervalDropdownOpen); setChartTypeOpen(false); setIndicatorOpen(false); }}
-            className={`flex items-center px-1.5 py-1 rounded text-xs transition-colors ${
+            className={`flex items-center px-1.5 py-1.5 rounded text-[13px] transition-colors ${
               intervalDropdownOpen
                 ? 'bg-toolbar-active text-primary-foreground'
                 : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
             }`}
           >
-            <ChevronDown size={14} />
+            <ChevronDown size={16} />
           </button>
           {intervalDropdownOpen && (
             <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[220px] max-h-[500px] overflow-y-auto">
