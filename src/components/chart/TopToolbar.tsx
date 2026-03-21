@@ -75,13 +75,13 @@ export default function TopToolbar() {
 
   return (
     <>
-      <div className="flex items-center h-10 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+      <div className="flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
         {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded hover:bg-toolbar-hover text-foreground font-semibold"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded hover:bg-toolbar-hover text-foreground font-semibold text-[14px]"
         >
-          <Search size={14} className="text-muted-foreground" />
+          <Search size={16} className="text-muted-foreground" />
           <span>{pair}</span>
           <span className="text-muted-foreground text-xs">· Binance</span>
         </button>
@@ -93,7 +93,7 @@ export default function TopToolbar() {
           <button
             key={iv}
             onClick={() => setInterval(iv)}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1.5 rounded text-[13px] font-medium transition-colors ${
               interval === iv
                 ? 'bg-toolbar-active text-primary-foreground'
                 : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
@@ -107,13 +107,13 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setIntervalDropdownOpen(!intervalDropdownOpen); setChartTypeOpen(false); setIndicatorOpen(false); }}
-            className={`flex items-center px-1.5 py-1 rounded text-xs transition-colors ${
+            className={`flex items-center px-1.5 py-1.5 rounded text-[13px] transition-colors ${
               intervalDropdownOpen
                 ? 'bg-toolbar-active text-primary-foreground'
                 : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
             }`}
           >
-            <ChevronDown size={14} />
+            <ChevronDown size={16} />
           </button>
           {intervalDropdownOpen && (
             <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[220px] max-h-[500px] overflow-y-auto">
@@ -128,7 +128,7 @@ export default function TopToolbar() {
                     return (
                       <div
                         key={iv.value}
-                        className={`flex items-center w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover transition-colors cursor-pointer ${
+                        className={`flex items-center w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover transition-colors cursor-pointer ${
                           isActive ? 'text-primary bg-toolbar-hover' : 'text-foreground'
                         }`}
                       >
@@ -162,11 +162,11 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setChartTypeOpen(!chartTypeOpen); setIndicatorOpen(false); setIntervalDropdownOpen(false); }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
           >
-            <CandlestickChart size={14} />
+            <CandlestickChart size={16} />
             <span>{currentChartLabel}</span>
-            <ChevronDown size={12} />
+            <ChevronDown size={14} />
           </button>
           {chartTypeOpen && (
             <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[200px] max-h-[420px] overflow-y-auto">
@@ -178,7 +178,7 @@ export default function TopToolbar() {
                     {showSep && <div className="h-px bg-chart-border my-1" />}
                     <button
                       onClick={() => { setChartType(ct.value); setChartTypeOpen(false); }}
-                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-toolbar-hover transition-colors ${
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover transition-colors ${
                         chartType === ct.value ? 'text-primary bg-toolbar-hover' : 'text-foreground'
                       }`}
                     >
@@ -198,9 +198,9 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setIndicatorOpen(!indicatorOpen); setChartTypeOpen(false); setIntervalDropdownOpen(false); }}
-            className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
           >
-            <BarChart3 size={14} />
+            <BarChart3 size={16} />
             <span>Indicators</span>
             {indicators.length > 0 && (
               <span className="bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">
@@ -214,7 +214,7 @@ export default function TopToolbar() {
                 <button
                   key={ind}
                   onClick={() => toggleIndicator(ind)}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-toolbar-hover ${
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-[13px] hover:bg-toolbar-hover ${
                     indicators.includes(ind) ? 'text-primary' : 'text-foreground'
                   }`}
                 >
@@ -233,13 +233,13 @@ export default function TopToolbar() {
         {/* Bar Replay */}
         <button
           onClick={() => setReplayState(replayState === 'off' ? 'selecting' : 'off')}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[13px] transition-colors ${
             replayState !== 'off'
               ? 'bg-primary/20 text-primary'
               : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
           }`}
         >
-          <Rewind size={14} />
+          <Rewind size={16} />
           <span>Replay</span>
         </button>
 
@@ -248,9 +248,9 @@ export default function TopToolbar() {
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
         >
-          <Settings size={14} />
+          <Settings size={16} />
         </button>
       </div>
 

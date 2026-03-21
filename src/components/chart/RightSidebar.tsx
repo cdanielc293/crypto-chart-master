@@ -27,13 +27,13 @@ export default function RightSidebar() {
       {activePanel === 'alerts' && <AlertsPanel />}
       {activePanel === 'objects' && <ObjectTreePanel />}
       {activePanel === 'chat' && (
-        <div className="flex flex-col w-[280px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
+        <div className="flex flex-col w-[300px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
           <p className="text-muted-foreground text-xs">Chat coming soon</p>
         </div>
       )}
 
       {/* Icon strip */}
-      <div className="flex flex-col items-center w-10 shrink-0 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
+      <div className="flex flex-col items-center w-11 shrink-0 bg-toolbar-bg border-l border-chart-border py-2 gap-1">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activePanel === tab.id;
@@ -48,7 +48,7 @@ export default function RightSidebar() {
                   : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover'
               }`}
             >
-              <Icon size={18} />
+              <Icon size={20} />
             </button>
           );
         })}

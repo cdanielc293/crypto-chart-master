@@ -477,7 +477,7 @@ export default function Watchlist() {
 
   return (
     <>
-      <div className="flex flex-col w-[280px] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+      <div className="flex flex-col w-[300px] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-chart-border relative">
           {renamingList ? (
@@ -499,7 +499,7 @@ export default function Watchlist() {
             <button
               ref={menuBtnRef as React.RefObject<HTMLButtonElement>}
               onClick={() => setMenuOpen(v => !v)}
-              className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary"
+              className="flex items-center gap-1 text-[13px] font-semibold text-foreground hover:text-primary"
             >
               {activeList?.name || 'Watchlist'}
               <ChevronDown size={12} />
@@ -551,7 +551,7 @@ export default function Watchlist() {
 
         {/* Column headers */}
         {viewMode === 'table' && (
-          <div className="flex items-center px-3 py-1 text-[10px] text-muted-foreground border-b border-chart-border">
+          <div className="flex items-center px-3 py-1.5 text-[11px] text-muted-foreground border-b border-chart-border">
             <span className="flex-1">Symbol</span>
             <span className="w-[72px] text-right">Last</span>
             <span className="w-14 text-right">Chg</span>
@@ -614,12 +614,12 @@ export default function Watchlist() {
                     key={sym}
                     onClick={() => setSymbol(sym)}
                     onDoubleClick={() => setSelectedSymbol(prev => prev === sym ? null : sym)}
-                    className={`flex items-center px-3 py-1.5 cursor-pointer text-xs transition-colors group ${
+                    className={`flex items-center px-3 py-2 cursor-pointer text-[13px] transition-colors group ${
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
                     }`}
                   >
                     {/* Logo placeholder */}
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary mr-2 shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary mr-2 shrink-0">
                       {sym[0]}
                     </div>
                     <span className="flex-1 font-medium text-foreground truncate">
@@ -627,24 +627,24 @@ export default function Watchlist() {
                     </span>
                     {viewMode === 'table' ? (
                       <>
-                        <span className="w-[72px] text-right font-mono text-foreground text-[11px]">
+                        <span className="w-[76px] text-right font-mono text-foreground text-[12px]">
                           {price && price.lastPrice > 0
                             ? price.lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             : '—'}
                         </span>
-                        <span className={`w-14 text-right font-mono text-[11px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                        <span className={`w-16 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                           {price && price.lastPrice > 0
                             ? `${isPositive ? '' : ''}${price.priceChange.toFixed(1)}`
                             : '—'}
                         </span>
-                        <span className={`w-14 text-right font-mono text-[11px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                        <span className={`w-16 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                           {price && price.lastPrice > 0
                             ? `${isPositive ? '' : ''}${price.priceChangePercent.toFixed(2)}%`
                             : '—'}
                         </span>
                       </>
                     ) : (
-                      <span className={`font-mono text-[11px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                      <span className={`font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                         {price && price.lastPrice > 0
                           ? `${price.lastPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                           : '—'}
