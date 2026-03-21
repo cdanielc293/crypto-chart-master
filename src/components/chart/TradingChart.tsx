@@ -225,84 +225,89 @@ function toKagi(candles: RawCandle[], reversalPercent = 0.04): RawCandle[] {
   return lines;
 }
 
-function toPointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3): RawCandle[] {
-  if (candles.length === 0) return [];
+function calculateATR(candles: RawCandle[], period = 14): number {
+  if (candles.length < 2) return 1;
+  const trs: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const tr = Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
 
+function toPointAndFigure(candles: RawCandle[], boxSize?: number, reversalBoxes = 3): RawCandle[] {
+  if (candles.length < 2) return [];
+
+  // Use ATR-based box size for dynamic scaling
   if (!boxSize) {
-    const prices = candles.map(c => c.close);
-    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-    // Traditional P&F box size based on price level
-    if (avgPrice < 5) boxSize = 0.25;
-    else if (avgPrice < 20) boxSize = 0.5;
-    else if (avgPrice < 100) boxSize = 1;
-    else if (avgPrice < 500) boxSize = 5;
-    else if (avgPrice < 1000) boxSize = 10;
-    else if (avgPrice < 5000) boxSize = 50;
-    else if (avgPrice < 25000) boxSize = 100;
-    else boxSize = 500;
+    const atr = calculateATR(candles, 14);
+    boxSize = Math.max(Math.round(atr), 1);
   }
 
-  const reversal = reversalBoxes * boxSize;
-  const columns: { direction: number; high: number; low: number }[] = [];
-  let currentDir = 0; // 0=init, 1=up, -1=down
-  let colHigh = 0;
-  let colLow = Infinity;
+  const reversalAmount = reversalBoxes * boxSize;
 
-  for (const c of candles) {
-    const high = c.high;
-    const low = c.low;
+  // Each column: direction (1=X up, -1=O down), top box price, bottom box price
+  interface PFColumn { dir: number; top: number; bot: number; }
+  const columns: PFColumn[] = [];
 
-    if (currentDir === 0) {
-      // Initialize
-      colHigh = Math.ceil(high / boxSize) * boxSize;
-      colLow = Math.floor(low / boxSize) * boxSize;
-      if (colHigh - colLow >= boxSize) {
-        currentDir = c.close >= c.open ? 1 : -1;
-        columns.push({ direction: currentDir, high: colHigh, low: colLow });
+  // Snap price to box grid
+  const snapUp = (p: number) => Math.ceil(p / boxSize!) * boxSize!;
+  const snapDown = (p: number) => Math.floor(p / boxSize!) * boxSize!;
+
+  // Initialize first column from first candle
+  let colTop = snapUp(candles[0].high);
+  let colBot = snapDown(candles[0].low);
+  // Determine initial direction
+  let dir = candles[0].close >= candles[0].open ? 1 : -1;
+  columns.push({ dir, top: colTop, bot: colBot });
+
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i];
+    const high = snapUp(c.high);
+    const low = snapDown(c.low);
+    const lastCol = columns[columns.length - 1];
+
+    if (lastCol.dir === 1) {
+      // X column (rising) - check if price extends up
+      if (high > lastCol.top) {
+        lastCol.top = high; // extend column up
       }
-      continue;
-    }
-
-    if (currentDir === 1) {
-      // X column (rising)
-      const newHigh = Math.ceil(high / boxSize) * boxSize;
-      if (newHigh > colHigh) {
-        colHigh = newHigh;
-        columns[columns.length - 1].high = colHigh;
-      }
-      const dropFromHigh = colHigh - Math.floor(low / boxSize) * boxSize;
-      if (dropFromHigh >= reversal) {
-        currentDir = -1;
-        colLow = Math.floor(low / boxSize) * boxSize;
-        colHigh = colHigh - boxSize; // O column starts one box below X top
-        columns.push({ direction: -1, high: columns[columns.length - 1].high - boxSize, low: colLow });
-        colHigh = colLow; // reset for tracking
+      // Check for reversal down
+      if (lastCol.top - low >= reversalAmount) {
+        // Start new O column, one box below the top of X
+        columns.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
       }
     } else {
-      // O column (falling)
-      const newLow = Math.floor(low / boxSize) * boxSize;
-      if (newLow < colLow) {
-        colLow = newLow;
-        columns[columns.length - 1].low = colLow;
+      // O column (falling) - check if price extends down
+      if (low < lastCol.bot) {
+        lastCol.bot = low; // extend column down
       }
-      const riseFromLow = Math.ceil(high / boxSize) * boxSize - colLow;
-      if (riseFromLow >= reversal) {
-        currentDir = 1;
-        colHigh = Math.ceil(high / boxSize) * boxSize;
-        columns.push({ direction: 1, high: colHigh, low: columns[columns.length - 1].low + boxSize });
-        colLow = colHigh; // reset for tracking
+      // Check for reversal up
+      if (high - lastCol.bot >= reversalAmount) {
+        // Start new X column, one box above the bottom of O
+        columns.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
       }
     }
   }
 
-  // Convert columns to candle-like representation
+  // Convert columns to candle representation
+  // X columns: open=bot, close=top (bullish candle)
+  // O columns: open=top, close=bot (bearish candle)
   const baseTime = candles[0].time as number;
   return columns.map((col, i) => ({
-    time: (baseTime + i * 86400) as Time, // space out by "days" for P&F
-    open: col.direction === 1 ? col.low : col.high,
-    close: col.direction === 1 ? col.high : col.low,
-    high: col.high,
-    low: col.low,
+    time: (baseTime + i * 86400) as Time,
+    open: col.dir === 1 ? col.bot : col.top,
+    close: col.dir === 1 ? col.top : col.bot,
+    high: col.top,
+    low: col.bot,
     volume: 0,
   }));
 }
@@ -383,13 +388,15 @@ export default function TradingChart() {
 
     if (isCandleType) {
       const isHollow = chartType === 'hollow';
+      const isPnF = chartType === 'point_figure';
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : '#26a69a',
-        downColor: isHollow ? 'transparent' : '#ef5350',
+        upColor: isPnF ? 'rgba(38,166,154,0.15)' : (isHollow ? 'transparent' : '#26a69a'),
+        downColor: isPnF ? 'rgba(239,83,80,0.15)' : (isHollow ? 'transparent' : '#ef5350'),
         borderUpColor: '#26a69a',
         borderDownColor: '#ef5350',
-        wickUpColor: '#26a69a',
-        wickDownColor: '#ef5350',
+        wickUpColor: isPnF ? '#26a69a' : '#26a69a',
+        wickDownColor: isPnF ? '#ef5350' : '#ef5350',
+        wickVisible: !isPnF,
       });
       mainSeriesRef.current = series;
     } else if (isBarType) {
