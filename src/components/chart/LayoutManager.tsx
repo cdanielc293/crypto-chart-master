@@ -198,7 +198,7 @@ export default function LayoutManager() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setRenaming(null); }} />
-          <div className="absolute top-full left-0 mt-1 z-50 w-[280px] bg-card border border-chart-border rounded-md shadow-xl py-1">
+          <div className="absolute top-full right-0 mt-1 z-50 w-[280px] bg-card border border-chart-border rounded-md shadow-xl py-1">
             {/* Save */}
             <button
               onClick={handleSave}

@@ -86,17 +86,6 @@ export default function TopToolbar() {
   return (
     <>
       <div className="flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
-        {/* Layout Manager */}
-        <LayoutManager />
-        <div className="w-px h-5 bg-chart-border mx-1" />
-        {/* Multi-chart layout */}
-        <MultiChartLayoutSelector
-          grid={multiGrid}
-          onGridChange={setMultiGrid}
-          syncOptions={syncOptions}
-          onSyncChange={setSyncOptions}
-        />
-        <div className="w-px h-5 bg-chart-border mx-1" />
         {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
@@ -298,6 +287,19 @@ export default function TopToolbar() {
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Layout Manager */}
+        <LayoutManager />
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Multi-chart layout */}
+        <MultiChartLayoutSelector
+          grid={multiGrid}
+          onGridChange={setMultiGrid}
+          syncOptions={syncOptions}
+          onSyncChange={setSyncOptions}
+        />
+        <div className="w-px h-5 bg-chart-border mx-1" />
 
         {/* Screenshot */}
         <button
