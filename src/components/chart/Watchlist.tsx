@@ -329,8 +329,13 @@ export default function Watchlist() {
     symbol, setSymbol, removeFromWatchlist, addToWatchlist,
     watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId,
     watchlistPrices, setWatchlistPrices,
-    gridLayout, activePanelIndex, setPanelSymbol,
+    gridLayout, activePanelIndex, setPanelSymbol, panelSymbols,
   } = useChart();
+
+  // In multi-chart mode, highlight the active panel's symbol
+  const activeSymbol = gridLayout.count > 1
+    ? (panelSymbols[activePanelIndex ?? 0] || 'BTCUSDT')
+    : symbol;
 
   const handleSymbolClick = useCallback((sym: string) => {
     if (gridLayout.count > 1) {
