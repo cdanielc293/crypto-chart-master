@@ -82,6 +82,13 @@ interface ChartContextType {
   setReplayStartIndex: (i: number) => void;
   chartSettings: ChartSettings;
   setChartSettings: React.Dispatch<React.SetStateAction<ChartSettings>>;
+  gridLayout: GridLayout;
+  setGridLayout: (layout: GridLayout) => void;
+  syncOptions: LayoutSyncOptions;
+  setSyncOptions: React.Dispatch<React.SetStateAction<LayoutSyncOptions>>;
+  // Per-panel symbols for multi-chart
+  panelSymbols: string[];
+  setPanelSymbol: (index: number, symbol: string) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
