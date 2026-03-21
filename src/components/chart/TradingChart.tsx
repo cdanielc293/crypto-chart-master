@@ -538,7 +538,17 @@ export default function TradingChart() {
           });
         }
 
-        chartRef.current?.timeScale().fitContent();
+        if (chartType === 'point_figure') {
+          const pointCount = pfDataRef.current?.lineData.length ?? 0;
+          if (pointCount > 0) {
+            chartRef.current?.timeScale().setVisibleLogicalRange({
+              from: Math.max(0, pointCount - 140),
+              to: pointCount + 8,
+            });
+          }
+        } else {
+          chartRef.current?.timeScale().fitContent();
+        }
       } catch (err) {
         console.error('Failed to fetch klines:', err);
       }
