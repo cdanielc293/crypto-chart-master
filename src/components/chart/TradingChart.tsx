@@ -527,6 +527,7 @@ export default function TradingChart() {
 
         rawDataRef.current = rawForIndicators;
         rawCandlesRef.current = candles;
+        allCandlesRef.current = candles;
 
         setChartData(series, candles, volumes, volSeries);
 
