@@ -1615,7 +1615,7 @@ export default function TradingChart() {
         <TimezoneSelector />
       </div>
 
-      <ChartSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ChartSettingsDialog open={settingsOpen} onClose={() => { setSettingsOpen(false); setSettingsDefaultTab(undefined); }} defaultTab={settingsDefaultTab as any} />
     </div>
   );
 }
