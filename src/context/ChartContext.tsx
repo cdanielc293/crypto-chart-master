@@ -38,6 +38,8 @@ interface ChartContextType {
   setReplaySpeed: (s: number) => void;
   replayStartIndex: number;
   setReplayStartIndex: (i: number) => void;
+  chartSettings: ChartSettings;
+  setChartSettings: (s: ChartSettings) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
