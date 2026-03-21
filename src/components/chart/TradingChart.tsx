@@ -4,10 +4,14 @@ import {
   CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, BarSeries, BaselineSeries,
 } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
+import { Settings } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import DrawingCanvas from './DrawingCanvas';
+import PriceScaleContextMenu from './PriceScaleContextMenu';
+import TimezoneSelector from './TimezoneSelector';
+import ChartSettingsDialog from './ChartSettingsDialog';
 import type { CandleData } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
