@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
-import { DEFAULT_CHART_SETTINGS } from '@/types/chartSettings';
+import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSettings';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -39,7 +39,7 @@ interface ChartContextType {
   replayStartIndex: number;
   setReplayStartIndex: (i: number) => void;
   chartSettings: ChartSettings;
-  setChartSettings: (s: ChartSettings) => void;
+  setChartSettings: React.Dispatch<React.SetStateAction<ChartSettings>>;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
@@ -74,7 +74,12 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [replayStartIndex, setReplayStartIndex] = useState(0);
   const [chartSettings, setChartSettings] = useState<ChartSettings>(() => {
     const saved = localStorage.getItem('chartSettings');
-    return saved ? { ...DEFAULT_CHART_SETTINGS, ...JSON.parse(saved) } : DEFAULT_CHART_SETTINGS;
+    if (!saved) return DEFAULT_CHART_SETTINGS;
+    try {
+      return normalizeChartSettings(JSON.parse(saved));
+    } catch {
+      return DEFAULT_CHART_SETTINGS;
+    }
   });
 
   const addToWatchlist = useCallback((sym: string) => {

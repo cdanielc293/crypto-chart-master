@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  createChart, ColorType, CrosshairMode,
+  createChart, ColorType, CrosshairMode, LineStyle, PriceScaleMode,
   CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, BarSeries, BaselineSeries,
 } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
+import { sanitizeHexColor } from '@/types/chartSettings';
 import DrawingCanvas from './DrawingCanvas';
 import type { CandleData } from '@/lib/drawing/types';
 
@@ -328,6 +329,21 @@ const EMA_COLORS: Record<string, string> = {
   'SMA 50': '#4caf50',
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+function mapCrosshairStyle(style: 'dashed' | 'dotted' | 'solid') {
+  if (style === 'dashed') return LineStyle.Dashed;
+  if (style === 'dotted') return LineStyle.Dotted;
+  return LineStyle.Solid;
+}
+
+function mapPriceScaleMode(mode: 'regular' | 'percent' | 'indexed_to_100' | 'logarithmic') {
+  if (mode === 'percent') return PriceScaleMode.Percentage;
+  if (mode === 'indexed_to_100') return PriceScaleMode.IndexedTo100;
+  if (mode === 'logarithmic') return PriceScaleMode.Logarithmic;
+  return PriceScaleMode.Normal;
+}
+
 export default function TradingChart() {
   const {
     symbol, interval, chartType, drawingTool, indicators, drawings,
@@ -391,23 +407,41 @@ export default function TradingChart() {
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
+
     const cs = chartSettings.canvas;
+    const backgroundColor = sanitizeHexColor(cs.backgroundColor, '#131722');
+    const gradientTop = sanitizeHexColor(cs.backgroundGradientTop, '#131722');
+    const gradientBottom = sanitizeHexColor(cs.backgroundGradientBottom, '#1e222d');
+    const textColor = sanitizeHexColor(cs.scaleTextColor, '#787b86');
+    const gridVert = sanitizeHexColor(cs.gridVertColor, '#1e222d');
+    const gridHorz = sanitizeHexColor(cs.gridHorzColor, '#1e222d');
+    const crosshairColor = sanitizeHexColor(cs.crosshairColor, '#758696');
+    const linesColor = sanitizeHexColor(cs.scaleLinesColor, '#2a2e39');
+
+    const topMargin = clamp(cs.marginTop / 100, 0, 0.8);
+    const bottomMargin = clamp(cs.marginBottom / 100, 0, 0.8);
+    const rightOffset = clamp(cs.marginRight, 0, 100);
+
     chart.applyOptions({
       layout: {
-        background: { type: ColorType.Solid, color: cs.backgroundColor },
-        textColor: cs.scaleTextColor,
+        background:
+          cs.backgroundType === 'gradient'
+            ? { type: ColorType.VerticalGradient, topColor: gradientTop, bottomColor: gradientBottom }
+            : { type: ColorType.Solid, color: backgroundColor },
+        textColor,
         fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
-        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
+        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? gridVert : 'transparent' },
+        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? gridHorz : 'transparent' },
       },
       crosshair: {
-        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
-        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0 },
+        vertLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
+        horzLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
       },
-      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
-      timeScale: { borderColor: cs.scaleLinesColor, rightOffset: cs.marginRight },
+      rightPriceScale: { borderColor: linesColor, scaleMargins: { top: topMargin, bottom: bottomMargin } },
+      leftPriceScale: { borderColor: linesColor, scaleMargins: { top: topMargin, bottom: bottomMargin } },
+      timeScale: { borderColor: linesColor, rightOffset },
     });
   }, [chartSettings.canvas]);
 
@@ -426,6 +460,8 @@ export default function TradingChart() {
     const series = mainSeriesRef.current;
     if (!series || !isCandleType) return;
     const cc = chartSettings.candle;
+    const precision = clamp(chartSettings.symbol.precision, 0, 8);
+    const minMove = precision === 0 ? 1 : Number((1 / 10 ** precision).toFixed(8));
     const isHollow = chartType === 'hollow';
     try {
       series.applyOptions({
@@ -435,9 +471,56 @@ export default function TradingChart() {
         borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
         wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
         wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
+        priceFormat: {
+          type: 'price',
+          precision,
+          minMove,
+        },
       });
     } catch {}
-  }, [chartSettings.candle, chartType, isCandleType]);
+  }, [chartSettings.candle, chartSettings.symbol.precision, chartType, isCandleType]);
+
+  // Apply scale and label settings
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const scales = chartSettings.scalesAndLines;
+    const priceScale = chartSettings.priceScale;
+    const showLeft = scales.scalesPlacement === 'left';
+    const showRight = scales.scalesPlacement !== 'left';
+    const mode = mapPriceScaleMode(priceScale.mode);
+
+    chart.applyOptions({
+      rightPriceScale: {
+        visible: showRight,
+        mode,
+        autoScale: priceScale.autoScale,
+        invertScale: priceScale.invertScale,
+        alignLabels: scales.noOverlappingLabels,
+      },
+      leftPriceScale: {
+        visible: showLeft,
+        mode,
+        autoScale: priceScale.autoScale,
+        invertScale: priceScale.invertScale,
+        alignLabels: scales.noOverlappingLabels,
+      },
+      timeScale: {
+        secondsVisible: interval.includes('s'),
+      },
+    });
+
+    const mainSeries = mainSeriesRef.current;
+    if (mainSeries) {
+      try {
+        mainSeries.applyOptions({
+          priceLineVisible: scales.symbolDisplay !== 'hidden',
+          lastValueVisible: scales.symbolDisplay !== 'hidden',
+        });
+      } catch {}
+    }
+  }, [chartSettings.scalesAndLines, chartSettings.priceScale, interval]);
 
   // Create series based on chart type
   useEffect(() => {
@@ -1086,6 +1169,17 @@ export default function TradingChart() {
   }));
 
   const isPositive = ohlc.c >= ohlc.o;
+  const statusLine = chartSettings.statusLine;
+  const showStatusValues = statusLine.showChartValues;
+  const symbolTitle = statusLine.titleMode === 'ticker' ? symbol : symbol.replace('USDT', ' / TetherUS');
+  const statusLineBackground = statusLine.showBackground
+    ? `hsl(var(--card) / ${clamp(statusLine.backgroundOpacity, 0, 100) / 100})`
+    : 'transparent';
+  const watermarkText = chartSettings.canvas.watermarkMode === 'none'
+    ? ''
+    : chartSettings.canvas.watermarkMode === 'replay'
+      ? (replayState !== 'off' ? 'REPLAY' : '')
+      : `${symbol} · ${interval}`;
 
   const toolHints: Record<string, string> = {
     trendline: 'Click two points for trend line',
@@ -1102,19 +1196,40 @@ export default function TradingChart() {
 
   return (
     <div className={`flex-1 flex flex-col relative bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
-      <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
-        <span className="text-muted-foreground">O</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">H</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.h.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">L</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.l.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className="text-muted-foreground">C</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.c.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>
-          {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
-        </span>
+      <div
+        className="absolute top-2 left-3 z-10 flex items-center gap-3 rounded px-2 py-1 text-xs font-mono"
+        style={{ background: statusLineBackground }}
+      >
+        {statusLine.showLogo && <span className="text-muted-foreground">◉</span>}
+        {statusLine.showTitle && <span className="text-foreground font-semibold">{symbolTitle}</span>}
+        {statusLine.showOpenMarketStatus && <span className="text-chart-bull">● Open</span>}
+
+        {showStatusValues && (
+          <>
+            <span className="text-muted-foreground">O</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">H</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.h.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">L</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.l.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+            <span className="text-muted-foreground">C</span>
+            <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.c.toLocaleString(undefined, { minimumFractionDigits: chartSettings.symbol.precision })}</span>
+          </>
+        )}
+
+        {statusLine.showBarChangeValues && (
+          <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>
+            {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
+          </span>
+        )}
+        {statusLine.showVolume && <span className="text-muted-foreground">Vol {ohlc.v.toLocaleString()}</span>}
       </div>
+
+      {watermarkText && (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+          <span className="text-6xl font-semibold tracking-widest text-muted-foreground/20">{watermarkText}</span>
+        </div>
+      )}
 
       {replayState !== 'off' && replayState !== 'selecting' && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary text-xs px-3 py-1 rounded-full">
