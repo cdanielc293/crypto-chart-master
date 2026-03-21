@@ -803,13 +803,70 @@ export default function TradingChart() {
     }
   }, [indicators, rawDataRef.current.length]);
 
-  // Render existing drawings
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
+  // Prepare candle data for drawing engine
+  const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
+    time: c.time as number,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }));
 
-    drawingSeriesRef.current.forEach((s) => { try { chart.removeSeries(s); } catch {} });
-    drawingSeriesRef.current.clear();
+  const isPositive = ohlc.c >= ohlc.o;
+
+  const toolHints: Record<string, string> = {
+    trendline: 'Click two points for trend line',
+    horizontalline: 'Click to place horizontal line',
+    verticalline: 'Click to place vertical line',
+    ray: 'Click two points for ray',
+    fibonacci: 'Click two points for Fibonacci',
+    rectangle: 'Click two corners for rectangle',
+    circle: 'Click center then edge for circle',
+    parallelchannel: 'Click 3 points for parallel channel',
+    brush: 'Click and drag to draw',
+    eraser: 'Click on a drawing to erase it',
+  };
+  const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
+
+  return (
+    <div className="flex-1 flex flex-col relative bg-chart-bg">
+      <div className="absolute top-2 left-3 z-10 flex items-center gap-3 text-xs font-mono">
+        <span className="text-muted-foreground">O</span>
+        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.o.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <span className="text-muted-foreground">H</span>
+        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.h.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <span className="text-muted-foreground">L</span>
+        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.l.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <span className="text-muted-foreground">C</span>
+        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>{ohlc.c.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <span className={isPositive ? 'text-chart-bull' : 'text-chart-bear'}>
+          {isPositive ? '+' : ''}{ohlc.change.toFixed(2)}%
+        </span>
+      </div>
+
+      {hint && (
+        <div className="absolute top-2 right-3 z-30 bg-primary/20 text-primary text-xs px-2 py-1 rounded">
+          {hint}
+        </div>
+      )}
+
+      <div ref={containerRef} className="flex-1 relative">
+        <canvas
+          ref={pfCanvasRef}
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
+        />
+        <DrawingCanvas
+          chart={chartRef.current}
+          series={mainSeriesRef.current}
+          candles={candleDataForDrawing}
+          containerRef={containerRef as React.RefObject<HTMLDivElement>}
+          magnetMode={magnetMode}
+        />
+      </div>
+    </div>
+  );
+}
 
     for (const drawing of drawings) {
       if (drawing.type === 'trendline' || drawing.type === 'ray') {
