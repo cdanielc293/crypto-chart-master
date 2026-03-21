@@ -432,8 +432,16 @@ export default function TradingChart() {
         fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? gridVert : 'transparent' },
-        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? gridHorz : 'transparent' },
+        vertLines: {
+          color: (cs.gridType === 'both' || cs.gridType === 'vert')
+            ? hexToRgba(gridVert, cs.gridVertOpacity / 100)
+            : 'transparent',
+        },
+        horzLines: {
+          color: (cs.gridType === 'both' || cs.gridType === 'horz')
+            ? hexToRgba(gridHorz, cs.gridHorzOpacity / 100)
+            : 'transparent',
+        },
       },
       crosshair: {
         vertLine: { color: crosshairColor, width: 1, style: mapCrosshairStyle(cs.crosshairStyle) },
