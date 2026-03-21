@@ -3,7 +3,7 @@ import TopToolbar from '@/components/chart/TopToolbar';
 import ReplayControls from '@/components/chart/ReplayControls';
 import LeftToolbar from '@/components/chart/LeftToolbar';
 import TradingChart from '@/components/chart/TradingChart';
-import Watchlist from '@/components/chart/Watchlist';
+import RightSidebar from '@/components/chart/RightSidebar';
 
 export default function Index() {
   return (
@@ -14,7 +14,7 @@ export default function Index() {
         <div className="flex flex-1 overflow-hidden">
           <LeftToolbar />
           <TradingChart />
-          <Watchlist />
+          <RightSidebar />
         </div>
       </div>
     </ChartProvider>
