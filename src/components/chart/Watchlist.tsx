@@ -499,7 +499,7 @@ export default function Watchlist() {
             <button
               ref={menuBtnRef as React.RefObject<HTMLButtonElement>}
               onClick={() => setMenuOpen(v => !v)}
-              className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary"
+              className="flex items-center gap-1 text-[13px] font-semibold text-foreground hover:text-primary"
             >
               {activeList?.name || 'Watchlist'}
               <ChevronDown size={12} />
