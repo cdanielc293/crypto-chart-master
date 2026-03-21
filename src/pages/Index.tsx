@@ -8,7 +8,7 @@ import RightSidebar from '@/components/chart/RightSidebar';
 export default function Index() {
   return (
     <ChartProvider>
-      <div className="flex flex-col h-dvh w-dvw max-h-dvh max-w-dvw overflow-hidden">
+      <div className="flex flex-col h-full w-full overflow-hidden">
         <TopToolbar />
         <ReplayControls />
         <div className="flex flex-1 min-h-0 overflow-hidden">
