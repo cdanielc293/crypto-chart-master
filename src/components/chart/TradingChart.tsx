@@ -397,7 +397,8 @@ export default function TradingChart() {
     if (isPnFType) {
       const series = chart.addSeries(LineSeries, {
         color: 'transparent',
-        lineWidth: 0,
+        lineWidth: 1 as any,
+        visible: false,
         crosshairMarkerVisible: false,
         lastValueVisible: false,
         priceLineVisible: false,
