@@ -867,7 +867,6 @@ export default function TradingChart() {
     </div>
   );
 }
-      if (drawing.type === 'trendline' || drawing.type === 'ray') {
         if (drawing.points.length >= 2) {
           const s = chart.addSeries(LineSeries, {
             color: drawing.color, lineWidth: 2,
