@@ -621,7 +621,7 @@ export default function Watchlist() {
               {!section.collapsed && section.symbols.map(sym => {
                 const price = watchlistPrices.get(sym);
                 const isPositive = (price?.priceChangePercent ?? 0) >= 0;
-                const isSelected = sym === symbol;
+                const isSelected = sym === activeSymbol;
                 const isDetailSelected = sym === selectedSymbol;
 
                 return (
