@@ -40,6 +40,7 @@ type TemplateMap = Record<string, ChartSettings>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  defaultTab?: TabId;
 }
 
 function loadTemplates(): TemplateMap {
