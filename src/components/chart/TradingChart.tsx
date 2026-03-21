@@ -459,6 +459,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<string | undefined>(undefined);
+  const [panelSearchOpen, setPanelSearchOpen] = useState(false);
   const [priceScaleWidth, setPriceScaleWidth] = useState(55);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
