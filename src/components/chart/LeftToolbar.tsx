@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useChart } from '@/context/ChartContext';
 import type { DrawingTool } from '@/types/chart';
 import {
-  Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation, Eraser,
+  Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation,
   TrendingUp, MoveRight, Info, ArrowRight, Triangle as TriangleIcon,
   Minus, ArrowRightFromLine, ArrowDownUp, X,
   Columns3, TrendingDown, AlignHorizontalSpaceAround, SplitSquareHorizontal,
