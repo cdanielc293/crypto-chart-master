@@ -152,7 +152,7 @@ export default function TradingChart() {
       });
       mainSeriesRef.current = series as any;
     } else if (chartType === 'line') {
-      const series = chart.addLineSeries({
+      const series = chart.addSeries(LineSeries, {
         color: '#2962ff',
         lineWidth: 2,
       });
