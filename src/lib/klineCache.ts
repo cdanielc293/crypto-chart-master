@@ -10,6 +10,8 @@ export interface RawKline {
   volume: number;
 }
 
+// ─── Binance fetch helpers ───
+
 const BINANCE_ENDPOINTS = [
   'https://data-api.binance.vision',
   'https://api.binance.com',
@@ -17,11 +19,21 @@ const BINANCE_ENDPOINTS = [
   'https://api2.binance.com',
 ];
 
-async function fetchFromBinance(symbol: string, interval: string, limit = 1000): Promise<RawKline[]> {
+/** Fetch klines from Binance with optional startTime/endTime (ms) */
+async function fetchFromBinance(
+  symbol: string,
+  interval: string,
+  limit = 1000,
+  startTime?: number,
+  endTime?: number,
+): Promise<RawKline[]> {
   let lastError: unknown = null;
   for (const endpoint of BINANCE_ENDPOINTS) {
     try {
-      const res = await fetch(`${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+      let url = `${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+      if (startTime) url += `&startTime=${startTime}`;
+      if (endTime) url += `&endTime=${endTime}`;
+      const res = await fetch(url);
       const json = await res.json();
       if (Array.isArray(json)) {
         return json.map((k: any) => ({
@@ -41,22 +53,36 @@ async function fetchFromBinance(symbol: string, interval: string, limit = 1000):
   throw lastError || new Error('Failed to fetch klines from all Binance endpoints');
 }
 
-async function getCachedKlines(symbol: string, interval: string): Promise<RawKline[] | null> {
-  try {
-    const { data, error } = await supabase
-      .from('klines')
-      .select('time, open, high, low, close, volume')
-      .eq('symbol', symbol)
-      .eq('interval', interval)
-      .order('time', { ascending: true });
+// ─── Supabase cache helpers ───
 
-    if (error || !data || data.length === 0) return null;
-    return data as RawKline[];
+/** Get all cached klines for a symbol+interval, ordered by time */
+async function getCachedKlines(symbol: string, interval: string): Promise<RawKline[]> {
+  try {
+    // Supabase has a default 1000 row limit; paginate to get all
+    const allData: RawKline[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('klines')
+        .select('time, open, high, low, close, volume')
+        .eq('symbol', symbol)
+        .eq('interval', interval)
+        .order('time', { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error || !data || data.length === 0) break;
+      allData.push(...(data as RawKline[]));
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return allData;
   } catch {
-    return null;
+    return [];
   }
 }
 
+/** Upsert klines into cache in chunks */
 async function upsertKlines(symbol: string, interval: string, klines: RawKline[]) {
   if (klines.length === 0) return;
 
@@ -71,7 +97,6 @@ async function upsertKlines(symbol: string, interval: string, klines: RawKline[]
     volume: k.volume,
   }));
 
-  // Batch upsert in chunks of 500
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
@@ -81,59 +106,143 @@ async function upsertKlines(symbol: string, interval: string, klines: RawKline[]
   }
 }
 
+// ─── Interval duration helper (in ms) ───
+
+function intervalToMs(interval: Interval): number {
+  const units: Record<string, number> = {
+    s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000, w: 604_800_000, M: 2_592_000_000,
+  };
+  const match = interval.match(/^(\d+)([smhdwM])$/);
+  if (!match) return 86_400_000;
+  return parseInt(match[1]) * (units[match[2]] || 86_400_000);
+}
+
+// ─── Backfill tracking (per session, avoid duplicate backfills) ───
+
+const backfillInProgress = new Set<string>();
+const backfillComplete = new Set<string>();
+
 /**
- * Get klines with cache-first strategy:
- * 1. Check Supabase cache
- * 2. If cache exists, fetch only newer candles from Binance
- * 3. If no cache, fetch all from Binance and store
+ * Backfill ALL historical klines from Binance for a symbol+interval.
+ * Fetches backwards from the oldest cached candle (or from now) in batches of 1000.
+ * Runs in the background, doesn't block the UI.
+ */
+async function backfillHistory(symbol: string, interval: Interval, oldestCachedTime?: number) {
+  const key = `${symbol}:${interval}`;
+  if (backfillInProgress.has(key) || backfillComplete.has(key)) return;
+  backfillInProgress.add(key);
+
+  const candleDurationMs = intervalToMs(interval);
+  // Start fetching from just before the oldest cached candle
+  let endTime = oldestCachedTime
+    ? oldestCachedTime * 1000 - 1  // ms, just before oldest cached
+    : Date.now();
+
+  let totalFetched = 0;
+  const RATE_LIMIT_DELAY = 300; // ms between requests to avoid IP ban
+
+  try {
+    while (true) {
+      const batch = await fetchFromBinance(symbol, interval, 1000, undefined, endTime);
+
+      if (batch.length === 0) break; // no more data, reached listing date
+
+      // Save to DB
+      await upsertKlines(symbol, interval, batch);
+      totalFetched += batch.length;
+
+      // Move endTime to before the oldest candle in this batch
+      const oldestInBatch = batch[0].time * 1000;
+      endTime = oldestInBatch - 1;
+
+      // If we got less than 1000, we've reached the beginning
+      if (batch.length < 1000) break;
+
+      // Rate limit: small delay between requests
+      await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY));
+    }
+
+    console.log(`[KlineCache] Backfill complete for ${key}: ${totalFetched} candles total`);
+    backfillComplete.add(key);
+  } catch (err) {
+    console.warn(`[KlineCache] Backfill error for ${key}:`, err);
+  } finally {
+    backfillInProgress.delete(key);
+  }
+}
+
+// ─── Main API ───
+
+/**
+ * Get klines with smart caching:
+ * 1. Load cached data from Supabase (all history)
+ * 2. Fetch latest candles from Binance (incremental update)
+ * 3. Trigger background backfill for full history if needed
+ * 4. Return merged data immediately
  */
 export async function getKlines(symbol: string, interval: Interval): Promise<RawKline[]> {
-  // Try cache first
+  // Step 1: Get cached data
   const cached = await getCachedKlines(symbol, interval);
 
-  if (cached && cached.length > 0) {
-    // Fetch only candles newer than last cached
-    const lastTime = cached[cached.length - 1].time;
+  if (cached.length > 0) {
+    // Step 2: Fetch only new candles since last cached
+    const lastCachedTime = cached[cached.length - 1].time;
     try {
-      const fresh = await fetchFromBinance(symbol, interval, 100);
-      const newCandles = fresh.filter(k => k.time > lastTime);
+      const fresh = await fetchFromBinance(symbol, interval, 1000, lastCachedTime * 1000);
+      const newCandles = fresh.filter(k => k.time > lastCachedTime);
 
-      if (newCandles.length > 0) {
-        // Update the last cached candle (might be incomplete) + add new ones
-        const lastCachedUpdate = fresh.find(k => k.time === lastTime);
-        const toUpsert = lastCachedUpdate
-          ? [lastCachedUpdate, ...newCandles]
-          : newCandles;
+      // Update last candle (may be incomplete) + new ones
+      const lastUpdate = fresh.find(k => k.time === lastCachedTime);
+      const toUpsert = lastUpdate ? [lastUpdate, ...newCandles] : newCandles;
 
-        // Fire and forget - don't block UI
+      // Save incrementally (don't block)
+      if (toUpsert.length > 0) {
         upsertKlines(symbol, interval, toUpsert).catch(() => {});
-
-        // Merge: replace last candle if updated, add new ones
-        const merged = [...cached];
-        if (lastCachedUpdate) {
-          merged[merged.length - 1] = lastCachedUpdate;
-        }
-        merged.push(...newCandles);
-        return merged;
       }
 
-      return cached;
+      // Merge into result
+      const merged = [...cached];
+      if (lastUpdate) {
+        merged[merged.length - 1] = lastUpdate;
+      }
+      merged.push(...newCandles);
+
+      // Step 3: Check if we need to backfill older data
+      // If the oldest cached candle is recent, we probably don't have full history yet
+      const key = `${symbol}:${interval}`;
+      if (!backfillComplete.has(key)) {
+        backfillHistory(symbol, interval, cached[0].time);
+      }
+
+      return merged;
     } catch {
-      // Binance unreachable, return cache as-is
-      return cached;
+      return cached; // Binance unreachable, serve from cache
     }
   }
 
-  // No cache - full fetch from Binance
-  const klines = await fetchFromBinance(symbol, interval, 1000);
+  // No cache: fetch latest from Binance, start backfill
+  try {
+    const klines = await fetchFromBinance(symbol, interval, 1000);
+    // Save and start backfill in background
+    upsertKlines(symbol, interval, klines).catch(() => {});
 
-  // Cache in background
-  upsertKlines(symbol, interval, klines).catch(() => {});
+    if (klines.length > 0) {
+      backfillHistory(symbol, interval, klines[0].time);
+    }
 
-  return klines;
+    return klines;
+  } catch (err) {
+    console.error('[KlineCache] Failed to fetch from Binance:', err);
+    return [];
+  }
 }
 
-/**
- * Direct Binance fetch (bypass cache) - for fallback
- */
+/** Check backfill status for a symbol+interval */
+export function getBackfillStatus(symbol: string, interval: Interval): 'idle' | 'running' | 'complete' {
+  const key = `${symbol}:${interval}`;
+  if (backfillComplete.has(key)) return 'complete';
+  if (backfillInProgress.has(key)) return 'running';
+  return 'idle';
+}
+
 export { fetchFromBinance };
