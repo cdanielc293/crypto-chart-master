@@ -477,7 +477,7 @@ export default function Watchlist() {
 
   return (
     <>
-      <div className="flex flex-col w-[300px] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+      <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-chart-border relative">
           {renamingList ? (
