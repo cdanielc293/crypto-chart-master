@@ -162,11 +162,11 @@ export default function TopToolbar() {
         <div className="relative">
           <button
             onClick={() => { setChartTypeOpen(!chartTypeOpen); setIndicatorOpen(false); setIntervalDropdownOpen(false); }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
           >
-            <CandlestickChart size={14} />
+            <CandlestickChart size={16} />
             <span>{currentChartLabel}</span>
-            <ChevronDown size={12} />
+            <ChevronDown size={14} />
           </button>
           {chartTypeOpen && (
             <div className="absolute top-full left-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl z-50 py-1 min-w-[200px] max-h-[420px] overflow-y-auto">
