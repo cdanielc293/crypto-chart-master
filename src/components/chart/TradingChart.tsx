@@ -1110,7 +1110,10 @@ export default function TradingChart() {
     }
 
     const symbolSize = Math.min(cellWidth, cellHeight, 40) / 2;
-    const lineWidth = Math.max(1.5, Math.min(symbolSize / 4, 3));
+    const lineWidth = Math.max(1.5, Math.min(symbolSize / 3, 2.5));
+    const pf = chartSettings.symbol.pointFigure;
+    const upColor = pf.upColor;
+    const downColor = pf.downColor;
 
     for (const box of boxes) {
       const x = chart.timeScale().timeToCoordinate(box.time);
@@ -1122,7 +1125,7 @@ export default function TradingChart() {
       ctx.lineCap = 'round';
 
       if (box.type === 'X') {
-        ctx.strokeStyle = '#26a69a';
+        ctx.strokeStyle = upColor;
         ctx.beginPath();
         ctx.moveTo(x - symbolSize, y - symbolSize);
         ctx.lineTo(x + symbolSize, y + symbolSize);
@@ -1130,13 +1133,13 @@ export default function TradingChart() {
         ctx.lineTo(x - symbolSize, y + symbolSize);
         ctx.stroke();
       } else {
-        ctx.strokeStyle = '#ef5350';
+        ctx.strokeStyle = downColor;
         ctx.beginPath();
         ctx.arc(x, y, symbolSize, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
-  }, [chartType]);
+  }, [chartType, chartSettings.symbol.pointFigure]);
 
   // Subscribe to chart changes to redraw P&F overlay
   useEffect(() => {
