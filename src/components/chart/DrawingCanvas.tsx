@@ -273,6 +273,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      // Auto-switch back to cursor after placing a drawing
+      setDrawingTool('cursor');
     }
 
     e.preventDefault();
