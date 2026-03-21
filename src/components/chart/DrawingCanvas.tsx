@@ -450,7 +450,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         onDoubleClick={handleDoubleClick}
       />
       {/* Transparent hit-test layer for cursor mode without selection */}
-      {drawingTool === 'cursor' && !selectedDrawingId && (
+      {(drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') && !selectedDrawingId && (
         <canvas
           ref={(el) => {
             // Reuse same canvas ref logic for hit testing on hover
