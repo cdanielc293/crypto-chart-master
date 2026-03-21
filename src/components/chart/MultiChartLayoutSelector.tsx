@@ -1,86 +1,47 @@
-import { useState, useRef } from 'react';
-import type { MultiChartGrid, LayoutSyncOptions } from '@/types/layout';
-import { DEFAULT_SYNC_OPTIONS } from '@/types/layout';
+import { useState } from 'react';
+import type { LayoutSyncOptions, GridLayout } from '@/types/layout';
+import { DEFAULT_SYNC_OPTIONS, ALL_GRID_LAYOUTS, getLayoutsByCount } from '@/types/layout';
 import { LayoutGrid } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 interface Props {
-  grid: MultiChartGrid;
-  onGridChange: (g: MultiChartGrid) => void;
+  gridLayout: GridLayout;
+  onGridLayoutChange: (layout: GridLayout) => void;
   syncOptions: LayoutSyncOptions;
   onSyncChange: (o: LayoutSyncOptions) => void;
 }
 
-type GridOption = { value: MultiChartGrid; cols: number; rows: number; cells: number[][]; };
+function GridIcon({ layout, size = 28, active }: { layout: GridLayout; size?: number; active?: boolean }) {
+  const gap = 1.5;
+  const pad = 1;
 
-// Define grid layouts by row count
-const gridGroups: { count: number; options: GridOption[] }[] = [
-  { count: 1, options: [
-    { value: '1', cols: 1, rows: 1, cells: [[1]] },
-  ]},
-  { count: 2, options: [
-    { value: '2h', cols: 2, rows: 1, cells: [[1,1]] },
-    { value: '2v', cols: 1, rows: 2, cells: [[1],[1]] },
-  ]},
-  { count: 3, options: [
-    { value: '3h1', cols: 3, rows: 1, cells: [[1,1,1]] },
-    { value: '3h2', cols: 2, rows: 2, cells: [[2,1],[0,1]] }, // 1 big left, 2 stacked right
-    { value: '3v1', cols: 2, rows: 2, cells: [[1,1],[2,0]] }, // 2 top, 1 big bottom
-  ]},
-  { count: 4, options: [
-    { value: '4', cols: 2, rows: 2, cells: [[1,1],[1,1]] },
-    { value: '4h1', cols: 4, rows: 1, cells: [[1,1,1,1]] },
-    { value: '4v1', cols: 1, rows: 4, cells: [[1],[1],[1],[1]] },
-  ]},
-  { count: 6, options: [
-    { value: '6h', cols: 3, rows: 2, cells: [[1,1,1],[1,1,1]] },
-    { value: '6v', cols: 2, rows: 3, cells: [[1,1],[1,1],[1,1]] },
-  ]},
-  { count: 8, options: [
-    { value: '8', cols: 4, rows: 2, cells: [[1,1,1,1],[1,1,1,1]] },
-  ]},
-  { count: 9, options: [
-    { value: '9', cols: 3, rows: 3, cells: [[1,1,1],[1,1,1],[1,1,1]] },
-  ]},
-  { count: 12, options: [
-    { value: '12', cols: 4, rows: 3, cells: [[1,1,1,1],[1,1,1,1],[1,1,1,1]] },
-  ]},
-  { count: 16, options: [
-    { value: '16', cols: 4, rows: 4, cells: [[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]] },
-  ]},
-];
-
-function GridIcon({ option, size = 28, active }: { option: GridOption; size?: number; active?: boolean }) {
-  const gap = 1;
-  const cellW = (size - gap * (option.cols - 1)) / option.cols;
-  const cellH = (size - gap * (option.rows - 1)) / option.rows;
-  
   return (
     <svg width={size} height={size} className={active ? 'text-primary' : 'text-muted-foreground'}>
-      {option.cells.flatMap((row, ri) =>
-        row.map((cell, ci) => {
-          if (cell === 0) return null;
-          const spanW = cell > 1 ? cell : 1;
-          return (
-            <rect
-              key={`${ri}-${ci}`}
-              x={ci * (cellW + gap)}
-              y={ri * (cellH + gap)}
-              width={cellW * spanW + gap * (spanW - 1)}
-              height={cellH}
-              rx={1.5}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            />
-          );
-        })
-      )}
+      {layout.cells.map((cell, i) => {
+        const cellW = (size - pad * 2 - gap * (layout.cols - 1)) / layout.cols;
+        const cellH = (size - pad * 2 - gap * (layout.rows - 1)) / layout.rows;
+        return (
+          <rect
+            key={i}
+            x={pad + cell.c * (cellW + gap)}
+            y={pad + cell.r * (cellH + gap)}
+            width={cellW * cell.w + gap * (cell.w - 1)}
+            height={cellH * cell.h + gap * (cell.h - 1)}
+            rx={1}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.2}
+          />
+        );
+      })}
     </svg>
   );
 }
 
-export default function MultiChartLayoutSelector({ grid, onGridChange, syncOptions, onSyncChange }: Props) {
+const layoutsByCount = getLayoutsByCount();
+const sortedCounts = Array.from(layoutsByCount.keys()).sort((a, b) => a - b);
+
+export default function MultiChartLayoutSelector({ gridLayout, onGridLayoutChange, syncOptions, onSyncChange }: Props) {
   const [open, setOpen] = useState(false);
 
   const toggleSync = (key: keyof LayoutSyncOptions) => {
@@ -100,26 +61,26 @@ export default function MultiChartLayoutSelector({ grid, onGridChange, syncOptio
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full right-0 mt-1 z-50 w-[320px] bg-card border border-chart-border rounded-md shadow-xl py-3 px-4">
-            {/* Grid options */}
-            {gridGroups.map(group => (
-              <div key={group.count} className="flex items-center gap-2 mb-2">
-                <span className="text-[12px] text-muted-foreground w-6 text-right mr-1">{group.count}</span>
-                {group.options.map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => { onGridChange(option.value); }}
-                    className={`p-1.5 rounded transition-colors ${
-                      grid === option.value
-                        ? 'bg-toolbar-active'
-                        : 'hover:bg-toolbar-hover'
-                    }`}
-                  >
-                    <GridIcon option={option} active={grid === option.value} />
-                  </button>
-                ))}
-              </div>
-            ))}
+          <div className="absolute top-full right-0 mt-1 z-50 w-[380px] bg-card border border-chart-border rounded-md shadow-xl py-3 px-4 max-h-[600px] overflow-y-auto">
+            {sortedCounts.map(count => {
+              const layouts = layoutsByCount.get(count)!;
+              return (
+                <div key={count} className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[11px] text-muted-foreground w-5 text-right mr-1 shrink-0">{count}</span>
+                  {layouts.map(layout => (
+                    <button
+                      key={layout.id}
+                      onClick={() => onGridLayoutChange(layout)}
+                      className={`p-1 rounded transition-colors ${
+                        gridLayout.id === layout.id ? 'bg-toolbar-active' : 'hover:bg-toolbar-hover'
+                      }`}
+                    >
+                      <GridIcon layout={layout} active={gridLayout.id === layout.id} />
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
 
             {/* Sync options */}
             <div className="h-px bg-chart-border my-3" />
