@@ -476,6 +476,7 @@ export default function TradingChart() {
     const fetchData = async () => {
       try {
         const endpoints = [
+          'https://data-api.binance.vision',
           'https://api.binance.com',
           'https://api1.binance.com',
           'https://api2.binance.com',
