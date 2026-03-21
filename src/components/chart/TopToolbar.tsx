@@ -79,9 +79,9 @@ export default function TopToolbar() {
         {/* Symbol */}
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded hover:bg-toolbar-hover text-foreground font-semibold"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded hover:bg-toolbar-hover text-foreground font-semibold text-[14px]"
         >
-          <Search size={14} className="text-muted-foreground" />
+          <Search size={16} className="text-muted-foreground" />
           <span>{pair}</span>
           <span className="text-muted-foreground text-xs">· Binance</span>
         </button>
