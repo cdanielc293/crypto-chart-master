@@ -329,7 +329,16 @@ export default function Watchlist() {
     symbol, setSymbol, removeFromWatchlist, addToWatchlist,
     watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId,
     watchlistPrices, setWatchlistPrices,
+    gridLayout, activePanelIndex, setPanelSymbol,
   } = useChart();
+
+  const handleSymbolClick = useCallback((sym: string) => {
+    if (gridLayout.count > 1 && activePanelIndex !== null) {
+      setPanelSymbol(activePanelIndex, sym);
+    } else {
+      setSymbol(sym);
+    }
+  }, [gridLayout.count, activePanelIndex, setPanelSymbol, setSymbol]);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
