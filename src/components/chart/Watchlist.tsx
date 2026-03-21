@@ -551,7 +551,7 @@ export default function Watchlist() {
 
         {/* Column headers */}
         {viewMode === 'table' && (
-          <div className="flex items-center px-3 py-1 text-[10px] text-muted-foreground border-b border-chart-border">
+          <div className="flex items-center px-3 py-1.5 text-[11px] text-muted-foreground border-b border-chart-border">
             <span className="flex-1">Symbol</span>
             <span className="w-[72px] text-right">Last</span>
             <span className="w-14 text-right">Chg</span>
