@@ -74,6 +74,7 @@ export default function TopToolbar() {
     setChartTypeOpen(false);
     setIndicatorOpen(false);
     setIntervalDropdownOpen(false);
+    setThemeOpen(false);
   };
 
   return (
