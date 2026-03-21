@@ -1092,6 +1092,11 @@ export default function TradingChart() {
           className="absolute inset-0 z-10 pointer-events-none"
           style={{ display: chartType === 'point_figure' ? 'block' : 'none' }}
         />
+        <canvas
+          ref={replaySelectCanvasRef}
+          className="absolute inset-0 z-20 pointer-events-none"
+          style={{ display: replayState === 'selecting' ? 'block' : 'none' }}
+        />
         <DrawingCanvas
           chart={chartRef.current}
           series={mainSeriesRef.current}
