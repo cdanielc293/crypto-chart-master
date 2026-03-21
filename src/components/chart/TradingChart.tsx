@@ -342,10 +342,12 @@ export default function TradingChart() {
   const wsRef = useRef<WebSocket | null>(null);
   const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
+  const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [magnetMode, setMagnetMode] = useState(false);
   const pfDataRef = useRef<PFResult | null>(null);
   const pfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const replayTimerRef = useRef<number | null>(null);
 
   // Create chart
   useEffect(() => {
