@@ -916,6 +916,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawDataRef.current = rawForIndicators;
         rawCandlesRef.current = candles;
         allCandlesRef.current = candles;
+        hasMoreOlderRef.current = true;
 
         setChartData(series, candles, volumes, volSeries);
 
