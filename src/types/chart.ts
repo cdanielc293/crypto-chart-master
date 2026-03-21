@@ -1,6 +1,42 @@
 export type Interval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w' | '1M';
 
-export type DrawingTool = 'cursor' | 'trendline' | 'horizontalline' | 'fibonacci' | 'ray';
+export type DrawingTool =
+  // Cursor group
+  | 'cursor' | 'dot' | 'arrow_cursor' | 'eraser'
+  // Lines
+  | 'trendline' | 'ray' | 'infoline' | 'extendedline' | 'trendangle'
+  | 'horizontalline' | 'horizontalray' | 'verticalline' | 'crossline'
+  // Channels
+  | 'parallelchannel' | 'regressiontrend' | 'flattopbottom' | 'disjointchannel'
+  // Pitchforks
+  | 'pitchfork' | 'schiffpitchfork' | 'modifiedschiff' | 'insidepitchfork'
+  // Fibonacci
+  | 'fibonacci' | 'fibextension' | 'fibchannel' | 'fibtimezone'
+  | 'fibspeedresistance' | 'fibtrendtime' | 'fibcircles' | 'fibspiral'
+  | 'fibspeedarcs' | 'fibwedge' | 'pitchfan'
+  // Gann
+  | 'gannbox' | 'gannsquarefixed' | 'gannsquare' | 'gannfan'
+  // Patterns
+  | 'xabcd' | 'cypher' | 'headshoulders' | 'abcd' | 'trianglepattern' | 'threedrives'
+  // Elliott
+  | 'elliottimpulse' | 'elliottcorrection' | 'elliotttriangle' | 'elliottdouble' | 'elliotttriple'
+  // Cycles
+  | 'cycliclines' | 'timecycles' | 'sineline'
+  // Forecasting
+  | 'longposition' | 'shortposition' | 'positionforecast' | 'barpattern' | 'ghostfeed' | 'sector'
+  // Volume-based
+  | 'anchoredvwap' | 'fixedrangevolume' | 'anchoredvolume'
+  // Measurers
+  | 'pricerange' | 'daterange' | 'datepricerange'
+  // Brushes
+  | 'brush' | 'highlighter'
+  // Arrows
+  | 'arrowmarker' | 'arrowdraw' | 'arrowmarkup' | 'arrowmarkdown'
+  // Shapes
+  | 'rectangle' | 'rotatedrectangle' | 'path' | 'circle' | 'ellipse'
+  | 'polyline' | 'triangle' | 'arc' | 'curve' | 'doublecurve'
+  // Text & Emoji
+  | 'text' | 'emoji';
 
 export type ChartType =
   | 'bars' | 'candles' | 'hollow' | 'volume_candles'
