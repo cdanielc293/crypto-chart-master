@@ -228,6 +228,9 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       replaySpeed, setReplaySpeed,
       replayStartIndex, setReplayStartIndex,
       chartSettings, setChartSettings,
+      gridLayout, setGridLayout,
+      syncOptions, setSyncOptions,
+      panelSymbols, setPanelSymbol,
     }}>
       {children}
     </ChartContext.Provider>
