@@ -446,7 +446,7 @@ export default function TradingChart() {
         if (!drawingStartRef.current) {
           drawingStartRef.current = { time, price };
           // Add preview series
-          const ps = chart.addLineSeries({
+          const ps = chart.addSeries(LineSeries, {
             color: '#2962ff',
             lineWidth: 1,
             lineStyle: 2,
