@@ -465,6 +465,74 @@ export default function TradingChart() {
     });
   }, [chartSettings.canvas]);
 
+  const drawExtendedGrid = useCallback(() => {
+    const canvas = gridExtendCanvasRef.current;
+    const container = containerRef.current;
+    const chart = chartRef.current;
+    const cs = chartSettings.canvas;
+    if (!canvas || !container || !chart) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!(cs.gridType === 'both' || cs.gridType === 'vert')) return;
+
+    const candles = rawCandlesRef.current;
+    if (candles.length < 2) return;
+
+    const last = candles[candles.length - 1];
+    const prev = candles[candles.length - 2];
+    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
+    const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
+    if (lastX === null || prevX === null) return;
+
+    const step = lastX - prevX;
+    if (!Number.isFinite(step) || step < 4) return;
+
+    ctx.strokeStyle = hexToRgba(sanitizeHexColor(cs.gridVertColor, '#1e222d'), cs.gridVertOpacity / 100);
+    ctx.lineWidth = 1;
+
+    for (let x = lastX + step; x <= w; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x) + 0.5, 0);
+      ctx.lineTo(Math.round(x) + 0.5, h);
+      ctx.stroke();
+    }
+  }, [chartSettings.canvas]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const redraw = () => requestAnimationFrame(drawExtendedGrid);
+    redraw();
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    chart.subscribeCrosshairMove(redraw);
+
+    const observer = new ResizeObserver(redraw);
+    if (containerRef.current) observer.observe(containerRef.current);
+
+    const timer = window.setInterval(redraw, 1000);
+
+    return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(redraw);
+      chart.unsubscribeCrosshairMove(redraw);
+      observer.disconnect();
+      clearInterval(timer);
+    };
+  }, [drawExtendedGrid, symbol, interval, chartType, replayState]);
+
   // Determine which series type to use
   const isLineType = ['line', 'line_markers', 'step_line'].includes(chartType);
   const isAreaType = ['area', 'hlc_area'].includes(chartType);
