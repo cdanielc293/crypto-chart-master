@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { ChartDrawing, CoordHelper, CandleData, DrawingPoint } from '@/lib/drawing/types';
@@ -44,7 +44,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
 
-  const chartDrawings = drawings.map(toChartDrawing);
+  const chartDrawings = useMemo(() => drawings.map(toChartDrawing), [drawings]);
 
   const getCoordHelper = useCallback((): CoordHelper | null => {
     if (!chart || !series) return null;
@@ -109,7 +109,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         if (anchors.length > 0 && !isDraggingRef.current) {
           const minY = Math.min(...anchors.map(a => a.y));
           const avgX = anchors.reduce((s, a) => s + a.x, 0) / anchors.length;
-          setToolbarPos({ x: avgX, y: Math.max(minY - 45, 5) });
+            const next = { x: avgX, y: Math.max(minY - 45, 5) };
+            setToolbarPos(prev => {
+              if (prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5) {
+                return prev;
+              }
+              return next;
+            });
         }
       }
     }

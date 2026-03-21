@@ -11,6 +11,14 @@ export interface CandleColors {
   colorByPrevClose: boolean;
 }
 
+export interface SymbolSettings {
+  session: 'regular' | 'extended';
+  backAdjustment: boolean;
+  adjustForDividends: boolean;
+  precision: number;
+  timezone: string;
+}
+
 export interface StatusLineSettings {
   showLogo: boolean;
   showTitle: boolean;
@@ -75,14 +83,75 @@ export interface CanvasSettings {
   marginRight: number;
 }
 
+export interface TradingGeneralSettings {
+  showBuySellButtons: boolean;
+  instantOrderPlacement: boolean;
+  executionSound: 'none' | 'ding' | 'bell' | 'chime';
+  notifications: 'none' | 'rejections_only' | 'all_events';
+}
+
+export interface TradingAppearanceSettings {
+  showPositions: boolean;
+  positionPnlDisplay: 'money' | 'ticks' | 'percent';
+  reverseButtonOnHover: boolean;
+  showOrders: boolean;
+  bracketPnlDisplay: 'money' | 'ticks' | 'percent';
+  showExecutions: boolean;
+  showExecutionLabels: boolean;
+  extendedPriceLine: boolean;
+  ordersAndPositionsAlignment: 'right' | 'left' | 'center';
+  showOnScreenshots: boolean;
+}
+
+export interface TradingSettings {
+  general: TradingGeneralSettings;
+  appearance: TradingAppearanceSettings;
+}
+
+export interface AlertsSettings {
+  alertLineColor: string;
+  onlyActiveAlerts: boolean;
+  alertVolume: number;
+  autoHideToasts: boolean;
+}
+
+export interface EventsSettings {
+  showIdeas: boolean;
+  showDividends: boolean;
+  showSplits: boolean;
+  showEarnings: boolean;
+  showEarningsBreak: boolean;
+  showLatestNews: boolean;
+  newsNotifications: boolean;
+}
+
+export interface PriceScaleSettings {
+  autoScale: boolean;
+  scalePriceChartOnly: boolean;
+  invertScale: boolean;
+  mode: 'regular' | 'percent' | 'indexed_to_100' | 'logarithmic';
+}
+
 export interface ChartSettings {
+  symbol: SymbolSettings;
   candle: CandleColors;
   statusLine: StatusLineSettings;
   scalesAndLines: ScalesAndLinesSettings;
   canvas: CanvasSettings;
+  trading: TradingSettings;
+  alerts: AlertsSettings;
+  events: EventsSettings;
+  priceScale: PriceScaleSettings;
 }
 
 export const DEFAULT_CHART_SETTINGS: ChartSettings = {
+  symbol: {
+    session: 'regular',
+    backAdjustment: false,
+    adjustForDividends: false,
+    precision: 2,
+    timezone: 'Exchange',
+  },
   candle: {
     bodyUp: '#26a69a',
     bodyDown: '#ef5350',
@@ -146,4 +215,75 @@ export const DEFAULT_CHART_SETTINGS: ChartSettings = {
     marginBottom: 8,
     marginRight: 10,
   },
+  trading: {
+    general: {
+      showBuySellButtons: false,
+      instantOrderPlacement: false,
+      executionSound: 'none',
+      notifications: 'all_events',
+    },
+    appearance: {
+      showPositions: false,
+      positionPnlDisplay: 'money',
+      reverseButtonOnHover: false,
+      showOrders: false,
+      bracketPnlDisplay: 'money',
+      showExecutions: false,
+      showExecutionLabels: false,
+      extendedPriceLine: false,
+      ordersAndPositionsAlignment: 'right',
+      showOnScreenshots: false,
+    },
+  },
+  alerts: {
+    alertLineColor: '#2962ff',
+    onlyActiveAlerts: false,
+    alertVolume: 60,
+    autoHideToasts: true,
+  },
+  events: {
+    showIdeas: false,
+    showDividends: false,
+    showSplits: false,
+    showEarnings: false,
+    showEarningsBreak: false,
+    showLatestNews: false,
+    newsNotifications: false,
+  },
+  priceScale: {
+    autoScale: true,
+    scalePriceChartOnly: false,
+    invertScale: false,
+    mode: 'regular',
+  },
 };
+
+export const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+export function sanitizeHexColor(value: string, fallback: string): string {
+  return HEX_COLOR_REGEX.test(value) ? value : fallback;
+}
+
+function mergeSection<T extends Record<string, any>>(defaults: T, incoming: Partial<T> | undefined): T {
+  return { ...defaults, ...(incoming ?? {}) };
+}
+
+export function normalizeChartSettings(saved: unknown): ChartSettings {
+  if (!saved || typeof saved !== 'object') return DEFAULT_CHART_SETTINGS;
+  const s = saved as Partial<ChartSettings>;
+
+  return {
+    symbol: mergeSection(DEFAULT_CHART_SETTINGS.symbol, s.symbol),
+    candle: mergeSection(DEFAULT_CHART_SETTINGS.candle, s.candle),
+    statusLine: mergeSection(DEFAULT_CHART_SETTINGS.statusLine, s.statusLine),
+    scalesAndLines: mergeSection(DEFAULT_CHART_SETTINGS.scalesAndLines, s.scalesAndLines),
+    canvas: mergeSection(DEFAULT_CHART_SETTINGS.canvas, s.canvas),
+    trading: {
+      general: mergeSection(DEFAULT_CHART_SETTINGS.trading.general, s.trading?.general),
+      appearance: mergeSection(DEFAULT_CHART_SETTINGS.trading.appearance, s.trading?.appearance),
+    },
+    alerts: mergeSection(DEFAULT_CHART_SETTINGS.alerts, s.alerts),
+    events: mergeSection(DEFAULT_CHART_SETTINGS.events, s.events),
+    priceScale: mergeSection(DEFAULT_CHART_SETTINGS.priceScale, s.priceScale),
+  };
+}
