@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react';
 import { RotateCcw, Settings, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
@@ -27,26 +26,12 @@ export default function ChartCanvasContextMenu({
   onRemoveIndicators,
   indicatorCount,
 }: Props) {
-  const [open, setOpen] = useState(false);
-  const allowOpenRef = useRef(false);
-
   return (
-    <ContextMenu
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen && !allowOpenRef.current) {
-          setOpen(false);
-          return;
-        }
-        setOpen(nextOpen);
-        if (!nextOpen) allowOpenRef.current = false;
-      }}
-    >
+    <ContextMenu>
       <ContextMenuTrigger
         asChild
         onContextMenuCapture={(event) => {
           const mode = getOpenMode(event as React.MouseEvent<HTMLElement>);
-          allowOpenRef.current = mode === 'open';
           if (mode === 'block') event.preventDefault();
         }}
       >
