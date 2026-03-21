@@ -1,8 +1,14 @@
 import type { Drawing } from '@/types/chart';
-import { Copy, Trash2, Lock, Unlock, Minus, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Copy, Trash2, Lock, Unlock, Minus, Plus, Type, MoreHorizontal, GripVertical, Eye, Settings } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 const COLORS = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#e91e63', '#00bcd4', '#ffeb3b', '#ffffff', '#787b86'];
+
+const LINE_STYLES: { value: string; label: string; icon: React.ReactNode }[] = [
+  { value: 'solid', label: 'Line', icon: <span className="inline-block w-5 border-t-2 border-current" /> },
+  { value: 'dashed', label: 'Dashed line', icon: <span className="inline-block w-5 border-t-2 border-dashed border-current" /> },
+  { value: 'dotted', label: 'Dotted line', icon: <span className="inline-block w-5 border-t-2 border-dotted border-current" /> },
+];
 
 interface Props {
   x: number;
@@ -11,20 +17,53 @@ interface Props {
   onUpdate: (updates: Partial<Drawing>) => void;
   onClone: () => void;
   onDelete: () => void;
+  onOpenSettings?: () => void;
 }
 
-export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDelete }: Props) {
+export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
   const [showColors, setShowColors] = useState(false);
+  const [showLineStyles, setShowLineStyles] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        setShowColors(false);
+        setShowLineStyles(false);
+        setShowMore(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   if (!drawing) return null;
+
+  const lineStyle = drawing.props?.lineStyle || 'solid';
+  const currentStyleIcon = LINE_STYLES.find(s => s.value === lineStyle)?.icon || LINE_STYLES[0].icon;
+  const hasText = drawing.props?.text && drawing.props.text.trim().length > 0;
+
+  const updateProps = (updates: Record<string, any>) => {
+    onUpdate({ props: { ...drawing.props, ...updates } });
+  };
 
   return (
     <div
+      ref={toolbarRef}
       className="absolute z-50 flex items-center gap-0.5 bg-card border border-chart-border rounded-md shadow-xl px-1 py-0.5"
-      style={{ left: Math.max(5, x - 100), top: Math.max(5, y), pointerEvents: 'auto' }}
+      style={{ left: Math.max(5, x - 160), top: Math.max(5, y), pointerEvents: 'auto' }}
       onMouseDown={(e) => e.stopPropagation()}
     >
+      {/* Drag handle */}
+      <div className="w-6 h-7 flex items-center justify-center text-muted-foreground cursor-grab">
+        <GripVertical size={12} />
+      </div>
+
+      {/* Color picker */}
       <div className="relative">
-        <button onClick={() => setShowColors(!showColors)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors" title="Color">
+        <button onClick={() => { setShowColors(!showColors); setShowLineStyles(false); setShowMore(false); }} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors" title="Color">
           <div className="w-4 h-4 rounded-sm border border-chart-border" style={{ backgroundColor: drawing.color }} />
         </button>
         {showColors && (
@@ -35,13 +74,94 @@ export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDe
           </div>
         )}
       </div>
-      <button onClick={() => onUpdate({ lineWidth: Math.max(1, drawing.lineWidth - 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thinner"><Minus size={12} /></button>
-      <span className="text-[10px] text-muted-foreground w-4 text-center">{drawing.lineWidth}</span>
-      <button onClick={() => onUpdate({ lineWidth: Math.min(8, drawing.lineWidth + 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thicker"><Plus size={12} /></button>
+
+      {/* Line width: minus / value / plus */}
       <div className="w-px h-5 bg-chart-border mx-0.5" />
+      <button onClick={() => onUpdate({ lineWidth: Math.max(1, drawing.lineWidth - 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thinner"><Minus size={12} /></button>
+      <span className="text-[10px] text-muted-foreground w-6 text-center">{drawing.lineWidth}px</span>
+      <button onClick={() => onUpdate({ lineWidth: Math.min(8, drawing.lineWidth + 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thicker"><Plus size={12} /></button>
+
+      {/* Line style dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => { setShowLineStyles(!showLineStyles); setShowColors(false); setShowMore(false); }}
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground"
+          title="Line style"
+        >
+          {currentStyleIcon}
+        </button>
+        {showLineStyles && (
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-card border border-chart-border rounded-md shadow-xl py-1 min-w-[140px]">
+            {LINE_STYLES.map(s => (
+              <button
+                key={s.value}
+                onClick={() => { updateProps({ lineStyle: s.value }); setShowLineStyles(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent transition-colors ${lineStyle === s.value ? 'text-foreground' : 'text-muted-foreground'}`}
+              >
+                {s.icon}
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="w-px h-5 bg-chart-border mx-0.5" />
+
+      {/* Text toggle */}
+      <button
+        onClick={() => {
+          if (hasText) {
+            updateProps({ text: '' });
+          } else {
+            updateProps({ text: 'Text' });
+          }
+        }}
+        className={`w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors ${hasText ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        title="Add text"
+      >
+        <Type size={13} />
+      </button>
+
+      <div className="w-px h-5 bg-chart-border mx-0.5" />
+
+      {/* Lock */}
       <button onClick={() => onUpdate({ locked: !drawing.locked })} className={`w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors ${drawing.locked ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`} title={drawing.locked ? 'Unlock' : 'Lock'}>{drawing.locked ? <Lock size={13} /> : <Unlock size={13} />}</button>
+
+      {/* Visibility */}
+      <button onClick={() => onUpdate({ visible: !drawing.visible })} className={`w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors ${!drawing.visible ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`} title={drawing.visible ? 'Hide' : 'Show'}>
+        <Eye size={13} />
+      </button>
+
+      {/* Clone */}
       <button onClick={onClone} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Clone"><Copy size={13} /></button>
+
+      {/* Delete */}
       <button onClick={onDelete} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-destructive" title="Delete"><Trash2 size={13} /></button>
+
+      {/* More menu */}
+      <div className="relative">
+        <button
+          onClick={() => { setShowMore(!showMore); setShowColors(false); setShowLineStyles(false); }}
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground"
+          title="More"
+        >
+          <MoreHorizontal size={13} />
+        </button>
+        {showMore && (
+          <div className="absolute top-full right-0 mt-1 bg-card border border-chart-border rounded-md shadow-xl py-1 min-w-[150px]">
+            {onOpenSettings && (
+              <button
+                onClick={() => { onOpenSettings(); setShowMore(false); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Settings size={14} />
+                Settings…
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
