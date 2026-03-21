@@ -296,6 +296,26 @@ export default function TopToolbar() {
           )}
         </div>
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Screenshot */}
+        <button
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Take a snapshot"
+        >
+          <Camera size={16} />
+        </button>
+
+        {/* Fullscreen */}
+        <button
+          onClick={() => document.documentElement.requestFullscreen?.()}
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Fullscreen"
+        >
+          <Fullscreen size={16} />
+        </button>
+
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
