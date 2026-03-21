@@ -862,7 +862,7 @@ export default function TradingChart() {
       const k = msg.k;
       if (!k) return;
 
-      const time = (k.t / 1000) as Time;
+      const time = (k.t / 1000 + tzShiftSeconds) as Time;
       const o = parseFloat(k.o);
       const h = parseFloat(k.h);
       const l = parseFloat(k.l);
