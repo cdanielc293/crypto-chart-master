@@ -356,22 +356,24 @@ export default function TradingChart() {
   // Create chart
   useEffect(() => {
     if (!containerRef.current) return;
+    const cs = chartSettings.canvas;
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#131722' },
-        textColor: '#787b86',
+        background: { type: ColorType.Solid, color: cs.backgroundColor },
+        textColor: cs.scaleTextColor,
+        fontSize: cs.scaleTextSize,
       },
       grid: {
-        vertLines: { color: '#1e222d' },
-        horzLines: { color: '#1e222d' },
+        vertLines: { color: (cs.gridType === 'both' || cs.gridType === 'vert') ? cs.gridVertColor : 'transparent' },
+        horzLines: { color: (cs.gridType === 'both' || cs.gridType === 'horz') ? cs.gridHorzColor : 'transparent' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
-        horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+        vertLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
+        horzLine: { color: cs.crosshairColor, width: 1, style: cs.crosshairStyle === 'dashed' ? 3 : cs.crosshairStyle === 'dotted' ? 1 : 0, labelBackgroundColor: '#2a2e39' },
       },
-      rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.2 } },
-      timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: cs.scaleLinesColor, scaleMargins: { top: cs.marginTop / 100, bottom: cs.marginBottom / 100 } },
+      timeScale: { borderColor: cs.scaleLinesColor, timeVisible: true, secondsVisible: false, rightOffset: cs.marginRight },
       handleScroll: true,
       handleScale: true,
     });
