@@ -546,7 +546,7 @@ const renderGeneric: Renderer = (ctx, d, coord) => {
     ctx.fill();
     return;
   }
-  renderPolyline(ctx, d, coord);
+  renderPolyline(ctx, d, coord, 0, 0);
 };
 
 // ─── Renderer map ───
