@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { createChart, ColorType, CrosshairMode, IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
+import { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 
