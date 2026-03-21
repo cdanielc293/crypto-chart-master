@@ -72,6 +72,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [replayBarIndex, setReplayBarIndex] = useState(0);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [replayStartIndex, setReplayStartIndex] = useState(0);
+  const [chartSettings, setChartSettings] = useState<ChartSettings>(() => {
+    const saved = localStorage.getItem('chartSettings');
+    return saved ? { ...DEFAULT_CHART_SETTINGS, ...JSON.parse(saved) } : DEFAULT_CHART_SETTINGS;
+  });
 
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlist(prev => {
