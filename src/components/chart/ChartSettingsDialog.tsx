@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import type { ChartSettings } from '@/types/chartSettings';
@@ -21,17 +21,64 @@ interface Props {
   onClose: () => void;
 }
 
+const PRESET_COLORS = [
+  '#26a69a', '#ef5350', '#2962ff', '#e91e63', '#ff9800',
+  '#4caf50', '#9c27b0', '#00bcd4', '#ff5722', '#607d8b',
+  '#f44336', '#3f51b5', '#009688', '#ffc107', '#795548',
+  '#ffffff', '#b2b5be', '#787b86', '#2a2e39', '#131722',
+];
+
 function ColorSwatch({ color, onChange }: { color: string; onChange: (c: string) => void }) {
+  const [showPresets, setShowPresets] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showPresets) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShowPresets(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPresets]);
+
   return (
-    <label className="relative w-7 h-7 rounded cursor-pointer border border-chart-border overflow-hidden">
-      <div className="w-full h-full" style={{ backgroundColor: color }} />
-      <input
-        type="color"
-        value={color}
-        onChange={e => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer"
+    <div className="relative" ref={ref}>
+      <button
+        className="w-7 h-7 rounded cursor-pointer border border-chart-border overflow-hidden"
+        style={{ backgroundColor: color }}
+        onClick={() => setShowPresets(!showPresets)}
       />
-    </label>
+      {showPresets && (
+        <div className="absolute top-full mt-1 right-0 z-50 bg-card border border-chart-border rounded-lg p-2 shadow-xl w-[220px]">
+          <div className="grid grid-cols-10 gap-1 mb-2">
+            {PRESET_COLORS.map(c => (
+              <button
+                key={c}
+                className={`w-5 h-5 rounded-sm border cursor-pointer transition-transform hover:scale-125 ${color === c ? 'border-primary ring-1 ring-primary' : 'border-chart-border'}`}
+                style={{ backgroundColor: c }}
+                onClick={() => { onChange(c); setShowPresets(false); }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pt-1 border-t border-chart-border">
+            <label className="flex-1 relative">
+              <input
+                type="color"
+                value={color}
+                onChange={e => onChange(e.target.value)}
+                className="w-full h-6 cursor-pointer rounded border-0"
+              />
+            </label>
+            <input
+              type="text"
+              value={color}
+              onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) onChange(e.target.value); }}
+              className="w-[72px] h-6 px-1.5 text-xs bg-secondary border border-chart-border rounded text-foreground font-mono"
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -55,30 +102,44 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 export default function ChartSettingsDialog({ open, onClose }: Props) {
   const { chartSettings, setChartSettings } = useChart();
   const [tab, setTab] = useState<TabId>('symbol');
-  const [draft, setDraft] = useState<ChartSettings>(() => ({ ...chartSettings }));
+  // Store original settings for cancel/revert
+  const originalRef = useRef<ChartSettings>(chartSettings);
+
+  // When dialog opens, snapshot the current settings
+  useEffect(() => {
+    if (open) {
+      originalRef.current = JSON.parse(JSON.stringify(chartSettings));
+    }
+  }, [open]);
 
   if (!open) return null;
 
+  // Update live - changes are applied immediately for preview
   const update = <K extends keyof ChartSettings>(
     section: K,
     key: keyof ChartSettings[K],
     value: any
   ) => {
-    setDraft(prev => ({
-      ...prev,
-      [section]: { ...prev[section], [key]: value },
-    }));
+    setChartSettings({
+      ...chartSettings,
+      [section]: { ...chartSettings[section], [key]: value },
+    });
   };
 
   const handleOk = () => {
-    setChartSettings(draft);
-    localStorage.setItem('chartSettings', JSON.stringify(draft));
+    // Save to localStorage on confirm
+    localStorage.setItem('chartSettings', JSON.stringify(chartSettings));
     onClose();
   };
 
   const handleCancel = () => {
-    setDraft({ ...chartSettings });
+    // Revert to original settings
+    setChartSettings(originalRef.current);
     onClose();
+  };
+
+  const handleReset = () => {
+    setChartSettings(DEFAULT_CHART_SETTINGS);
   };
 
   return (
@@ -115,27 +176,35 @@ export default function ChartSettingsDialog({ open, onClose }: Props) {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4 min-h-[350px]">
-            {tab === 'symbol' && <SymbolTab draft={draft} update={update} />}
-            {tab === 'statusline' && <StatusLineTab draft={draft} update={update} />}
-            {tab === 'scales' && <ScalesTab draft={draft} update={update} />}
-            {tab === 'canvas' && <CanvasTab draft={draft} update={update} />}
+            {tab === 'symbol' && <SymbolTab settings={chartSettings} update={update} />}
+            {tab === 'statusline' && <StatusLineTab settings={chartSettings} update={update} />}
+            {tab === 'scales' && <ScalesTab settings={chartSettings} update={update} />}
+            {tab === 'canvas' && <CanvasTab settings={chartSettings} update={update} />}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-chart-border">
+        <div className="flex items-center justify-between px-6 py-3 border-t border-chart-border">
           <button
-            onClick={handleCancel}
-            className="px-4 py-1.5 text-sm text-foreground bg-secondary hover:bg-accent rounded transition-colors"
+            onClick={handleReset}
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Cancel
+            Reset to defaults
           </button>
-          <button
-            onClick={handleOk}
-            className="px-4 py-1.5 text-sm text-primary-foreground bg-primary hover:opacity-90 rounded transition-colors"
-          >
-            Ok
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-1.5 text-sm text-foreground bg-secondary hover:bg-accent rounded transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleOk}
+              className="px-4 py-1.5 text-sm text-primary-foreground bg-primary hover:opacity-90 rounded transition-colors"
+            >
+              Ok
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -143,8 +212,8 @@ export default function ChartSettingsDialog({ open, onClose }: Props) {
 }
 
 // ─── Symbol Tab ───
-function SymbolTab({ draft, update }: { draft: ChartSettings; update: any }) {
-  const c = draft.candle;
+function SymbolTab({ settings, update }: { settings: ChartSettings; update: any }) {
+  const c = settings.candle;
   return (
     <>
       <SectionTitle>CANDLES</SectionTitle>
@@ -190,8 +259,8 @@ function SymbolTab({ draft, update }: { draft: ChartSettings; update: any }) {
 }
 
 // ─── Status Line Tab ───
-function StatusLineTab({ draft, update }: { draft: ChartSettings; update: any }) {
-  const s = draft.statusLine;
+function StatusLineTab({ settings, update }: { settings: ChartSettings; update: any }) {
+  const s = settings.statusLine;
   return (
     <>
       <SectionTitle>SYMBOL</SectionTitle>
@@ -247,8 +316,8 @@ function StatusLineTab({ draft, update }: { draft: ChartSettings; update: any })
 }
 
 // ─── Scales and Lines Tab ───
-function ScalesTab({ draft, update }: { draft: ChartSettings; update: any }) {
-  const s = draft.scalesAndLines;
+function ScalesTab({ settings, update }: { settings: ChartSettings; update: any }) {
+  const s = settings.scalesAndLines;
   return (
     <>
       <SectionTitle>PRICE SCALE</SectionTitle>
@@ -366,8 +435,8 @@ function ScalesTab({ draft, update }: { draft: ChartSettings; update: any }) {
 }
 
 // ─── Canvas Tab ───
-function CanvasTab({ draft, update }: { draft: ChartSettings; update: any }) {
-  const c = draft.canvas;
+function CanvasTab({ settings, update }: { settings: ChartSettings; update: any }) {
+  const c = settings.canvas;
   return (
     <>
       <SectionTitle>CHART BASIC STYLES</SectionTitle>
