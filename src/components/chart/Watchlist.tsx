@@ -497,7 +497,8 @@ export default function Watchlist() {
             />
           ) : (
             <button
-              onClick={() => setManagerOpen(true)}
+              ref={menuBtnRef as React.RefObject<HTMLButtonElement>}
+              onClick={() => setMenuOpen(v => !v)}
               className="flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary"
             >
               {activeList?.name || 'Watchlist'}
@@ -521,7 +522,6 @@ export default function Watchlist() {
               <Grid3X3 size={14} />
             </button>
             <button
-              ref={menuBtnRef as React.RefObject<HTMLButtonElement>}
               onClick={() => setMenuOpen(v => !v)}
               className="p-1 text-muted-foreground hover:text-foreground"
             >
@@ -529,7 +529,7 @@ export default function Watchlist() {
             </button>
           </div>
 
-          <DropdownMenu
+          <WatchlistDropdown
             open={menuOpen}
             anchorRef={menuBtnRef as React.RefObject<HTMLElement>}
             onClose={() => setMenuOpen(false)}
@@ -537,11 +537,15 @@ export default function Watchlist() {
             onRename={() => {
               setRenameValue(activeList?.name || '');
               setRenamingList(true);
+              setMenuOpen(false);
             }}
             onClearList={clearList}
             onCreateNew={() => createNewList('New list')}
             onOpenManager={() => setManagerOpen(true)}
             onDuplicate={duplicateList}
+            watchlists={watchlists}
+            activeId={activeWatchlistId}
+            onSelectList={setActiveWatchlistId}
           />
         </div>
 
