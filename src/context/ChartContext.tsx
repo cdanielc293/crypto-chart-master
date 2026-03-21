@@ -99,6 +99,14 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   }, []);
 
+  const toggleFavoriteInterval = useCallback((iv: Interval) => {
+    setFavoriteIntervals(prev => {
+      const next = prev.includes(iv) ? prev.filter(i => i !== iv) : [...prev, iv];
+      localStorage.setItem('favoriteIntervals', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
     <ChartContext.Provider value={{
       symbol, setSymbol,
