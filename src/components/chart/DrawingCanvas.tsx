@@ -393,8 +393,10 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      // Auto-switch back to cursor after multi-point drawing
+      setDrawingTool('cursor');
     }
-  }, [drawingTool, addDrawing]);
+  }, [drawingTool, addDrawing, setDrawingTool]);
 
   // Keyboard
   useEffect(() => {
