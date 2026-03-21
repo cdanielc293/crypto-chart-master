@@ -50,6 +50,22 @@ export interface WatchlistItem {
   lastPrice: number;
   priceChange: number;
   priceChangePercent: number;
+  volume?: number;
+}
+
+export interface WatchlistSection {
+  id: string;
+  name: string;
+  collapsed: boolean;
+  symbols: string[];
+}
+
+export interface WatchlistList {
+  id: string;
+  name: string;
+  flagColor?: string; // colored flag for flagged lists
+  favorite: boolean;
+  sections: WatchlistSection[];
 }
 
 export interface Drawing {
