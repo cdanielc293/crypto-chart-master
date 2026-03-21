@@ -6,6 +6,8 @@ import {
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
+import DrawingCanvas from './DrawingCanvas';
+import type { CandleData } from '@/lib/drawing/types';
 
 // ─── Indicator calculations ───
 
