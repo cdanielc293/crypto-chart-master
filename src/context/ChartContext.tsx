@@ -89,6 +89,8 @@ interface ChartContextType {
   // Per-panel symbols for multi-chart
   panelSymbols: string[];
   setPanelSymbol: (index: number, symbol: string) => void;
+  activePanelIndex: number | null;
+  setActivePanelIndex: (index: number | null) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
