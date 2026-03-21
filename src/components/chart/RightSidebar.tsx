@@ -48,7 +48,7 @@ export default function RightSidebar() {
                   : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover'
               }`}
             >
-              <Icon size={18} />
+              <Icon size={20} />
             </button>
           );
         })}
