@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  createChart, ColorType, CrosshairMode,
+  createChart, ColorType, CrosshairMode, LineStyle, PriceScaleMode,
   CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, BarSeries, BaselineSeries,
 } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
+import { sanitizeHexColor } from '@/types/chartSettings';
 import DrawingCanvas from './DrawingCanvas';
 import type { CandleData } from '@/lib/drawing/types';
 
