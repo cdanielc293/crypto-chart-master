@@ -63,8 +63,8 @@ export default function LayoutManager() {
 
   const applyLayout = useCallback((layout: ChartLayout) => {
     ctx.setSymbol(layout.symbol);
-    ctx.setInterval(layout.interval);
-    ctx.setChartType(layout.chartType);
+    ctx.setInterval(layout.interval as any);
+    ctx.setChartType(layout.chartType as any);
     layout.indicators.forEach(ind => {
       if (!ctx.indicators.includes(ind)) ctx.toggleIndicator(ind);
     });
