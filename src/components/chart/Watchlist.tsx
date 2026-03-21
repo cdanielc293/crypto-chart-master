@@ -619,7 +619,7 @@ export default function Watchlist() {
                     }`}
                   >
                     {/* Logo placeholder */}
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary mr-2 shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary mr-2 shrink-0">
                       {sym[0]}
                     </div>
                     <span className="flex-1 font-medium text-foreground truncate">
