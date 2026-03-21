@@ -20,6 +20,14 @@ function setupStroke(ctx: CanvasRenderingContext2D, drawing: ChartDrawing) {
   ctx.lineWidth = drawing.lineWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  const lineStyle = drawing.props?.lineStyle || 'solid';
+  if (lineStyle === 'dashed') {
+    ctx.setLineDash([8, 4]);
+  } else if (lineStyle === 'dotted') {
+    ctx.setLineDash([2, 3]);
+  } else {
+    ctx.setLineDash([]);
+  }
 }
 
 // ─── Lines ───
