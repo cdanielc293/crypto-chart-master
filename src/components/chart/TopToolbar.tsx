@@ -242,6 +242,16 @@ export default function TopToolbar() {
           <Rewind size={14} />
           <span>Replay</span>
         </button>
+
+        <div className="w-px h-5 bg-chart-border mx-1" />
+
+        {/* Settings */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-xs"
+        >
+          <Settings size={14} />
+        </button>
       </div>
 
       {/* Close dropdowns on outside click */}
