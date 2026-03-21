@@ -93,7 +93,7 @@ export default function TopToolbar() {
           <button
             key={iv}
             onClick={() => setInterval(iv)}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1.5 rounded text-[13px] font-medium transition-colors ${
               interval === iv
                 ? 'bg-toolbar-active text-primary-foreground'
                 : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
