@@ -6,7 +6,7 @@ import {
   TrendingUp, MoveRight, Info, ArrowRight, Triangle as TriangleIcon,
   Minus, ArrowRightFromLine, ArrowDownUp, X,
   Columns3, TrendingDown, AlignHorizontalSpaceAround, SplitSquareHorizontal,
-  GitBranch, GitFork, Trident, ArrowDownToLine,
+  GitBranch, GitFork, ArrowDownToLine,
   BarChart3, Waves, Circle, Disc, Fan, Target, Compass, Spline, CircleDashed, Slice, Wind,
   Grid3X3, LayoutGrid, Square, BarChart2,
   Network, Fingerprint, Crown, Diamond, Hexagon, Shapes,
