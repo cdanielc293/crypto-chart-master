@@ -433,6 +433,22 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     previewPointRef.current = null;
   }, [drawingTool]);
 
+  const passThrough = useCallback((e: React.MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.style.pointerEvents = 'none';
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el) {
+      el.dispatchEvent(new MouseEvent('mousedown', {
+        clientX: e.clientX, clientY: e.clientY,
+        bubbles: true, cancelable: true, button: e.button,
+      }));
+    }
+    requestAnimationFrame(() => {
+      if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
+    });
+  }, []);
+
   const isCursorMode = drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor';
   const hasDrawings = chartDrawings.length > 0;
 
