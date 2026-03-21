@@ -578,6 +578,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             setSelectedDrawingId(null);
             setToolbarPos(null);
           }}
+          onOpenSettings={() => setSettingsDrawingId(selectedDrawingId)}
         />
       )}
       <DrawingContextMenu
@@ -604,6 +605,20 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             removeDrawing(ctxDrawing.id);
             setSelectedDrawingId(null);
             setToolbarPos(null);
+          }
+        }}
+        onOpenSettings={() => {
+          if (ctxDrawing) setSettingsDrawingId(ctxDrawing.id);
+        }}
+      />
+      <DrawingSettingsDialog
+        open={!!settingsDrawingId}
+        drawing={settingsDrawingId ? drawings.find(d => d.id === settingsDrawingId) || null : null}
+        onClose={() => setSettingsDrawingId(null)}
+        onUpdate={(updates) => {
+          if (settingsDrawingId) {
+            const d = drawings.find(dd => dd.id === settingsDrawingId);
+            if (d) updateDrawing(d.id, { ...d, ...updates });
           }
         }}
       />
