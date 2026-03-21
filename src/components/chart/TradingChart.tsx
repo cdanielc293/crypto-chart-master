@@ -490,19 +490,62 @@ export default function TradingChart() {
     const candles = rawCandlesRef.current;
     if (candles.length < 2) return;
 
-    const last = candles[candles.length - 1];
-    const prev = candles[candles.length - 2];
-    const lastX = chart.timeScale().timeToCoordinate(last.time as Time);
-    const prevX = chart.timeScale().timeToCoordinate(prev.time as Time);
-    if (lastX === null || prevX === null) return;
+    // Find the price scale width to avoid drawing over it
+    const priceScaleWidth = chart.priceScale('right').width?.() ?? 55;
+    const chartAreaWidth = w - priceScaleWidth;
 
-    const step = lastX - prevX;
-    if (!Number.isFinite(step) || step < 4) return;
+    // Sample existing grid lines from library by scanning known candle positions
+    // to detect the grid step the library actually uses
+    const candleXPositions: number[] = [];
+    for (let i = Math.max(0, candles.length - 60); i < candles.length; i++) {
+      const x = chart.timeScale().timeToCoordinate(candles[i].time as Time);
+      if (x !== null && x >= 0 && x < chartAreaWidth) {
+        candleXPositions.push(x);
+      }
+    }
+
+    if (candleXPositions.length < 2) return;
+
+    // The library's grid lines align to the time scale labels.
+    // We approximate the spacing by using the bar-to-bar pixel distance
+    // and then matching the library's strategy: it places lines roughly
+    // every N bars where N depends on zoom level.
+    const barWidth = candleXPositions[candleXPositions.length - 1] - candleXPositions[candleXPositions.length - 2];
+    if (!Number.isFinite(barWidth) || barWidth < 1) return;
+
+    // Find the actual grid interval by looking at which time scale marks the library shows
+    // We detect the library's grid spacing by checking the visible logical range
+    const visRange = chart.timeScale().getVisibleLogicalRange();
+    if (!visRange) return;
+    const visibleBars = Math.round(visRange.to - visRange.from);
+    
+    // Library typically spaces grid lines every ~8-15% of visible range
+    // Match by using roughly 6-10 grid lines across the visible area
+    let gridStep: number;
+    if (visibleBars <= 30) gridStep = 5;
+    else if (visibleBars <= 80) gridStep = 10;
+    else if (visibleBars <= 200) gridStep = 20;
+    else if (visibleBars <= 500) gridStep = 50;
+    else gridStep = 100;
+
+    const stepPx = gridStep * barWidth;
+    if (stepPx < 20) return;
+
+    // Find the last library grid line position (align to grid)
+    const lastCandle = candles[candles.length - 1];
+    const lastX = chart.timeScale().timeToCoordinate(lastCandle.time as Time);
+    if (lastX === null) return;
+
+    // Align to grid: find nearest grid-aligned bar index
+    const lastBarLogical = Math.round(visRange.to);
+    const alignedStart = Math.ceil(lastBarLogical / gridStep) * gridStep;
+    const startX = lastX + (alignedStart - lastBarLogical) * barWidth;
 
     ctx.strokeStyle = hexToRgba(sanitizeHexColor(cs.gridVertColor, '#1e222d'), cs.gridVertOpacity / 100);
     ctx.lineWidth = 1;
 
-    for (let x = lastX + step; x <= w; x += step) {
+    for (let x = startX; x < chartAreaWidth; x += stepPx) {
+      if (x <= lastX) continue; // Don't overdraw where library already draws
       ctx.beginPath();
       ctx.moveTo(Math.round(x) + 0.5, 0);
       ctx.lineTo(Math.round(x) + 0.5, h);
