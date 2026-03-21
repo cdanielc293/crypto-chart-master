@@ -260,6 +260,7 @@ export default function TopToolbar() {
       )}
 
       {searchOpen && <SymbolSearch onClose={() => setSearchOpen(false)} />}
+      <ChartSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }
