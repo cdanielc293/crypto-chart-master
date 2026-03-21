@@ -329,7 +329,11 @@ const EMA_COLORS: Record<string, string> = {
 };
 
 export default function TradingChart() {
-  const { symbol, interval, chartType, drawingTool, indicators, drawings } = useChart();
+  const {
+    symbol, interval, chartType, drawingTool, indicators, drawings,
+    replayState, setReplayState, replayBarIndex, setReplayBarIndex,
+    replayStartIndex, setReplayStartIndex, replaySpeed,
+  } = useChart();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const mainSeriesRef = useRef<any>(null);
