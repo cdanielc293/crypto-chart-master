@@ -158,7 +158,7 @@ export default function TradingChart() {
       });
       mainSeriesRef.current = series as any;
     } else if (chartType === 'area') {
-      const series = chart.addAreaSeries({
+      const series = chart.addSeries(AreaSeries, {
         topColor: 'rgba(41, 98, 255, 0.3)',
         bottomColor: 'rgba(41, 98, 255, 0.02)',
         lineColor: '#2962ff',
