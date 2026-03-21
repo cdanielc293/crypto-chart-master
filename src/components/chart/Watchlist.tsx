@@ -614,7 +614,7 @@ export default function Watchlist() {
                     key={sym}
                     onClick={() => setSymbol(sym)}
                     onDoubleClick={() => setSelectedSymbol(prev => prev === sym ? null : sym)}
-                    className={`flex items-center px-3 py-1.5 cursor-pointer text-xs transition-colors group ${
+                    className={`flex items-center px-3 py-2 cursor-pointer text-[13px] transition-colors group ${
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
                     }`}
                   >
