@@ -421,6 +421,24 @@ export default function TradingChart() {
   const isCandleType = ['candles', 'hollow', 'volume_candles', 'heikin_ashi', 'renko', 'line_break', 'kagi'].includes(chartType);
   const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
 
+  // Apply candle settings dynamically (no series recreation)
+  useEffect(() => {
+    const series = mainSeriesRef.current;
+    if (!series || !isCandleType) return;
+    const cc = chartSettings.candle;
+    const isHollow = chartType === 'hollow';
+    try {
+      series.applyOptions({
+        upColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyUp : 'transparent'),
+        downColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyDown : 'transparent'),
+        borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
+        borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
+        wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
+        wickDownColor: cc.showWick ? cc.wickDown : 'transparent',
+      });
+    } catch {}
+  }, [chartSettings.candle, chartType, isCandleType]);
+
   // Create series based on chart type
   useEffect(() => {
     const chart = chartRef.current;
@@ -442,8 +460,8 @@ export default function TradingChart() {
       const isHollow = chartType === 'hollow';
       const cc = chartSettings.candle;
       const series = chart.addSeries(CandlestickSeries, {
-        upColor: isHollow ? 'transparent' : cc.bodyUp,
-        downColor: isHollow ? 'transparent' : cc.bodyDown,
+        upColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyUp : 'transparent'),
+        downColor: isHollow ? 'transparent' : (cc.showBody ? cc.bodyDown : 'transparent'),
         borderUpColor: cc.showBorders ? cc.borderUp : 'transparent',
         borderDownColor: cc.showBorders ? cc.borderDown : 'transparent',
         wickUpColor: cc.showWick ? cc.wickUp : 'transparent',
@@ -499,7 +517,7 @@ export default function TradingChart() {
     });
     volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
     volumeSeriesRef.current = volSeries;
-  }, [chartType, chartSettings.candle]);
+  }, [chartType]);
 
   // Fetch data and connect WebSocket
   useEffect(() => {
