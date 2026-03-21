@@ -396,9 +396,8 @@ export default function TradingChart() {
 
     if (isPnFType) {
       const series = chart.addSeries(LineSeries, {
-        color: 'transparent',
+        color: 'rgba(0,0,0,0)',
         lineWidth: 1 as any,
-        visible: false,
         crosshairMarkerVisible: false,
         lastValueVisible: false,
         priceLineVisible: false,
@@ -472,12 +471,37 @@ export default function TradingChart() {
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
+    const isTransformType = ['heikin_ashi', 'renko', 'line_break', 'kagi', 'point_figure'].includes(chartType);
+
     const fetchData = async () => {
       try {
-        const res = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`
-        );
-        const data = await res.json();
+        const endpoints = [
+          'https://data-api.binance.vision',
+          'https://api.binance.com',
+          'https://api1.binance.com',
+          'https://api2.binance.com',
+        ];
+
+        let data: any = null;
+        let lastError: unknown = null;
+
+        for (const endpoint of endpoints) {
+          try {
+            const res = await fetch(`${endpoint}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1000`);
+            const json = await res.json();
+            if (Array.isArray(json)) {
+              data = json;
+              break;
+            }
+            lastError = new Error(typeof json?.msg === 'string' ? json.msg : 'Invalid kline response');
+          } catch (err) {
+            lastError = err;
+          }
+        }
+
+        if (!Array.isArray(data)) {
+          throw lastError || new Error('Failed to load klines from Binance endpoints');
+        }
 
         const candles: RawCandle[] = [];
         const volumes: any[] = [];
@@ -500,6 +524,10 @@ export default function TradingChart() {
 
         setChartData(series, candles, volumes, volSeries);
 
+        if (chartType === 'point_figure') {
+          requestAnimationFrame(() => drawPFOverlay());
+        }
+
         const last = candles[candles.length - 1];
         if (last) {
           const prev = candles[candles.length - 2];
@@ -510,7 +538,17 @@ export default function TradingChart() {
           });
         }
 
-        chartRef.current?.timeScale().fitContent();
+        if (chartType === 'point_figure') {
+          const pointCount = pfDataRef.current?.lineData.length ?? 0;
+          if (pointCount > 0) {
+            chartRef.current?.timeScale().setVisibleLogicalRange({
+              from: Math.max(0, pointCount - 140),
+              to: pointCount + 8,
+            });
+          }
+        } else {
+          chartRef.current?.timeScale().fitContent();
+        }
       } catch (err) {
         console.error('Failed to fetch klines:', err);
       }
@@ -535,19 +573,19 @@ export default function TradingChart() {
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
 
-      if (isPnFType) {
-        // P&F doesn't do live single-candle updates
-      } else if (isLineType || isAreaType || isBaselineType || isColumnsType) {
-        series.update({ time, value: c });
-      } else if (isBarType || isCandleType) {
-        if (['candles', 'hollow', 'volume_candles', 'bars', 'high_low'].includes(chartType)) {
-          series.update({ time, open: o, high: h, low: l, close: c });
+      // For transformed chart types we avoid direct incremental updates to prevent time-order errors.
+      if (!isTransformType) {
+        if (isLineType || isAreaType || isBaselineType || isColumnsType) {
+          series.update({ time, value: c });
+        } else if (isBarType || isCandleType) {
+          if (['candles', 'hollow', 'volume_candles', 'bars', 'high_low'].includes(chartType)) {
+            series.update({ time, open: o, high: h, low: l, close: c });
+          }
         }
-      }
 
-      if (!isPnFType) {
         volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
       }
+
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
     };
 
@@ -649,7 +687,7 @@ export default function TradingChart() {
       const x0 = chart.timeScale().timeToCoordinate(pfData.lineData[0].time);
       const x1 = chart.timeScale().timeToCoordinate(pfData.lineData[1].time);
       if (x0 !== null && x1 !== null) {
-        cellWidth = Math.max(Math.abs(x1 - x0) * 0.85, 4);
+        cellWidth = Math.max(Math.abs(x1 - x0) * 0.95, 8);
       }
     }
 
@@ -659,11 +697,11 @@ export default function TradingChart() {
       const y0 = series.priceToCoordinate(boxes[0].price - boxSize / 2);
       const y1 = series.priceToCoordinate(boxes[0].price + boxSize / 2);
       if (y0 !== null && y1 !== null) {
-        cellHeight = Math.abs(y1 - y0) * 0.85;
+        cellHeight = Math.max(Math.abs(y1 - y0) * 0.95, 8);
       }
     }
 
-    const symbolSize = Math.min(cellWidth, cellHeight, 40) / 2;
+    const symbolSize = Math.min(cellWidth, cellHeight, 42) / 2;
 
     for (const box of boxes) {
       const x = chart.timeScale().timeToCoordinate(box.time);
@@ -671,7 +709,7 @@ export default function TradingChart() {
       const y = series.priceToCoordinate(box.price);
       if (y === null || y < -50 || y > h + 50) continue;
 
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
 
       if (box.type === 'X') {
         ctx.strokeStyle = '#26a69a';
