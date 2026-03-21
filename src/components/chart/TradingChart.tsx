@@ -415,6 +415,7 @@ export default function TradingChart() {
     const observer = new ResizeObserver(() => {
       if (containerRef.current) {
         chart.applyOptions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
+        try { setPriceScaleWidth(chart.priceScale('right').width?.() ?? 55); } catch {}
       }
     });
     observer.observe(containerRef.current);
