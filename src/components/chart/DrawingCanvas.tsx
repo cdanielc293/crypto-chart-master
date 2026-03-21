@@ -46,6 +46,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
   const [drawingCtxMenu, setDrawingCtxMenu] = useState<{ x: number; y: number; drawingId: string } | null>(null);
+  const [settingsDrawingId, setSettingsDrawingId] = useState<string | null>(null);
 
   const chartDrawings = useMemo(() => drawings.map(toChartDrawing), [drawings]);
 
