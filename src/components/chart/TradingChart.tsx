@@ -1519,7 +1519,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const hint = toolHints[drawingTool] || (drawingTool !== 'cursor' && drawingTool !== 'arrow_cursor' && drawingTool !== 'dot' ? 'Click to place points' : '');
 
   return (
-    <div className={`flex-1 min-w-0 w-full h-full flex flex-col relative overflow-hidden bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''}`}>
+    <div
+      className={`flex-1 min-w-0 w-full h-full flex flex-col relative overflow-hidden bg-chart-bg ${replayState === 'selecting' ? 'cursor-crosshair' : ''} ${panelIndex !== undefined && ctx.activePanelIndex === panelIndex ? 'ring-1 ring-primary/50' : ''}`}
+      onMouseDown={() => { if (panelIndex !== undefined) ctx.setActivePanelIndex(panelIndex); }}
+    >
       <div
         className="absolute top-2 left-3 z-10 flex items-center gap-3 rounded px-2 py-1 text-xs font-mono"
         style={{ background: statusLineBackground }}
