@@ -3,6 +3,8 @@ import type { Interval, DrawingTool, ChartType, WatchlistItem, WatchlistList, Dr
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
 import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSettings';
+import type { GridLayout, LayoutSyncOptions } from '@/types/layout';
+import { ALL_GRID_LAYOUTS, DEFAULT_SYNC_OPTIONS } from '@/types/layout';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
