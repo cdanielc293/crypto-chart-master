@@ -1278,6 +1278,9 @@ export default function TradingChart() {
           </span>
         )}
         {statusLine.showVolume && <span className="text-muted-foreground">Vol {ohlc.v.toLocaleString()}</span>}
+        {countdown && chartSettings.scalesAndLines.countdownToBarClose && (
+          <span className="text-muted-foreground ml-1">⏱ {countdown}</span>
+        )}
       </div>
 
       {watermarkText && (
