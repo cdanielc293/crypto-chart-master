@@ -1175,6 +1175,45 @@ export default function TradingChart() {
     }
   }, [replayState]);
 
+  // ─── Countdown to bar close ───
+  useEffect(() => {
+    if (!chartSettings.scalesAndLines.countdownToBarClose || replayState !== 'off') {
+      setCountdown('');
+      return;
+    }
+
+    const intervalMs: Record<string, number> = {
+      '1s': 1000, '1m': 60_000, '3m': 180_000, '5m': 300_000, '15m': 900_000,
+      '30m': 1_800_000, '1h': 3_600_000, '2h': 7_200_000, '4h': 14_400_000,
+      '6h': 21_600_000, '8h': 28_800_000, '12h': 43_200_000,
+      '1d': 86_400_000, '3d': 259_200_000, '1w': 604_800_000, '1M': 2_592_000_000,
+    };
+    const barMs = intervalMs[interval] || 60_000;
+
+    const update = () => {
+      const now = Date.now();
+      const candles = rawCandlesRef.current;
+      if (candles.length === 0) { setCountdown(''); return; }
+      const lastTime = (candles[candles.length - 1].time as number) * 1000;
+      const barEnd = lastTime + barMs;
+      const remaining = Math.max(0, barEnd - now);
+
+      if (remaining <= 0) { setCountdown(''); return; }
+
+      const h = Math.floor(remaining / 3_600_000);
+      const m = Math.floor((remaining % 3_600_000) / 60_000);
+      const s = Math.floor((remaining % 60_000) / 1000);
+
+      if (h > 0) setCountdown(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+      else if (m > 0) setCountdown(`${m}:${String(s).padStart(2, '0')}`);
+      else setCountdown(`${s}s`);
+    };
+
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [interval, chartSettings.scalesAndLines.countdownToBarClose, replayState]);
+
   // Prepare candle data for drawing engine
   const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
     time: c.time as number,
