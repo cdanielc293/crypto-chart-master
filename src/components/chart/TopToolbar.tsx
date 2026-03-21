@@ -4,10 +4,14 @@ import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
+import LayoutManager from './LayoutManager';
+import MultiChartLayoutSelector from './MultiChartLayoutSelector';
+import type { MultiChartGrid, LayoutSyncOptions } from '@/types/layout';
+import { DEFAULT_SYNC_OPTIONS } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Bars', value: 'bars' },
