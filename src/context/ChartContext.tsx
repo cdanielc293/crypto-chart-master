@@ -155,6 +155,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [gridLayout, setGridLayoutState] = useState<GridLayout>(ALL_GRID_LAYOUTS[0]);
   const [syncOptions, setSyncOptions] = useState<LayoutSyncOptions>(DEFAULT_SYNC_OPTIONS);
   const [panelSymbols, setPanelSymbolsState] = useState<string[]>(['BTCUSDT']);
+  const [activePanelIndex, setActivePanelIndex] = useState<number | null>(null);
 
   const setGridLayout = useCallback((layout: GridLayout) => {
     setGridLayoutState(layout);
