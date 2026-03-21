@@ -8,7 +8,7 @@ import { Settings } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
-import { getKlines, fetchFromBinance } from '@/lib/klineCache';
+import { getKlines, getOlderKlinesFromCache } from '@/lib/klineCache';
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
 import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasContextMenu';
@@ -456,6 +456,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
+  const loadingOlderRef = useRef(false);
+  const hasMoreOlderRef = useRef(true);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
@@ -914,6 +916,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawDataRef.current = rawForIndicators;
         rawCandlesRef.current = candles;
         allCandlesRef.current = candles;
+        hasMoreOlderRef.current = true;
 
         setChartData(series, candles, volumes, volSeries);
 
@@ -953,6 +956,81 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     return () => { cancelled = true; };
   }, [symbol, interval, chartType, tzShiftSeconds]);
+
+  // ─── Lazy-load older cached bars when user scrolls left ───
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = mainSeriesRef.current;
+    const volSeries = volumeSeriesRef.current;
+    if (!chart || !series || !volSeries) return;
+    if (replayState !== 'off' && replayState !== 'selecting') return;
+
+    let cancelled = false;
+
+    const loadOlderBars = async (range: { from: number; to: number } | null) => {
+      if (!range || cancelled) return;
+      if (range.from > 50) return;
+      if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
+
+      const oldestLoaded = rawCandlesRef.current[0];
+      if (!oldestLoaded) return;
+
+      loadingOlderRef.current = true;
+      try {
+        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time), 2500);
+        if (cancelled) return;
+
+        if (older.length === 0) {
+          hasMoreOlderRef.current = false;
+          return;
+        }
+
+        const olderCandles: RawCandle[] = older.map(k => ({
+          time: (k.time + tzShiftSeconds) as Time,
+          open: k.open,
+          high: k.high,
+          low: k.low,
+          close: k.close,
+          volume: k.volume,
+        }));
+
+        const existing = rawCandlesRef.current;
+        const mergedMap = new Map<number, RawCandle>();
+        for (const c of [...olderCandles, ...existing]) mergedMap.set(Number(c.time), c);
+        const merged = Array.from(mergedMap.values()).sort((a, b) => Number(a.time) - Number(b.time));
+
+        const volumes = merged.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+
+        rawCandlesRef.current = merged;
+        allCandlesRef.current = merged;
+        rawDataRef.current = merged.map(c => ({ time: c.time, close: c.close }));
+
+        setChartData(series, merged, volumes, volSeries);
+
+        const currentRange = chart.timeScale().getVisibleLogicalRange();
+        if (currentRange) {
+          chart.timeScale().setVisibleLogicalRange({
+            from: currentRange.from + olderCandles.length,
+            to: currentRange.to + olderCandles.length,
+          });
+        }
+      } catch {
+        // Keep current data on any paging error.
+      } finally {
+        loadingOlderRef.current = false;
+      }
+    };
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(loadOlderBars);
+    return () => {
+      cancelled = true;
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(loadOlderBars);
+    };
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
