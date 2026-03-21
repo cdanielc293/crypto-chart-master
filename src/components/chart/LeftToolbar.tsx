@@ -45,7 +45,7 @@ interface ToolCategory {
   groups: ToolGroup[];
 }
 
-const TOOL_SIZE = 15;
+const TOOL_SIZE = 17;
 
 const categories: ToolCategory[] = [
   {
