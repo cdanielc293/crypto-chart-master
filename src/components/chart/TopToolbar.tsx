@@ -259,7 +259,7 @@ export default function TopToolbar() {
             <Palette size={16} />
           </button>
           {themeOpen && (
-            <div className="absolute top-full mt-1 right-0 z-50 w-48 rounded-md border bg-popover border-border shadow-lg py-1">
+            <div className="absolute top-full mt-1 right-0 z-50 w-52 max-h-[400px] overflow-y-auto rounded-md border bg-popover border-border shadow-lg py-1">
               {THEMES.map(t => (
                 <button
                   key={t.id}
