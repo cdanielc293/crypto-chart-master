@@ -58,6 +58,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
+  const [favoriteIntervals, setFavoriteIntervals] = useState<Interval[]>(() => {
+    const saved = localStorage.getItem('favoriteIntervals');
+    return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
+  });
 
   // Replay state
   const [replayState, setReplayState] = useState<ReplayState>('off');
