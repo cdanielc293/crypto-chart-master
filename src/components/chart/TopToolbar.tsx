@@ -3,7 +3,7 @@ import type { Interval, ChartType } from '@/types/chart';
 import { useState } from 'react';
 import {
   Search, ChevronDown, BarChart3, CandlestickChart, LineChart, AreaChart,
-  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star,
+  BarChart2, Minus, Activity, TrendingUp, Columns, ArrowUpDown, Star, Rewind,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 
