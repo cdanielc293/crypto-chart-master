@@ -8,6 +8,7 @@ import { hitTestDrawing, hitTestAnchors } from '@/lib/drawing/hit-testing';
 import { snapToCandle } from '@/lib/drawing/snap';
 import type { Drawing } from '@/types/chart';
 import FloatingToolbar from './FloatingToolbar';
+import DrawingContextMenu from './DrawingContextMenu';
 
 interface Props {
   chart: IChartApi | null;
