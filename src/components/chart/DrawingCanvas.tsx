@@ -433,54 +433,51 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     previewPointRef.current = null;
   }, [drawingTool]);
 
-  // Determine pointer events: when in cursor mode with no drawing selected,
-  // we want chart to handle scroll/zoom, so only intercept when near a drawing
-  const needsPointerEvents = (drawingTool !== 'cursor' && drawingTool !== 'dot' && drawingTool !== 'arrow_cursor') || selectedDrawingId !== null;
+  // In cursor modes, always enable pointer events so we can interact with drawings
+  // In drawing modes, always enable so we can place points
+  // The canvas will pass through events to the chart when not hitting a drawing
+  const isCursorMode = drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor';
 
   return (
     <>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 z-20"
-        style={{ pointerEvents: needsPointerEvents ? 'auto' : 'none' }}
-        onMouseDown={handleMouseDown}
+        style={{ pointerEvents: 'auto' }}
+        onMouseDown={(e) => {
+          if (isCursorMode && !selectedDrawingId) {
+            // In cursor mode with no selection, only intercept if we hit a drawing
+            const coords = getMouseCoords(e as unknown as MouseEvent);
+            if (!coords) return; // let chart handle it
+            const { mx, my } = coords;
+            const coord = getCoordHelper();
+            const container = containerRef.current;
+            if (!coord || !container) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            let found = false;
+            for (let i = chartDrawings.length - 1; i >= 0; i--) {
+              if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              // Pass through to chart - don't intercept
+              canvasRef.current!.style.pointerEvents = 'none';
+              setTimeout(() => {
+                if (canvasRef.current) canvasRef.current.style.pointerEvents = 'auto';
+              }, 0);
+              return;
+            }
+          }
+          handleMouseDown(e);
+        }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
       />
-      {/* Transparent hit-test layer for cursor mode without selection */}
-      {(drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') && !selectedDrawingId && (
-        <canvas
-          ref={(el) => {
-            // Reuse same canvas ref logic for hit testing on hover
-            if (!el) return;
-            const onMove = (e: MouseEvent) => {
-              const rect = el.getBoundingClientRect();
-              const mx = e.clientX - rect.left;
-              const my = e.clientY - rect.top;
-              const coord = getCoordHelper();
-              const container = containerRef.current;
-              if (!coord || !container) return;
-              const w = container.clientWidth;
-              const h = container.clientHeight;
-              let found = false;
-              for (let i = chartDrawings.length - 1; i >= 0; i--) {
-                if (hitTestDrawing(chartDrawings[i], mx, my, coord, w, h)) {
-                  found = true;
-                  break;
-                }
-              }
-              el.style.pointerEvents = found ? 'auto' : 'none';
-              el.style.cursor = found ? 'pointer' : 'default';
-            };
-            el.addEventListener('mousemove', onMove);
-          }}
-          className="absolute inset-0 z-20"
-          style={{ pointerEvents: 'none' }}
-          onMouseDown={handleMouseDown}
-        />
-      )}
       {selectedDrawingId && toolbarPos && (
         <FloatingToolbar
           x={toolbarPos.x}
