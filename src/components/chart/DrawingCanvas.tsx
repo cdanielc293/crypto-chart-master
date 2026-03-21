@@ -431,7 +431,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
   // Determine pointer events: when in cursor mode with no drawing selected,
   // we want chart to handle scroll/zoom, so only intercept when near a drawing
-  const needsPointerEvents = drawingTool !== 'cursor' || selectedDrawingId !== null;
+  const needsPointerEvents = (drawingTool !== 'cursor' && drawingTool !== 'dot' && drawingTool !== 'arrow_cursor') || selectedDrawingId !== null;
 
   return (
     <>
