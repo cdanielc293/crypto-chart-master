@@ -182,9 +182,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function ChartSettingsDialog({ open, onClose }: Props) {
-  const { chartSettings, setChartSettings } = useChart();
-  const [tab, setTab] = useState<TabId>('symbol');
+export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props) {
+  const { chartSettings, setChartSettings, chartType } = useChart();
+  const [tab, setTab] = useState<TabId>(defaultTab || 'symbol');
   const [templateName, setTemplateName] = useState('');
   const [templates, setTemplates] = useState<TemplateMap>({});
   const originalRef = useRef<ChartSettings>(chartSettings);
