@@ -2098,7 +2098,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         )}
       </div>
 
-      {watermarkText && (
+      {/* Active indicators overlay */}
+      <div className="absolute top-10 left-3 z-20">
+        <IndicatorOverlay />
+      </div>
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
           <span className="text-6xl font-semibold tracking-widest text-muted-foreground/20">{watermarkText}</span>
         </div>
