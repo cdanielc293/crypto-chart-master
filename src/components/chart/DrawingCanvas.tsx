@@ -17,6 +17,7 @@ interface Props {
   candles: CandleData[];
   containerRef: React.RefObject<HTMLDivElement>;
   magnetMode: boolean;
+  priceScaleWidth?: number;
 }
 
 // Convert Drawing (context) to ChartDrawing (engine)
@@ -28,7 +29,7 @@ function toDrawing(d: ChartDrawing): Drawing {
   return { ...d, type: d.type as Drawing['type'] };
 }
 
-export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode }: Props) {
+export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode, priceScaleWidth = 55 }: Props) {
   const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId } = useChart();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
@@ -116,7 +117,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     if (!canvas || !container || !coord) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const w = container.clientWidth;
+    const w = container.clientWidth - priceScaleWidth;
     const h = container.clientHeight;
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
       canvas.width = w * dpr;
@@ -484,6 +485,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const rect = container.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
+
+      // Don't capture hover in the price scale area
+      if (mx > container.clientWidth - priceScaleWidth) {
+        setIsHoveringDrawing(false);
+        return;
+      }
+
       const coord = getCoordHelper();
       if (!coord) {
         setIsHoveringDrawing(false);
@@ -543,8 +551,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     <>
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 z-20"
-        style={{ pointerEvents: shouldCapturePointer ? 'auto' : 'none' }}
+        className="absolute top-0 left-0 bottom-0 z-20"
+        style={{
+          pointerEvents: shouldCapturePointer ? 'auto' : 'none',
+          right: priceScaleWidth,
+          width: `calc(100% - ${priceScaleWidth}px)`,
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
