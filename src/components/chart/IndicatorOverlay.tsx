@@ -69,7 +69,7 @@ export default function IndicatorOverlay() {
             />
 
             {/* Name */}
-            <span className={`text-[11px] ${isHidden ? 'text-muted-foreground/40 line-through' : 'text-foreground/70'}`}>
+            <span className={`text-[12px] font-medium ${isHidden ? 'text-muted-foreground/40 line-through' : 'text-foreground'}`}>
               {name}
             </span>
 
