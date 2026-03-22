@@ -10,6 +10,7 @@ import Pricing from "./pages/Pricing.tsx";
 import Signup from "./pages/Signup.tsx";
 import ChartPage from "./pages/ChartPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Settings from "./pages/Settings.tsx";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,11 @@ const App = () => (
             <Route path="/chart" element={
               <ProtectedRoute>
                 <ChartPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
