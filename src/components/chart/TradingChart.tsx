@@ -22,42 +22,68 @@ import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types'
 
 // ─── Indicator calculations ───
 
-function calculateEMA(data: { close: number; time: Time }[], period: number): LineData[] {
+import type { MASource, IndicatorConfig, EMAConfig, SMAConfig, BollingerConfig, LineStyleType } from '@/types/indicators';
+import { getDefaultConfig } from '@/types/indicators';
+
+function getSourceValue(candle: { open?: number; high?: number; low?: number; close: number }, source: MASource): number {
+  const o = candle.open ?? candle.close;
+  const h = candle.high ?? candle.close;
+  const l = candle.low ?? candle.close;
+  const c = candle.close;
+  switch (source) {
+    case 'open': return o;
+    case 'high': return h;
+    case 'low': return l;
+    case 'hl2': return (h + l) / 2;
+    case 'hlc3': return (h + l + c) / 3;
+    case 'ohlc4': return (o + h + l + c) / 4;
+    default: return c;
+  }
+}
+
+function calculateEMA(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period: number, source: MASource = 'close'): LineData[] {
   const k = 2 / (period + 1);
   const result: LineData[] = [];
-  let ema = data[0]?.close ?? 0;
+  let ema = getSourceValue(data[0], source);
   for (let i = 0; i < data.length; i++) {
-    ema = i === 0 ? data[i].close : data[i].close * k + ema * (1 - k);
+    const val = getSourceValue(data[i], source);
+    ema = i === 0 ? val : val * k + ema * (1 - k);
     if (i >= period - 1) result.push({ time: data[i].time, value: ema });
   }
   return result;
 }
 
-function calculateSMA(data: { close: number; time: Time }[], period: number): LineData[] {
+function calculateSMA(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period: number, source: MASource = 'close'): LineData[] {
   const result: LineData[] = [];
   for (let i = period - 1; i < data.length; i++) {
     let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+    for (let j = i - period + 1; j <= i; j++) sum += getSourceValue(data[j], source);
     result.push({ time: data[i].time, value: sum / period });
   }
   return result;
 }
 
-function calculateBollinger(data: { close: number; time: Time }[], period = 20) {
+function calculateBollinger(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period = 20, stdDev = 2, source: MASource = 'close', maType: 'SMA' | 'EMA' = 'SMA') {
   const upper: LineData[] = [], middle: LineData[] = [], lower: LineData[] = [];
   for (let i = period - 1; i < data.length; i++) {
     let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+    for (let j = i - period + 1; j <= i; j++) sum += getSourceValue(data[j], source);
     const avg = sum / period;
     let variance = 0;
-    for (let j = i - period + 1; j <= i; j++) variance += (data[j].close - avg) ** 2;
+    for (let j = i - period + 1; j <= i; j++) variance += (getSourceValue(data[j], source) - avg) ** 2;
     const std = Math.sqrt(variance / period);
     const t = data[i].time;
-    upper.push({ time: t, value: avg + 2 * std });
+    upper.push({ time: t, value: avg + stdDev * std });
     middle.push({ time: t, value: avg });
-    lower.push({ time: t, value: avg - 2 * std });
+    lower.push({ time: t, value: avg - stdDev * std });
   }
   return { upper, middle, lower };
+}
+
+function mapLineStyleType(ls: LineStyleType): number {
+  if (ls === 'dashed') return LineStyle.Dashed;
+  if (ls === 'dotted') return LineStyle.Dotted;
+  return LineStyle.Solid;
 }
 
 // ─── Chart type transformations ───
