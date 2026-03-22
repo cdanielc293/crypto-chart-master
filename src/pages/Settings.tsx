@@ -336,6 +336,65 @@ export default function Settings() {
             </div>
           )}
 
+          {activeSection === 'sessions' && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Active sessions</h2>
+
+              {sessionsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
+                  <p className="text-white/30 text-sm">No active sessions found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.map((s, i) => {
+                    const DeviceIcon = getDeviceIcon(s.device);
+                    const isFirst = i === 0;
+                    return (
+                      <div
+                        key={s.id}
+                        className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-5 py-4 hover:bg-white/[0.04] transition-colors"
+                      >
+                        <div className="shrink-0 p-2 rounded-lg bg-white/[0.03]">
+                          <DeviceIcon size={22} className="text-white/40" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white/90">
+                            {s.device}, {s.os}
+                          </p>
+                          <p className="text-xs text-white/40 mt-0.5">
+                            {formatSessionTime(s.updated_at)} · {s.ip} · {s.browser}
+                          </p>
+                        </div>
+                        {isFirst ? (
+                          <span className="text-xs font-semibold text-cyan-400 shrink-0">Active now</span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => revokeSession(s.id)}
+                            disabled={revokingId === s.id}
+                            className="border-white/10 text-white/70 hover:text-white shrink-0"
+                          >
+                            {revokingId === s.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <LogOut size={14} />
+                            )}
+                            Log out
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeSection === 'subscriptions' && (
             <div>
               <h2 className="text-xl font-bold mb-4">Subscriptions</h2>
