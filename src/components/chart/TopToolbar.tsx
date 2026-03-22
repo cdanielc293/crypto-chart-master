@@ -10,6 +10,7 @@ import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import LayoutManager from './LayoutManager';
 import MultiChartLayoutSelector from './MultiChartLayoutSelector';
+import UserProfileMenu from './UserProfileMenu';
 import type { LayoutSyncOptions } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
