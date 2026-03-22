@@ -262,17 +262,29 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const toggleIndicator = useCallback((name: string) => {
-    setIndicators(prev =>
-      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
-    );
-    // Also remove from hidden when removing indicator
-    setHiddenIndicators(prev => {
-      if (prev.has(name)) {
-        const next = new Set(prev);
-        next.delete(name);
-        return next;
+    setIndicators(prev => {
+      if (prev.includes(name)) {
+        // Removing: clean up config and hidden
+        setIndicatorConfigs(c => { const next = new Map(c); next.delete(name); return next; });
+        setHiddenIndicators(h => { const next = new Set(h); next.delete(name); return next; });
+        return prev.filter(i => i !== name);
       }
-      return prev;
+      // Adding: initialize config if not present
+      setIndicatorConfigs(c => {
+        if (c.has(name)) return c;
+        const next = new Map(c);
+        next.set(name, getDefaultConfig(name));
+        return next;
+      });
+      return [...prev, name];
+    });
+  }, []);
+
+  const updateIndicatorConfig = useCallback((name: string, config: IndicatorConfig) => {
+    setIndicatorConfigs(prev => {
+      const next = new Map(prev);
+      next.set(name, config);
+      return next;
     });
   }, []);
 
