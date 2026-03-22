@@ -17,6 +17,7 @@ interface Props {
   candles: CandleData[];
   containerRef: React.RefObject<HTMLDivElement>;
   magnetMode: boolean;
+  priceScaleWidth?: number;
 }
 
 // Convert Drawing (context) to ChartDrawing (engine)
