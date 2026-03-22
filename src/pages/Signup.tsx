@@ -31,6 +31,10 @@ export default function Signup() {
     if (oauthProvider !== 'google' && oauthProvider !== 'apple') return;
 
     oauthAutoTriggeredRef.current = true;
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('oauth');
+    window.history.replaceState({}, document.title, `${cleanUrl.pathname}${cleanUrl.search}`);
+
     if (oauthProvider === 'google') {
       void signInWithGoogle();
     } else {
