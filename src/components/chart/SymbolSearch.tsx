@@ -191,7 +191,7 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       );
     }
 
-    return items.slice(0, 60);
+    return items;
   }, [results, activeCategory, sourceFilter, typeFilter, query]);
 
   const selectSymbol = useCallback((result: SearchResult) => {
