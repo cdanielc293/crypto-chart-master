@@ -15,7 +15,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const OAUTH_TIMEOUT_MS = 30000;
+const OAUTH_TIMEOUT_MS = 20000;
+const SIGNOUT_TIMEOUT_MS = 8000;
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -32,33 +33,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const registerDevice = async (accessToken: string) => {
       try {
-        await new Promise(r => setTimeout(r, 1500));
         await supabase.functions.invoke('register-device', {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'x-real-user-agent': navigator.userAgent,
           },
         });
-      } catch (e) {
-        // Non-critical, silently ignore
+      } catch {
+        // Non-critical: do nothing
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const scheduleDeviceRegistration = (accessToken: string) => {
+      // IMPORTANT: avoid Supabase calls directly inside onAuthStateChange callback
+      window.setTimeout(() => {
+        void registerDevice(accessToken);
+      }, 800);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
-      if (session?.access_token && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
-        registerDevice(session.access_token);
+
+      if (nextSession?.access_token && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        scheduleDeviceRegistration(nextSession.access_token);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    void supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
       setLoading(false);
-      if (session?.access_token) {
-        registerDevice(session.access_token);
+
+      if (existingSession?.access_token) {
+        scheduleDeviceRegistration(existingSession.access_token);
       }
     });
 
@@ -68,37 +77,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithProvider = async (provider: 'google' | 'apple') => {
     if (signingIn) return;
     setSigningIn(true);
-    
+
     try {
-      console.log(`[Auth] Starting ${provider} sign-in...`);
-      
       const result = await Promise.race([
         lovable.auth.signInWithOAuth(provider, {
           redirect_uri: window.location.origin,
         }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('OAuth timeout')), OAUTH_TIMEOUT_MS)
-        ),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('OAuth timeout')), OAUTH_TIMEOUT_MS);
+        }),
       ]);
 
-      console.log(`[Auth] OAuth result:`, result);
-
-      if (result.error) {
-        throw result.error;
-      }
+      if (result.error) throw result.error;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[Auth] Sign-in error:`, msg);
 
-      if (msg.includes('Popup was blocked') || msg.includes('popup')) {
+      if (msg.includes('Popup was blocked')) {
         toast.error('הדפדפן חסם את חלון ההתחברות. אפשר חלונות קופצים ונסה שוב.');
       } else if (msg.includes('timeout') || msg.includes('deadline')) {
-        toast.error('ההתחברות נתקעה. סגור את חלון Google ונסה שוב.');
+        toast.error('ההתחברות נתקעה זמנית. סגור את חלון Google ונסה שוב בעוד כמה שניות.');
       } else if (msg.includes('Preview mode') || msg.includes('legacy_flow')) {
         toast.error('במצב Preview ההתחברות עשויה להיתקע. פתח את האפליקציה בטאב חדש ונסה שוב.');
-      } else if (msg.includes('closed') || msg.includes('cancelled')) {
-        // User closed the popup, no error needed
-      } else {
+      } else if (!msg.includes('closed') && !msg.includes('cancelled')) {
         toast.error('ההתחברות נכשלה. נסה שוב.');
       }
     } finally {
@@ -116,22 +116,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log('[Auth] Signing out...');
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('[Auth] Sign-out error:', error);
-        // Force clear local state even if signOut fails
-        setUser(null);
-        setSession(null);
-        toast.error('שגיאה בהתנתקות, אך הוצאת מהחשבון מקומית.');
-      } else {
-        console.log('[Auth] Signed out successfully');
-        setUser(null);
-        setSession(null);
+      const result = await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<{ error: Error }>((resolve) => {
+          window.setTimeout(() => resolve({ error: new Error('Sign out timeout') }), SIGNOUT_TIMEOUT_MS);
+        }),
+      ]);
+
+      if (result?.error) {
+        toast.error('ההתנתקות מתעכבת, בוצעה יציאה מקומית.');
       }
-    } catch (e) {
-      console.error('[Auth] Sign-out exception:', e);
-      // Force clear local state
+    } catch {
+      toast.error('שגיאה בהתנתקות, בוצעה יציאה מקומית.');
+    } finally {
       setUser(null);
       setSession(null);
     }
