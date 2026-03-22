@@ -543,7 +543,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const ctx = useChart();
   const symbol = overrideSymbol || ctx.symbol;
   const {
-    interval, chartType, drawingTool, indicators, drawings,
+    interval, chartType, drawingTool, indicators, hiddenIndicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = ctx;
