@@ -29,6 +29,7 @@ const MAX_SOURCE_QUERY_LIMIT = 20000;
 const BACKFILL_REQUESTS_PER_PASS = 80;
 const BACKFILL_CONTINUE_DELAY_MS = 300;
 const RENDER_CACHE_TTL_MS = 45_000;
+const REPLAY_RENDER_CACHE_TTL_MS = 20_000;
 const SOURCE_SYNC_COOLDOWN_MS = 12_000;
 
 const backfillInProgress = new Set<string>();
@@ -41,7 +42,9 @@ const sourcePrefetchComplete = new Set<string>();
 const sourceSyncInProgress = new Set<string>();
 const sourceLastSyncAt = new Map<string, number>();
 const renderCache = new Map<string, { rows: RawKline[]; updatedAt: number }>();
+const replayRenderCache = new Map<string, { rows: RawKline[]; updatedAt: number }>();
 const renderFetchInProgress = new Map<string, Promise<RawKline[]>>();
+const replayFetchInProgress = new Map<string, Promise<RawKline[]>>();
 const renderRefreshInProgress = new Set<string>();
 
 function wait(ms: number) {
@@ -66,8 +69,19 @@ function getRenderCacheKey(symbol: string, interval: Interval): string {
   return `${symbol}:${interval}`;
 }
 
+function getReplayCacheKey(symbol: string, interval: Interval, endTimeSec: number): string {
+  return `${symbol}:${interval}:replay:${endTimeSec}`;
+}
+
 function setRenderCache(key: string, rows: RawKline[]) {
   renderCache.set(key, {
+    rows: dedupeByTime(rows),
+    updatedAt: Date.now(),
+  });
+}
+
+function setReplayRenderCache(key: string, rows: RawKline[]) {
+  replayRenderCache.set(key, {
     rows: dedupeByTime(rows),
     updatedAt: Date.now(),
   });
@@ -177,6 +191,25 @@ async function getLatestCachedKlines(symbol: string, cacheInterval: string, limi
   return (data as RawKline[]).reverse();
 }
 
+async function getCachedKlinesEndingAt(
+  symbol: string,
+  cacheInterval: string,
+  endTimeSec: number,
+  limit: number,
+): Promise<RawKline[]> {
+  const { data, error } = await supabase
+    .from('klines')
+    .select('time, open, high, low, close, volume')
+    .eq('symbol', symbol)
+    .eq('interval', cacheInterval)
+    .lte('time', endTimeSec)
+    .order('time', { ascending: false })
+    .limit(limit);
+
+  if (error || !data || data.length === 0) return [];
+  return (data as RawKline[]).reverse();
+}
+
 async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKline[]) {
   if (klines.length === 0) return;
 
@@ -246,9 +279,14 @@ async function backfillHistory(symbol: string, interval: string, oldestKnownTime
   }
 }
 
-async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, targetBars: number): Promise<RawKline[]> {
+async function fetchSourceWindow(
+  symbol: string,
+  sourceInterval: string,
+  targetBars: number,
+  endTimeMs?: number,
+): Promise<RawKline[]> {
   const requestsToMake = Math.max(1, Math.min(20, Math.ceil(targetBars / 1000)));
-  let endTime: number | undefined;
+  let endTime = endTimeMs;
   const collected: RawKline[] = [];
 
   for (let i = 0; i < requestsToMake; i += 1) {
@@ -265,6 +303,49 @@ async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, t
   }
 
   return dedupeByTime(collected);
+}
+
+async function loadKlinesForReplay(symbol: string, interval: Interval, replayEndTimeSec: number): Promise<RawKline[]> {
+  const sourceInterval = getBinanceSourceInterval(interval);
+  const sourceWindowLimit = getSourceWindowLimit(interval);
+  const safeReplayEndTime = Math.floor(replayEndTimeSec);
+
+  const cachedSourceWindow = await getCachedKlinesEndingAt(
+    symbol,
+    sourceInterval,
+    safeReplayEndTime,
+    sourceWindowLimit,
+  );
+
+  if (cachedSourceWindow.length > 0) {
+    const cachedAggregated = aggregateForInterval(cachedSourceWindow, interval)
+      .filter(k => k.time <= safeReplayEndTime)
+      .slice(-INITIAL_RENDER_LIMIT);
+    if (cachedAggregated.length > 0) {
+      void backfillHistory(symbol, sourceInterval, cachedSourceWindow[0]?.time ?? null);
+      return cachedAggregated;
+    }
+  }
+
+  try {
+    const fetchedSourceWindow = await fetchSourceWindow(
+      symbol,
+      sourceInterval,
+      sourceWindowLimit,
+      safeReplayEndTime * 1000,
+    );
+
+    if (fetchedSourceWindow.length > 0) {
+      void upsertKlines(symbol, sourceInterval, fetchedSourceWindow);
+      void backfillHistory(symbol, sourceInterval, fetchedSourceWindow[0].time);
+    }
+
+    return aggregateForInterval(fetchedSourceWindow, interval)
+      .filter(k => k.time <= safeReplayEndTime)
+      .slice(-INITIAL_RENDER_LIMIT);
+  } catch {
+    return [];
+  }
 }
 
 async function syncLatestAndBackfill(
@@ -332,7 +413,7 @@ async function loadKlinesFromSource(symbol: string, interval: Interval): Promise
   }
 
   try {
-    const latestSource = await fetchLatestSourceWindow(symbol, sourceInterval, sourceWindowLimit);
+    const latestSource = await fetchSourceWindow(symbol, sourceInterval, sourceWindowLimit);
     if (latestSource.length > 0) {
       void upsertKlines(symbol, sourceInterval, latestSource);
       void backfillHistory(symbol, sourceInterval, latestSource[0].time);
@@ -351,9 +432,47 @@ async function loadKlinesFromSource(symbol: string, interval: Interval): Promise
  * - syncs newest candles incrementally
  * - continues full-history backfill in background
  */
-export async function getKlines(symbol: string, interval: Interval): Promise<RawKline[]> {
+export interface GetKlinesOptions {
+  replayEndTimeSec?: number | null;
+}
+
+export async function getKlines(
+  symbol: string,
+  interval: Interval,
+  options: GetKlinesOptions = {},
+): Promise<RawKline[]> {
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return [];
+
+  const replayEndTimeSec = options.replayEndTimeSec;
+  if (replayEndTimeSec !== null && replayEndTimeSec !== undefined && Number.isFinite(replayEndTimeSec)) {
+    const normalizedReplayEnd = Math.floor(replayEndTimeSec);
+    const replayCacheKey = getReplayCacheKey(normalizedSymbol, interval, normalizedReplayEnd);
+    const cachedReplay = replayRenderCache.get(replayCacheKey);
+
+    if (cachedReplay?.rows.length && Date.now() - cachedReplay.updatedAt <= REPLAY_RENDER_CACHE_TTL_MS) {
+      return cachedReplay.rows;
+    }
+
+    const replayInFlight = replayFetchInProgress.get(replayCacheKey);
+    if (replayInFlight) {
+      return replayInFlight;
+    }
+
+    const replayPromise = loadKlinesForReplay(normalizedSymbol, interval, normalizedReplayEnd)
+      .then(rows => {
+        if (rows.length > 0) {
+          setReplayRenderCache(replayCacheKey, rows);
+        }
+        return rows;
+      })
+      .finally(() => {
+        replayFetchInProgress.delete(replayCacheKey);
+      });
+
+    replayFetchInProgress.set(replayCacheKey, replayPromise);
+    return replayPromise;
+  }
 
   const renderKey = getRenderCacheKey(normalizedSymbol, interval);
   const cachedRender = renderCache.get(renderKey);
