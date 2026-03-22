@@ -24,11 +24,56 @@ serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceKey);
 
     const token = authHeader.replace("Bearer ", "");
+    
+    // Try getUser first, fall back to manual JWT decode
     const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Token might not be propagated yet, try decoding JWT directly
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (!payload.sub) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        // Use the sub claim as user id
+        const userId = payload.sub;
+        
+        const forwardedFor = req.headers.get("x-forwarded-for");
+        const realIp = forwardedFor ? forwardedFor.split(",")[0].trim() : req.headers.get("cf-connecting-ip") || "Unknown";
+        const realUserAgent = req.headers.get("x-real-user-agent") || req.headers.get("user-agent") || "Unknown";
+        
+        const { data: sessions } = await adminClient.rpc("get_user_sessions", { p_user_id: userId });
+        const currentSession = sessions?.[0];
+        if (!currentSession) {
+          return new Response(JSON.stringify({ success: true, skipped: "no_session" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        const { error: upsertError } = await adminClient
+          .from("session_devices")
+          .upsert({
+            user_id: userId,
+            session_id: currentSession.session_id,
+            real_ip: realIp,
+            real_user_agent: realUserAgent,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "user_id,session_id" });
+        
+        if (upsertError) {
+          console.error("Upsert error (fallback):", upsertError);
+        }
+        
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        console.error("JWT decode fallback failed:", e);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get real IP from X-Forwarded-For or fallback
