@@ -35,7 +35,7 @@ const chartTypes: { label: string; value: ChartType; group?: string }[] = [
   { label: 'Point & Figure', value: 'point_figure', group: 'special' },
 ];
 
-const indicatorList = ['EMA 9', 'EMA 21', 'EMA 50', 'EMA 200', 'SMA 20', 'SMA 50', 'Bollinger Bands', 'Volume'];
+
 
 // Short labels for the toolbar buttons
 const shortLabel: Record<string, string> = {
