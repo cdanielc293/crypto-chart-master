@@ -1047,8 +1047,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const cacheKey = getDataCacheKey();
         const cachedState = intervalDataCacheRef.current.get(cacheKey);
         const cachedRange = intervalRangeCacheRef.current.get(cacheKey);
-        const previousVisibleTimeRange = chart.timeScale().getVisibleRange();
+        let viewportTimeRange = chart.timeScale().getVisibleRange();
+        let viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
         const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
+        let renderedFromCache = false;
 
         if (cachedState?.candles.length) {
           rawCandlesRef.current = [...cachedState.candles];
@@ -1079,7 +1081,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
             setChartData(series, replayCandles, replayVolumes, volSeries);
 
-            const safeReplayTimeRange = normalizeVisibleTimeRange(previousVisibleTimeRange, replayCandles);
+            const safeReplayTimeRange = normalizeVisibleTimeRange(viewportTimeRange, replayCandles);
             if (safeReplayTimeRange) {
               chart.timeScale().setVisibleRange(safeReplayTimeRange);
             } else {
@@ -1128,6 +1130,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               });
             }
           }
+
+          renderedFromCache = true;
+          viewportTimeRange = chart.timeScale().getVisibleRange();
+          viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
 
           const lastSync = intervalLastSyncRef.current.get(cacheKey) ?? 0;
           if (Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
@@ -1219,7 +1225,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         if (cancelled) return;
 
         if (isReplayActive) {
-          const replayRangeByTime = normalizeVisibleTimeRange(previousVisibleTimeRange, renderCandles);
+          const replayRangeByTime = normalizeVisibleTimeRange(viewportTimeRange, renderCandles);
           if (replayRangeByTime) {
             chart.timeScale().setVisibleRange(replayRangeByTime);
           } else {
@@ -1241,15 +1247,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
             });
           }
         } else {
-          const safePreviousTimeRange = normalizeVisibleTimeRange(previousVisibleTimeRange, finalCandles);
+          const safePreviousTimeRange = normalizeVisibleTimeRange(viewportTimeRange, finalCandles);
           if (safePreviousTimeRange) {
             chart.timeScale().setVisibleRange(safePreviousTimeRange);
           } else {
-            const safeCachedRange = normalizeVisibleRange(cachedRange, finalCandles.length);
-            if (safeCachedRange) {
-              chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+            const safeViewportRange = normalizeVisibleRange(viewportLogicalRange, finalCandles.length);
+            if (safeViewportRange) {
+              chart.timeScale().setVisibleLogicalRange(safeViewportRange);
             } else {
-              chart.timeScale().fitContent();
+              const safeCachedRange = normalizeVisibleRange(cachedRange, finalCandles.length);
+              if (safeCachedRange) {
+                chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+              } else if (!renderedFromCache) {
+                chart.timeScale().fitContent();
+              }
             }
           }
         }
@@ -1321,9 +1332,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawDataRef.current = merged.map(c => ({ time: c.time, close: c.close }));
         persistSeriesCache(cacheKey, merged, true);
 
-        setChartData(series, merged, volumes, volSeries);
-
         const currentRange = chart.timeScale().getVisibleLogicalRange();
+        setChartData(series, merged, volumes, volSeries);
         if (currentRange && addedBars > 0) {
           chart.timeScale().setVisibleLogicalRange({
             from: currentRange.from + addedBars,
