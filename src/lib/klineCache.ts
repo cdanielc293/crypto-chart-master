@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { ALL_INTERVALS } from '@/types/chart';
 import type { Interval } from '@/types/chart';
 import {
   aggregateCandlesToInterval,
@@ -32,6 +33,9 @@ const backfillInProgress = new Set<string>();
 const backfillComplete = new Set<string>();
 const backfillContinuationScheduled = new Set<string>();
 const backfillCursorMs = new Map<string, number>();
+const symbolPrefetchInProgress = new Set<string>();
+const sourcePrefetchInProgress = new Set<string>();
+const sourcePrefetchComplete = new Set<string>();
 
 function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -44,6 +48,10 @@ function dedupeByTime(rows: RawKline[]): RawKline[] {
 }
 
 function getBackfillKey(symbol: string, cacheInterval: string): string {
+  return `${symbol}:${cacheInterval}`;
+}
+
+function getSourcePrefetchKey(symbol: string, cacheInterval: string): string {
   return `${symbol}:${cacheInterval}`;
 }
 
@@ -320,6 +328,46 @@ export async function getOlderKlinesFromCache(
     .slice(-limit);
 
   return aggregated;
+}
+
+/** Warm cache for all source intervals used across timeframe options for a symbol. */
+export async function prefetchSymbolHistory(symbol: string): Promise<void> {
+  const normalizedSymbol = symbol.trim().toUpperCase();
+  if (!normalizedSymbol) return;
+  if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
+
+  symbolPrefetchInProgress.add(normalizedSymbol);
+  try {
+    const sourceTargets = new Map<string, Interval>();
+    for (const option of ALL_INTERVALS) {
+      const targetInterval = option.value as Interval;
+      const sourceInterval = getBinanceSourceInterval(targetInterval);
+      if (!sourceTargets.has(sourceInterval)) {
+        sourceTargets.set(sourceInterval, targetInterval);
+      }
+    }
+
+    for (const [sourceInterval, targetInterval] of sourceTargets.entries()) {
+      const sourceKey = getSourcePrefetchKey(normalizedSymbol, sourceInterval);
+      if (sourcePrefetchComplete.has(sourceKey) || sourcePrefetchInProgress.has(sourceKey)) {
+        continue;
+      }
+
+      sourcePrefetchInProgress.add(sourceKey);
+      try {
+        await getKlines(normalizedSymbol, targetInterval);
+        sourcePrefetchComplete.add(sourceKey);
+      } catch {
+        // Keep UI responsive; we'll retry on next relevant symbol interaction.
+      } finally {
+        sourcePrefetchInProgress.delete(sourceKey);
+      }
+
+      await wait(120);
+    }
+  } finally {
+    symbolPrefetchInProgress.delete(normalizedSymbol);
+  }
 }
 
 export function getBackfillStatus(symbol: string, interval: Interval): 'idle' | 'running' | 'complete' {

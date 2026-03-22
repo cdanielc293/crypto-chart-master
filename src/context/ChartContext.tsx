@@ -5,6 +5,7 @@ import type { ChartSettings } from '@/types/chartSettings';
 import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSettings';
 import type { GridLayout, LayoutSyncOptions } from '@/types/layout';
 import { ALL_GRID_LAYOUTS, DEFAULT_SYNC_OPTIONS } from '@/types/layout';
+import { prefetchSymbolHistory } from '@/lib/klineCache';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -120,6 +121,21 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     saveWatchlists(watchlists);
   }, [watchlists]);
 
+  useEffect(() => {
+    const symbols = new Set<string>();
+    for (const list of watchlists) {
+      for (const section of list.sections) {
+        for (const sym of section.symbols) {
+          symbols.add(sym.toUpperCase());
+        }
+      }
+    }
+
+    symbols.forEach(sym => {
+      void prefetchSymbolHistory(sym);
+    });
+  }, [watchlists]);
+
   // Legacy compat: derive flat watchlist from active list
   const activeList = watchlists.find(l => l.id === activeWatchlistId) || watchlists[0];
   const allSymbols = activeList ? activeList.sections.flatMap(s => s.symbols) : [];
@@ -177,6 +193,10 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
+  const queueSymbolPrefetch = useCallback((sym: string) => {
+    void prefetchSymbolHistory(sym);
+  }, []);
+
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlists(prev => prev.map(list => {
       if (list.id !== activeWatchlistId) return list;
@@ -193,7 +213,8 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return { ...list, sections };
     }));
-  }, [activeWatchlistId]);
+    queueSymbolPrefetch(sym);
+  }, [activeWatchlistId, queueSymbolPrefetch]);
 
   const removeFromWatchlist = useCallback((sym: string) => {
     setWatchlists(prev => prev.map(list => {
