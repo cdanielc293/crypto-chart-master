@@ -30,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const registerDevice = async (accessToken: string) => {
       try {
+        // Small delay to let the session propagate on the backend
+        await new Promise(r => setTimeout(r, 1500));
         await supabase.functions.invoke('register-device', {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -37,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         });
       } catch (e) {
-        console.error('Failed to register device', e);
+        // Non-critical, silently ignore
       }
     };
 
