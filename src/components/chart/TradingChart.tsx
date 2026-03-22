@@ -1059,7 +1059,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     fetchData();
 
     return () => { cancelled = true; };
-  }, [symbol, interval, chartType, tzShiftSeconds, getDataCacheKey, drawPFOverlay, persistSeriesCache]);
+  }, [symbol, interval, chartType, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
 
   // ─── Lazy-load older cached bars when user scrolls left ───
   useEffect(() => {
