@@ -260,6 +260,24 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIndicators(prev =>
       prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
     );
+    // Also remove from hidden when removing indicator
+    setHiddenIndicators(prev => {
+      if (prev.has(name)) {
+        const next = new Set(prev);
+        next.delete(name);
+        return next;
+      }
+      return prev;
+    });
+  }, []);
+
+  const toggleHiddenIndicator = useCallback((name: string) => {
+    setHiddenIndicators(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   }, []);
 
   const toggleFavoriteInterval = useCallback((iv: Interval) => {
