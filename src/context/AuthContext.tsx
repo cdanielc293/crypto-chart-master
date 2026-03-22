@@ -15,16 +15,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SIGNOUT_TIMEOUT_MS = 8000;
-const AUTH_REQUEST_TIMEOUT_MS = 15000;
-
-const withAuthTimeout = <T,>(promise: Promise<T>) => {
-  return Promise.race<T>([
-    promise,
-    new Promise<T>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Auth request timeout')), AUTH_REQUEST_TIMEOUT_MS);
-    }),
-  ]);
-};
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -90,18 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSigningIn(true);
 
     try {
-      const { error } = await withAuthTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-      );
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success('התחברת בהצלחה');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (msg.includes('Auth request timeout')) {
-        toast.error('הבקשה ארוכה מדי. בדוק חיבור אינטרנט ונסה שוב.');
-      } else {
-        toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
-      }
+      toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
     } finally {
       setSigningIn(false);
     }
@@ -113,15 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSigningIn(true);
 
     try {
-      const { data, error } = await withAuthTimeout(
-        supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/chart`,
-          },
-        }),
-      );
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/chart`,
+        },
+      });
 
       if (error) throw error;
 
@@ -132,9 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (msg.includes('Auth request timeout')) {
-        toast.error('הבקשה ארוכה מדי. בדוק חיבור אינטרנט ונסה שוב.');
-      } else if (msg.includes('already registered')) {
+      if (msg.includes('already registered')) {
         toast.error('האימייל כבר קיים במערכת. נסה להתחבר.');
       } else {
         toast.error('ההרשמה נכשלה. נסה שוב.');
