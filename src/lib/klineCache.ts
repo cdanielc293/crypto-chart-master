@@ -28,6 +28,8 @@ const OLDER_PAGE_LIMIT = 2500;
 const MAX_SOURCE_QUERY_LIMIT = 20000;
 const BACKFILL_REQUESTS_PER_PASS = 40;
 const BACKFILL_CONTINUE_DELAY_MS = 900;
+const RENDER_CACHE_TTL_MS = 45_000;
+const SOURCE_SYNC_COOLDOWN_MS = 12_000;
 
 const backfillInProgress = new Set<string>();
 const backfillComplete = new Set<string>();
@@ -36,6 +38,11 @@ const backfillCursorMs = new Map<string, number>();
 const symbolPrefetchInProgress = new Set<string>();
 const sourcePrefetchInProgress = new Set<string>();
 const sourcePrefetchComplete = new Set<string>();
+const sourceSyncInProgress = new Set<string>();
+const sourceLastSyncAt = new Map<string, number>();
+const renderCache = new Map<string, { rows: RawKline[]; updatedAt: number }>();
+const renderFetchInProgress = new Map<string, Promise<RawKline[]>>();
+const renderRefreshInProgress = new Set<string>();
 
 function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -53,6 +60,17 @@ function getBackfillKey(symbol: string, cacheInterval: string): string {
 
 function getSourcePrefetchKey(symbol: string, cacheInterval: string): string {
   return `${symbol}:${cacheInterval}`;
+}
+
+function getRenderCacheKey(symbol: string, interval: Interval): string {
+  return `${symbol}:${interval}`;
+}
+
+function setRenderCache(key: string, rows: RawKline[]) {
+  renderCache.set(key, {
+    rows: dedupeByTime(rows),
+    updatedAt: Date.now(),
+  });
 }
 
 function toRawKlines(rows: { time: number; open: number; high: number; low: number; close: number; volume: number }[]): RawKline[] {
@@ -249,13 +267,45 @@ async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, t
   return dedupeByTime(collected);
 }
 
-/**
- * Fast load for chart rendering:
- * - returns latest cached window quickly (avoids freezes on timeframe switch)
- * - syncs newest candles incrementally
- * - continues full-history backfill in background
- */
-export async function getKlines(symbol: string, interval: Interval): Promise<RawKline[]> {
+async function syncLatestAndBackfill(
+  symbol: string,
+  sourceInterval: string,
+  targetInterval: Interval,
+  newestCachedTime: number,
+  oldestCachedTime: number | null,
+  cachedSourceWindow: RawKline[],
+) {
+  const sourceKey = getSourcePrefetchKey(symbol, sourceInterval);
+  const lastSync = sourceLastSyncAt.get(sourceKey) ?? 0;
+  if (sourceSyncInProgress.has(sourceKey) || Date.now() - lastSync < SOURCE_SYNC_COOLDOWN_MS) {
+    void backfillHistory(symbol, sourceInterval, oldestCachedTime);
+    return;
+  }
+
+  sourceSyncInProgress.add(sourceKey);
+  try {
+    const fresh = await fetchFromBinance(symbol, sourceInterval, 1000, newestCachedTime * 1000);
+    const updatedLast = fresh.find(k => k.time === newestCachedTime);
+    const newRows = fresh.filter(k => k.time > newestCachedTime);
+    const deltaRows = updatedLast ? [updatedLast, ...newRows] : newRows;
+
+    if (deltaRows.length > 0) {
+      await upsertKlines(symbol, sourceInterval, deltaRows);
+      const mergedSource = dedupeByTime([...cachedSourceWindow, ...deltaRows]);
+      const aggregated = aggregateForInterval(mergedSource, targetInterval).slice(-INITIAL_RENDER_LIMIT);
+      setRenderCache(getRenderCacheKey(symbol, targetInterval), aggregated);
+    }
+
+    void backfillHistory(symbol, sourceInterval, oldestCachedTime);
+  } catch {
+    void backfillHistory(symbol, sourceInterval, oldestCachedTime);
+  } finally {
+    sourceLastSyncAt.set(sourceKey, Date.now());
+    sourceSyncInProgress.delete(sourceKey);
+  }
+}
+
+async function loadKlinesFromSource(symbol: string, interval: Interval): Promise<RawKline[]> {
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceWindowLimit = getSourceWindowLimit(interval);
 
@@ -266,25 +316,18 @@ export async function getKlines(symbol: string, interval: Interval): Promise<Raw
 
   if (newestCachedTime !== null) {
     const cachedSourceWindow = await getLatestCachedKlines(symbol, sourceInterval, sourceWindowLimit);
-
-    try {
-      const fresh = await fetchFromBinance(symbol, sourceInterval, 1000, newestCachedTime * 1000);
-      const updatedLast = fresh.find(k => k.time === newestCachedTime);
-      const newRows = fresh.filter(k => k.time > newestCachedTime);
-      const deltaRows = updatedLast ? [updatedLast, ...newRows] : newRows;
-
-      if (deltaRows.length > 0) {
-        void upsertKlines(symbol, sourceInterval, deltaRows);
-      }
-
-      void backfillHistory(symbol, sourceInterval, oldestCachedTime);
-
-      const mergedSource = dedupeByTime([...cachedSourceWindow, ...deltaRows]);
-      const aggregated = aggregateForInterval(mergedSource, interval);
-      return aggregated.slice(-INITIAL_RENDER_LIMIT);
-    } catch {
-      void backfillHistory(symbol, sourceInterval, oldestCachedTime);
-      return aggregateForInterval(cachedSourceWindow, interval).slice(-INITIAL_RENDER_LIMIT);
+    if (cachedSourceWindow.length > 0) {
+      const aggregated = aggregateForInterval(cachedSourceWindow, interval).slice(-INITIAL_RENDER_LIMIT);
+      setRenderCache(getRenderCacheKey(symbol, interval), aggregated);
+      void syncLatestAndBackfill(
+        symbol,
+        sourceInterval,
+        interval,
+        newestCachedTime,
+        oldestCachedTime,
+        cachedSourceWindow,
+      );
+      return aggregated;
     }
   }
 
@@ -294,10 +337,63 @@ export async function getKlines(symbol: string, interval: Interval): Promise<Raw
       void upsertKlines(symbol, sourceInterval, latestSource);
       void backfillHistory(symbol, sourceInterval, latestSource[0].time);
     }
-    return aggregateForInterval(latestSource, interval).slice(-INITIAL_RENDER_LIMIT);
+    const aggregated = aggregateForInterval(latestSource, interval).slice(-INITIAL_RENDER_LIMIT);
+    setRenderCache(getRenderCacheKey(symbol, interval), aggregated);
+    return aggregated;
   } catch {
     return [];
   }
+}
+
+/**
+ * Fast load for chart rendering:
+ * - returns latest cached window quickly (avoids freezes on timeframe switch)
+ * - syncs newest candles incrementally
+ * - continues full-history backfill in background
+ */
+export async function getKlines(symbol: string, interval: Interval): Promise<RawKline[]> {
+  const normalizedSymbol = symbol.trim().toUpperCase();
+  if (!normalizedSymbol) return [];
+
+  const renderKey = getRenderCacheKey(normalizedSymbol, interval);
+  const cachedRender = renderCache.get(renderKey);
+
+  if (cachedRender?.rows.length) {
+    const isStale = Date.now() - cachedRender.updatedAt > RENDER_CACHE_TTL_MS;
+    if (isStale && !renderRefreshInProgress.has(renderKey)) {
+      renderRefreshInProgress.add(renderKey);
+      void loadKlinesFromSource(normalizedSymbol, interval)
+        .then(rows => {
+          if (rows.length > 0) {
+            setRenderCache(renderKey, rows);
+          }
+        })
+        .finally(() => {
+          renderRefreshInProgress.delete(renderKey);
+        });
+    }
+
+    return cachedRender.rows;
+  }
+
+  const inFlight = renderFetchInProgress.get(renderKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const fetchPromise = loadKlinesFromSource(normalizedSymbol, interval)
+    .then(rows => {
+      if (rows.length > 0) {
+        setRenderCache(renderKey, rows);
+      }
+      return rows;
+    })
+    .finally(() => {
+      renderFetchInProgress.delete(renderKey);
+    });
+
+  renderFetchInProgress.set(renderKey, fetchPromise);
+  return fetchPromise;
 }
 
 /** Load older cached bars before a given timestamp (for lazy-load on left scroll). */

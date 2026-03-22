@@ -131,9 +131,18 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    symbols.forEach(sym => {
-      void prefetchSymbolHistory(sym);
-    });
+    let cancelled = false;
+    const prefetchWatchlistSymbols = async () => {
+      for (const sym of symbols) {
+        if (cancelled) return;
+        await prefetchSymbolHistory(sym);
+      }
+    };
+
+    void prefetchWatchlistSymbols();
+    return () => {
+      cancelled = true;
+    };
   }, [watchlists]);
 
   // Legacy compat: derive flat watchlist from active list
@@ -194,7 +203,9 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const queueSymbolPrefetch = useCallback((sym: string) => {
-    void prefetchSymbolHistory(sym);
+    const normalized = sym.trim().toUpperCase();
+    if (!normalized) return;
+    void prefetchSymbolHistory(normalized);
   }, []);
 
   const addToWatchlist = useCallback((sym: string) => {
