@@ -44,7 +44,7 @@ function ChartArea() {
   );
 }
 
-export default function Index() {
+export default function ChartPage() {
   return (
     <ThemeProvider>
       <ChartProvider>
