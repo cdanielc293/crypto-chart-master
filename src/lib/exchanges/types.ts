@@ -95,6 +95,11 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   kraken: '#5741D9',
   okx: '#FFFFFF',
   kucoin: '#23AF91',
+  gateio: '#2354E6',
+  mexc: '#2EBD85',
+  htx: '#2B6DEF',
+  bitget: '#00F0FF',
+  bitstamp: '#15A157',
   yahoo: '#6001D2',
   coingecko: '#8DC63F',
 };
