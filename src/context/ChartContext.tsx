@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, WatchlistList, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
@@ -9,6 +9,8 @@ import { prefetchSymbolHistory } from '@/lib/klineCache';
 import type { IndicatorInstance } from '@/types/indicators';
 import { createInstance } from '@/types/indicators';
 import { getIndicator } from '@/lib/indicators/registry';
+import { useChartPersistence, type PersistedChartState } from '@/hooks/useChartPersistence';
+import { useAuth } from '@/context/AuthContext';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -112,7 +114,11 @@ export const useChart = () => {
 };
 
 export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [symbol, setSymbol] = useState('BTCUSDT');
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [symbol, setSymbolRaw] = useState(() => {
+    return localStorage.getItem('lastSymbol') || 'BTCUSDT';
+  });
   const [interval, setInterval] = useState<Interval>('1d');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [drawingTool, setDrawingTool] = useState<DrawingTool>('cursor');
@@ -173,6 +179,36 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const saved = localStorage.getItem('favoriteIntervals');
     return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
   });
+
+  // Symbol setter that persists and resets drawing selection
+  const setSymbol = useCallback((s: string) => {
+    setSymbolRaw(s);
+    localStorage.setItem('lastSymbol', s);
+    setSelectedDrawingId(null);
+  }, []);
+
+  // Persistence state for auto-save
+  const persistenceState = useMemo(() => ({
+    drawings,
+    indicators,
+    indicatorConfigs,
+    hiddenIndicators,
+    chartType,
+    interval,
+  }), [drawings, indicators, indicatorConfigs, hiddenIndicators, chartType, interval]);
+
+  // Load handler for restoring persisted state
+  const handleLoadState = useCallback((loaded: PersistedChartState) => {
+    setDrawings(loaded.drawings);
+    setIndicators(loaded.indicators);
+    setIndicatorConfigs(loaded.indicatorConfigs);
+    setHiddenIndicators(loaded.hiddenIndicators);
+    setChartType(loaded.chartType);
+    setInterval(loaded.interval);
+  }, []);
+
+  // Auto-save and load per symbol
+  useChartPersistence(userId, symbol, persistenceState, handleLoadState);
 
   const [replayState, setReplayState] = useState<ReplayState>('off');
   const [replayBarIndex, setReplayBarIndex] = useState(0);

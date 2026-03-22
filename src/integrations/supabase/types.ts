@@ -140,6 +140,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_chart_state: {
+        Row: {
+          chart_type: string
+          drawings: Json
+          hidden_indicators: Json
+          id: string
+          indicator_configs: Json
+          indicators: Json
+          interval: string
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chart_type?: string
+          drawings?: Json
+          hidden_indicators?: Json
+          id?: string
+          indicator_configs?: Json
+          indicators?: Json
+          interval?: string
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chart_type?: string
+          drawings?: Json
+          hidden_indicators?: Json
+          id?: string
+          indicator_configs?: Json
+          indicators?: Json
+          interval?: string
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
