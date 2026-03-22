@@ -1805,7 +1805,7 @@ const INDICATORS: IndicatorDefinition[] = [
     lines: [{ key: 'line', label: 'RVI', color: '#00897b', width: 1, style: 'solid', visible: true }],
     calculate: (data, params) => {
       const closes = data.map(d => d.close);
-      const stds = stddev(closes, params.period);
+      const stds = stdev(closes, params.period);
       const upVol: number[] = [], dnVol: number[] = [];
       for (let i = 1; i < closes.length; i++) {
         const s = stds[i] || 0;
