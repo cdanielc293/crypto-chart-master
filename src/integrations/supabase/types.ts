@@ -115,7 +115,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_sessions: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          ip: unknown
+          refreshed_at: string
+          session_id: string
+          updated_at: string
+          user_agent: string
+        }[]
+      }
+      revoke_user_session: {
+        Args: { p_session_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
