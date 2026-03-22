@@ -118,6 +118,8 @@ interface Props {
   onSelectSymbol?: (symbol: string) => void;
 }
 
+const PAGE_SIZE = 50;
+
 export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const { setSymbol, addToWatchlist } = useChart();
   const [query, setQuery] = useState('');
@@ -126,7 +128,12 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const [activeCategory, setActiveCategory] = useState<AssetCategory | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [activeCategory, sourceFilter, typeFilter, query]);
 
   // Fetch all symbols from all exchanges on mount
   useEffect(() => {
@@ -142,6 +149,15 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       setLoading(false);
     };
     fetchAll();
+  }, []);
+
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+      setVisibleCount(prev => prev + PAGE_SIZE);
+    }
   }, []);
 
   // Available exchanges for source filter
@@ -166,22 +182,15 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const filtered = useMemo(() => {
     let items = results;
 
-    // Category filter
     if (activeCategory !== 'all') {
       items = items.filter(s => s.category === activeCategory);
     }
-
-    // Source filter
     if (sourceFilter !== 'all') {
       items = items.filter(s => s.exchangeId === sourceFilter);
     }
-
-    // Type filter
     if (typeFilter !== 'all') {
       items = items.filter(s => s.marketType === typeFilter);
     }
-
-    // Text search
     if (query.trim()) {
       const q = query.toLowerCase();
       items = items.filter(s =>
@@ -193,6 +202,9 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
 
     return items;
   }, [results, activeCategory, sourceFilter, typeFilter, query]);
+
+  const visibleResults = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
 
   const selectSymbol = useCallback((result: SearchResult) => {
     const sym = result.symbol.replace('.P', ''); // Clean for watchlist
