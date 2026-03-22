@@ -363,10 +363,10 @@ export default function Settings() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white/90">
-                            {s.device}, {s.os}
+                            {s.device}{s.os !== 'Unknown' ? `, ${s.os}` : ''}
                           </p>
                           <p className="text-xs text-white/40 mt-0.5">
-                            {formatSessionTime(s.updated_at)} · {s.ip} · {s.browser}
+                            {formatSessionTime(s.updated_at)} · {s.ip}{s.browser !== 'Unknown' ? ` · ${s.browser}` : ''}
                           </p>
                         </div>
                         {isFirst ? (
