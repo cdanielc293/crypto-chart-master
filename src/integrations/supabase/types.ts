@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      session_devices: {
+        Row: {
+          created_at: string
+          id: string
+          real_ip: string | null
+          real_user_agent: string | null
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          real_ip?: string | null
+          real_user_agent?: string | null
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          real_ip?: string | null
+          real_user_agent?: string | null
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -120,6 +150,8 @@ export type Database = {
         Returns: {
           created_at: string
           ip: unknown
+          real_ip: string
+          real_user_agent: string
           refreshed_at: string
           session_id: string
           updated_at: string
