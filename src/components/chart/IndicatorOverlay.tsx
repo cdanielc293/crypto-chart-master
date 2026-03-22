@@ -1,16 +1,25 @@
 import { useState } from 'react';
-import { useChart } from '@/context/ChartContext';
 import { Eye, EyeOff, Settings, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import IndicatorSettingsDialog from './IndicatorSettingsDialog';
 import { getIndicator } from '@/lib/indicators/registry';
 import { getDisplayName } from '@/types/indicators';
+import type { IndicatorInstance } from '@/types/indicators';
 
-export default function IndicatorOverlay() {
-  const {
-    symbol, interval, indicators, removeIndicator,
-    hiddenIndicators, toggleHiddenIndicator,
-    indicatorConfigs, updateIndicatorConfig,
-  } = useChart();
+interface IndicatorOverlayProps {
+  symbol: string;
+  interval: string;
+  indicators: string[];
+  hiddenIndicators: Set<string>;
+  indicatorConfigs: Map<string, IndicatorInstance>;
+  onRemoveIndicator: (id: string) => void;
+  onToggleHidden: (id: string) => void;
+  onUpdateConfig: (id: string, config: IndicatorInstance) => void;
+}
+
+export default function IndicatorOverlay({
+  symbol, interval, indicators, hiddenIndicators,
+  indicatorConfigs, onRemoveIndicator, onToggleHidden, onUpdateConfig,
+}: IndicatorOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [settingsId, setSettingsId] = useState<string | null>(null);
@@ -63,13 +72,13 @@ export default function IndicatorOverlay() {
             </span>
             <div className="flex items-center gap-0.5 ml-1 shrink-0"
               style={{ opacity: isHovered ? 1 : 0, pointerEvents: isHovered ? 'auto' : 'none' }}>
-              <button onClick={() => toggleHiddenIndicator(id)} className="p-0.5 rounded hover:bg-white/15 transition-colors" title={isHidden ? 'Show' : 'Hide'}>
+              <button onClick={() => onToggleHidden(id)} className="p-0.5 rounded hover:bg-white/15 transition-colors" title={isHidden ? 'Show' : 'Hide'}>
                 {isHidden ? <EyeOff size={13} className="text-white/60" /> : <Eye size={13} className="text-white/60" />}
               </button>
               <button onClick={() => setSettingsId(id)} className="p-0.5 rounded hover:bg-white/15 transition-colors" title="Settings">
                 <Settings size={13} className="text-white/60" />
               </button>
-              <button onClick={() => removeIndicator(id)} className="p-0.5 rounded hover:bg-red-500/30 transition-colors" title="Remove">
+              <button onClick={() => onRemoveIndicator(id)} className="p-0.5 rounded hover:bg-red-500/30 transition-colors" title="Remove">
                 <Trash2 size={13} className="text-white/60 hover:text-red-400" />
               </button>
             </div>
@@ -83,7 +92,7 @@ export default function IndicatorOverlay() {
           onClose={() => setSettingsId(null)}
           instanceId={settingsId}
           instance={indicatorConfigs.get(settingsId)!}
-          onApply={(cfg) => updateIndicatorConfig(settingsId, cfg)}
+          onApply={(cfg) => onUpdateConfig(settingsId, cfg)}
         />
       )}
     </div>
