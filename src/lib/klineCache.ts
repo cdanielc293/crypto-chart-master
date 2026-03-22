@@ -684,23 +684,23 @@ export async function getOlderKlinesFromCache(
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
 
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', sourceInterval)
     .lt('time', beforeTime)
     .order('time', { ascending: false })
-    .limit(sourceLimit);
+    .limit(sourceLimit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      const sourceRows = (data as RawKline[]).reverse();
+      return aggregateForInterval(sourceRows, interval)
+        .filter(k => k.time < beforeTime)
+        .slice(-limit);
+    });
 
-  if (error || !data || data.length === 0) return [];
-
-  const sourceRows = (data as RawKline[]).reverse();
-  const aggregated = aggregateForInterval(sourceRows, interval)
-    .filter(k => k.time < beforeTime)
-    .slice(-limit);
-
-  return aggregated;
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 /** Warm cache for all source intervals used across timeframe options for a symbol. */
