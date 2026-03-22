@@ -8,8 +8,10 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signingIn: boolean;
+  isGuest: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
+  enterAsGuest: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -27,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem('vizion_guest') === 'true');
 
   useEffect(() => {
     const registerDevice = async (accessToken: string) => {
@@ -142,6 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const enterAsGuest = () => {
+    localStorage.setItem('vizion_guest', 'true');
+    setIsGuest(true);
+  };
+
   const signOut = async () => {
     try {
       const result = await Promise.race([
@@ -159,11 +167,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setSession(null);
+      setIsGuest(false);
+      localStorage.removeItem('vizion_guest');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signingIn, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signingIn, isGuest, signInWithEmail, signUpWithEmail, enterAsGuest, signOut }}>
       {children}
     </AuthContext.Provider>
   );
