@@ -224,18 +224,21 @@ async function getCacheBound(
   cacheInterval: string,
   ascending: boolean,
 ): Promise<number | null> {
+  const query = supabase
+    .from('klines')
+    .select('time')
+    .eq('symbol', symbol)
+    .eq('interval', cacheInterval)
+    .order('time', { ascending })
+    .limit(1);
+
+  const p = query.then(({ data, error }) => {
+    if (error || !data || data.length === 0) return null;
+    return data[0].time as number;
+  });
+
   return withTimeout(
-    supabase
-      .from('klines')
-      .select('time')
-      .eq('symbol', symbol)
-      .eq('interval', cacheInterval)
-      .order('time', { ascending })
-      .limit(1)
-      .then(({ data, error }) => {
-        if (error || !data || data.length === 0) return null;
-        return data[0].time as number;
-      }),
+    Promise.resolve(p),
     SUPABASE_QUERY_TIMEOUT_MS,
     null,
   );
