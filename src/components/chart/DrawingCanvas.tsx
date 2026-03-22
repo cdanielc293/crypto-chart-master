@@ -29,7 +29,7 @@ function toDrawing(d: ChartDrawing): Drawing {
   return { ...d, type: d.type as Drawing['type'] };
 }
 
-export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode }: Props) {
+export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode, priceScaleWidth = 55 }: Props) {
   const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId } = useChart();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
