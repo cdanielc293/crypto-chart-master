@@ -70,7 +70,35 @@ interface CachedSeriesState {
   hasMoreOlder: boolean;
 }
 
-const LIVE_CACHE_SYNC_COOLDOWN_MS = 15_000;
+const LIVE_CACHE_SYNC_COOLDOWN_MS = 90_000;
+
+function mergeCandlesByTime(base: RawCandle[], incoming: RawCandle[]): RawCandle[] {
+  const byTime = new Map<number, RawCandle>();
+  for (const candle of base) byTime.set(Number(candle.time), candle);
+  for (const candle of incoming) byTime.set(Number(candle.time), candle);
+  return Array.from(byTime.values()).sort((a, b) => Number(a.time) - Number(b.time));
+}
+
+function normalizeVisibleRange(
+  range: { from: number; to: number } | null | undefined,
+  candleCount: number,
+): { from: number; to: number } | null {
+  if (!range || candleCount <= 0) return null;
+
+  const span = range.to - range.from;
+  if (!Number.isFinite(span) || span <= 0) return null;
+
+  const minBound = -200;
+  const maxBound = candleCount + 200;
+
+  if (range.to < minBound || range.from > maxBound) return null;
+
+  const clampedFrom = Math.max(range.from, minBound);
+  const clampedTo = Math.min(range.to, maxBound);
+  if (clampedTo - clampedFrom < 1) return null;
+
+  return { from: clampedFrom, to: clampedTo };
+}
 
 function toHeikinAshi(candles: RawCandle[]): RawCandle[] {
   const ha: RawCandle[] = [];
@@ -915,14 +943,12 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const cacheKey = getDataCacheKey();
     const onRangeChange = (range: { from: number; to: number } | null) => {
       if (!range) return;
+      if (activeDataKeyRef.current !== cacheKey) return;
       intervalRangeCacheRef.current.set(cacheKey, {
         from: range.from,
         to: range.to,
       });
     };
-
-    const current = chart.timeScale().getVisibleLogicalRange();
-    onRangeChange(current);
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(onRangeChange);
     return () => {
@@ -961,8 +987,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
           setChartData(series, cachedState.candles, cachedVolumes, volSeries);
 
-          if (cachedRange) {
-            chart.timeScale().setVisibleLogicalRange(cachedRange);
+          const safeCachedRange = normalizeVisibleRange(cachedRange, cachedState.candles.length);
+          if (safeCachedRange) {
+            chart.timeScale().setVisibleLogicalRange(safeCachedRange);
           }
 
           const lastCached = cachedState.candles[cachedState.candles.length - 1];
@@ -1006,23 +1033,35 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
         if (cancelled) return;
 
-        rawDataRef.current = rawForIndicators;
-        rawCandlesRef.current = candles;
-        allCandlesRef.current = candles;
-        hasMoreOlderRef.current = true;
+        const baseCandles = isSameDataset
+          ? rawCandlesRef.current
+          : (cachedState?.candles ?? []);
+        const nextCandles = mergeCandlesByTime(baseCandles, candles);
+        const finalCandles = nextCandles.length > 0 ? nextCandles : candles;
+        const finalVolumes = finalCandles.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+        const finalRawForIndicators = finalCandles.map(c => ({ close: c.close, time: c.time }));
+
+        rawDataRef.current = finalRawForIndicators.length > 0 ? finalRawForIndicators : rawForIndicators;
+        rawCandlesRef.current = finalCandles;
+        allCandlesRef.current = finalCandles;
+        hasMoreOlderRef.current = cachedState?.hasMoreOlder ?? true;
         activeDataKeyRef.current = cacheKey;
 
-        setChartData(series, candles, volumes, volSeries);
-        persistSeriesCache(cacheKey, candles, true);
+        setChartData(series, finalCandles, finalVolumes, volSeries);
+        persistSeriesCache(cacheKey, finalCandles, hasMoreOlderRef.current);
         intervalLastSyncRef.current.set(cacheKey, Date.now());
 
         if (chartType === 'point_figure') {
           requestAnimationFrame(() => { if (!cancelled) drawPFOverlay(); });
         }
 
-        const last = candles[candles.length - 1];
+        const last = finalCandles[finalCandles.length - 1];
         if (last) {
-          const prev = candles[candles.length - 2];
+          const prev = finalCandles[finalCandles.length - 2];
           setOhlc({
             o: last.open, h: last.high, l: last.low, c: last.close,
             v: last.volume,
@@ -1040,16 +1079,19 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               to: pointCount + 8,
             });
           }
-        } else if (previousRange && previousCount > 0 && candles.length >= previousCount) {
-          const addedBars = candles.length - previousCount;
+        } else if (previousRange && previousCount > 0 && finalCandles.length >= previousCount) {
+          const addedBars = finalCandles.length - previousCount;
           chart.timeScale().setVisibleLogicalRange({
             from: previousRange.from + addedBars,
             to: previousRange.to + addedBars,
           });
-        } else if (cachedRange) {
-          chart.timeScale().setVisibleLogicalRange(cachedRange);
         } else {
-          chart.timeScale().fitContent();
+          const safeCachedRange = normalizeVisibleRange(cachedRange, finalCandles.length);
+          if (safeCachedRange) {
+            chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+          } else {
+            chart.timeScale().fitContent();
+          }
         }
       } catch (err) {
         if (!cancelled) console.error('Failed to fetch klines:', err);
@@ -1104,9 +1146,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }));
 
         const existing = rawCandlesRef.current;
-        const mergedMap = new Map<number, RawCandle>();
-        for (const c of [...olderCandles, ...existing]) mergedMap.set(Number(c.time), c);
-        const merged = Array.from(mergedMap.values()).sort((a, b) => Number(a.time) - Number(b.time));
+        const merged = mergeCandlesByTime(olderCandles, existing);
 
         const volumes = merged.map(c => ({
           time: c.time,
