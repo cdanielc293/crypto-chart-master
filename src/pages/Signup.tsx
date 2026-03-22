@@ -15,7 +15,7 @@ const tierNames: Record<string, string> = {
 export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, signInWithGoogle, signInWithApple } = useAuth();
+  const { user, signInWithGoogle, signInWithApple, signingIn } = useAuth();
   const tier = searchParams.get('tier') || 'zenith';
   const tierLabel = tierNames[tier] || 'Vizion Zenith';
 
