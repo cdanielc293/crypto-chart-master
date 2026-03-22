@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
 import type { User, Session } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +14,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const OAUTH_TIMEOUT_MS = 20000;
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -60,16 +62,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const signInWithProvider = async (provider: 'google' | 'apple') => {
+    try {
+      const result = await Promise.race([
+        lovable.auth.signInWithOAuth(provider, {
+          redirect_uri: window.location.origin,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('OAuth timeout')), OAUTH_TIMEOUT_MS)
+        ),
+      ]);
+
+      if (result.error) {
+        throw result.error;
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+
+      if (msg.includes('Popup was blocked')) {
+        toast.error('הדפדפן חסם את חלון ההתחברות. אפשר חלונות קופצים ונסה שוב.');
+        return;
+      }
+
+      if (msg.includes('timeout') || msg.includes('deadline')) {
+        toast.error('ההתחברות נתקעה זמנית. סגור את חלון Google ונסה שוב בעוד כמה שניות.');
+        return;
+      }
+
+      if (msg.includes('Preview mode') || msg.includes('legacy_flow')) {
+        toast.error('במצב Preview ההתחברות עשויה להיתקע. פתח את האפליקציה בטאב חדש ונסה שוב.');
+        return;
+      }
+
+      toast.error('ההתחברות נכשלה. נסה שוב.');
+    }
+  };
+
   const signInWithGoogle = async () => {
-    await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
-    });
+    await signInWithProvider('google');
   };
 
   const signInWithApple = async () => {
-    await lovable.auth.signInWithOAuth('apple', {
-      redirect_uri: window.location.origin,
-    });
+    await signInWithProvider('apple');
   };
 
   const signOut = async () => {
