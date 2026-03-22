@@ -55,46 +55,45 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]" onClick={onClose}>
-      <div
-        className="bg-card border border-chart-border rounded-lg shadow-2xl w-[440px] max-h-[500px] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-chart-border">
-          <Search size={16} className="text-muted-foreground" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search symbol..."
-            className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground"
-          />
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={16} />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1">
-          {loading ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">Loading symbols...</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">No results</div>
-          ) : (
-            filtered.map(s => (
-              <button
-                key={s.symbol}
-                onClick={() => selectSymbol(s.symbol)}
-                className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-toolbar-hover transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">{s.baseAsset}</span>
-                  <span className="text-muted-foreground">/ {s.quoteAsset}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">Binance</span>
-              </button>
-            ))
-          )}
-        </div>
+    <DraggableDialog
+      id="symbol-search"
+      open={true}
+      onClose={onClose}
+      title="Symbol Search"
+      className="w-[440px]"
+      zClass="z-50"
+    >
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-chart-border">
+        <Search size={16} className="text-muted-foreground" />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search symbol..."
+          className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted-foreground"
+        />
       </div>
-    </div>
+      <div className="overflow-y-auto flex-1 max-h-[400px]">
+        {loading ? (
+          <div className="p-4 text-center text-muted-foreground text-sm">Loading symbols...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-4 text-center text-muted-foreground text-sm">No results</div>
+        ) : (
+          filtered.map(s => (
+            <button
+              key={s.symbol}
+              onClick={() => selectSymbol(s.symbol)}
+              className="flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-toolbar-hover transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground">{s.baseAsset}</span>
+                <span className="text-muted-foreground">/ {s.quoteAsset}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Binance</span>
+            </button>
+          ))
+        )}
+      </div>
+    </DraggableDialog>
   );
 }

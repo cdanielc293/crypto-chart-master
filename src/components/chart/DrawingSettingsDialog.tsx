@@ -302,7 +302,6 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             <button onClick={handleOk} className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">Ok</button>
           </div>
         </div>
-      </div>
-    </div>
+    </DraggableDialog>
   );
 }

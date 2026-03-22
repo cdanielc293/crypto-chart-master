@@ -338,10 +338,8 @@ export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props
             >
               Save
             </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </DraggableDialog>
   );
 }
 
