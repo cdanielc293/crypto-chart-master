@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, X, Star, BarChart3, TrendingUp, Award, ShoppingBag, Users, Code, Lock, ChevronRight } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
+import DraggableDialog from './DraggableDialog';
 
 interface IndicatorDef {
   name: string;
