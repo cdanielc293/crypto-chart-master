@@ -7,7 +7,7 @@ import {
   getEstimatedSourceBarsPerTargetBar,
 } from '@/lib/chartIntervals';
 import { getSymbolExchange, isBinanceSymbol } from '@/lib/exchanges/symbolRegistry';
-import { getExchange } from '@/lib/exchanges';
+import { getExchange } from '@/lib/exchanges/types';
 
 export interface RawKline {
   time: number; // unix seconds
