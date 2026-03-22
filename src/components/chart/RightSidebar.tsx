@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { BookOpen, Bell, Layers, MessageSquare } from 'lucide-react';
+import { BookOpen, Bell, Layers, MessageSquare, BarChart3 } from 'lucide-react';
 import Watchlist from './Watchlist';
 import AlertsPanel from './AlertsPanel';
 import ObjectTreePanel from './ObjectTreePanel';
+import AdvancedWatchlist from './AdvancedWatchlist';
 
-type RightPanel = 'watchlist' | 'alerts' | 'objects' | 'chat' | null;
+type RightPanel = 'watchlist' | 'alerts' | 'objects' | 'chat' | 'advanced' | null;
 
 const TABS: { id: RightPanel; icon: typeof BookOpen; label: string }[] = [
   { id: 'watchlist', icon: BookOpen, label: 'Watchlist' },
+  { id: 'advanced', icon: BarChart3, label: 'Advanced' },
   { id: 'alerts', icon: Bell, label: 'Alerts' },
   { id: 'objects', icon: Layers, label: 'Object tree' },
   { id: 'chat', icon: MessageSquare, label: 'Chat' },
@@ -24,6 +26,7 @@ export default function RightSidebar() {
     <div className="flex h-full shrink-0">
       {/* Panel content */}
       {activePanel === 'watchlist' && <Watchlist />}
+      {activePanel === 'advanced' && <AdvancedWatchlist onClose={() => setActivePanel('watchlist')} />}
       {activePanel === 'alerts' && <AlertsPanel />}
       {activePanel === 'objects' && <ObjectTreePanel />}
       {activePanel === 'chat' && (
