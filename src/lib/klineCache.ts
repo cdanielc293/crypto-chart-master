@@ -1,5 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Interval } from '@/types/chart';
+import {
+  aggregateCandlesToInterval,
+  getBinanceSourceInterval,
+  getEstimatedSourceBarsPerTargetBar,
+} from '@/lib/chartIntervals';
 
 export interface RawKline {
   time: number; // unix seconds
@@ -19,9 +24,14 @@ const BINANCE_ENDPOINTS = [
 
 const INITIAL_RENDER_LIMIT = 3000;
 const OLDER_PAGE_LIMIT = 2500;
+const MAX_SOURCE_QUERY_LIMIT = 20000;
+const BACKFILL_REQUESTS_PER_PASS = 40;
+const BACKFILL_CONTINUE_DELAY_MS = 900;
 
 const backfillInProgress = new Set<string>();
 const backfillComplete = new Set<string>();
+const backfillContinuationScheduled = new Set<string>();
+const backfillCursorMs = new Map<string, number>();
 
 function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -31,6 +41,42 @@ function dedupeByTime(rows: RawKline[]): RawKline[] {
   const map = new Map<number, RawKline>();
   for (const row of rows) map.set(row.time, row);
   return Array.from(map.values()).sort((a, b) => a.time - b.time);
+}
+
+function getBackfillKey(symbol: string, cacheInterval: string): string {
+  return `${symbol}:${cacheInterval}`;
+}
+
+function toRawKlines(rows: { time: number; open: number; high: number; low: number; close: number; volume: number }[]): RawKline[] {
+  return rows.map(row => ({
+    time: row.time,
+    open: row.open,
+    high: row.high,
+    low: row.low,
+    close: row.close,
+    volume: row.volume,
+  }));
+}
+
+function aggregateForInterval(rows: RawKline[], interval: Interval): RawKline[] {
+  return toRawKlines(aggregateCandlesToInterval(rows, interval));
+}
+
+function getSourceWindowLimit(interval: Interval): number {
+  const barsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
+  const preferred = INITIAL_RENDER_LIMIT * barsPerTarget + barsPerTarget;
+  return Math.min(Math.max(preferred, INITIAL_RENDER_LIMIT), MAX_SOURCE_QUERY_LIMIT);
+}
+
+function scheduleBackfillContinuation(symbol: string, cacheInterval: string) {
+  const key = getBackfillKey(symbol, cacheInterval);
+  if (backfillComplete.has(key) || backfillContinuationScheduled.has(key)) return;
+
+  backfillContinuationScheduled.add(key);
+  setTimeout(() => {
+    backfillContinuationScheduled.delete(key);
+    void backfillHistory(symbol, cacheInterval);
+  }, BACKFILL_CONTINUE_DELAY_MS);
 }
 
 async function fetchFromBinance(
@@ -77,14 +123,14 @@ async function fetchFromBinance(
 
 async function getCacheBound(
   symbol: string,
-  interval: string,
+  cacheInterval: string,
   ascending: boolean,
 ): Promise<number | null> {
   const { data, error } = await supabase
     .from('klines')
     .select('time')
     .eq('symbol', symbol)
-    .eq('interval', interval)
+    .eq('interval', cacheInterval)
     .order('time', { ascending })
     .limit(1);
 
@@ -92,12 +138,12 @@ async function getCacheBound(
   return data[0].time as number;
 }
 
-async function getLatestCachedKlines(symbol: string, interval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
+async function getLatestCachedKlines(symbol: string, cacheInterval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
   const { data, error } = await supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
-    .eq('interval', interval)
+    .eq('interval', cacheInterval)
     .order('time', { ascending: false })
     .limit(limit);
 
@@ -105,12 +151,12 @@ async function getLatestCachedKlines(symbol: string, interval: string, limit = I
   return (data as RawKline[]).reverse();
 }
 
-async function upsertKlines(symbol: string, interval: string, klines: RawKline[]) {
+async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKline[]) {
   if (klines.length === 0) return;
 
   const rows = klines.map(k => ({
     symbol,
-    interval,
+    interval: cacheInterval,
     time: k.time,
     open: k.open,
     high: k.high,
@@ -127,20 +173,22 @@ async function upsertKlines(symbol: string, interval: string, klines: RawKline[]
 }
 
 async function backfillHistory(symbol: string, interval: Interval, oldestKnownTime?: number | null) {
-  const key = `${symbol}:${interval}`;
+  const key = getBackfillKey(symbol, interval);
   if (backfillInProgress.has(key) || backfillComplete.has(key)) return;
 
+  backfillContinuationScheduled.delete(key);
   backfillInProgress.add(key);
-  let endTime = oldestKnownTime ? oldestKnownTime * 1000 - 1 : Date.now();
+  let endTime = backfillCursorMs.get(key) ?? (oldestKnownTime ? oldestKnownTime * 1000 - 1 : Date.now());
   let requests = 0;
-  const maxRequestsPerRun = 150;
+  let needsContinuation = false;
 
   try {
-    while (requests < maxRequestsPerRun) {
+    while (requests < BACKFILL_REQUESTS_PER_PASS) {
       requests += 1;
       const batch = await fetchFromBinance(symbol, interval, 1000, undefined, endTime);
       if (batch.length === 0) {
         backfillComplete.add(key);
+        backfillCursorMs.delete(key);
         break;
       }
 
@@ -148,19 +196,49 @@ async function backfillHistory(symbol: string, interval: Interval, oldestKnownTi
 
       const oldestBatchTime = batch[0].time * 1000;
       endTime = oldestBatchTime - 1;
+      backfillCursorMs.set(key, endTime);
 
       if (batch.length < 1000) {
         backfillComplete.add(key);
+        backfillCursorMs.delete(key);
         break;
       }
 
       await wait(280);
     }
+
+    needsContinuation = !backfillComplete.has(key);
   } catch {
     // Silent fail: chart continues with existing cached data + live Binance updates.
+    needsContinuation = true;
   } finally {
     backfillInProgress.delete(key);
   }
+
+  if (needsContinuation) {
+    scheduleBackfillContinuation(symbol, interval);
+  }
+}
+
+async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, targetBars: number): Promise<RawKline[]> {
+  const requestsToMake = Math.max(1, Math.min(8, Math.ceil(targetBars / 1000)));
+  let endTime: number | undefined;
+  const collected: RawKline[] = [];
+
+  for (let i = 0; i < requestsToMake; i += 1) {
+    const batch = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTime);
+    if (batch.length === 0) break;
+
+    collected.push(...batch);
+
+    const oldestBatchMs = batch[0].time * 1000;
+    endTime = oldestBatchMs - 1;
+
+    if (batch.length < 1000) break;
+    await wait(180);
+  }
+
+  return dedupeByTime(collected);
 }
 
 /**
@@ -170,39 +248,45 @@ async function backfillHistory(symbol: string, interval: Interval, oldestKnownTi
  * - continues full-history backfill in background
  */
 export async function getKlines(symbol: string, interval: Interval): Promise<RawKline[]> {
+  const sourceInterval = getBinanceSourceInterval(interval);
+  const sourceWindowLimit = getSourceWindowLimit(interval);
+
   const [oldestCachedTime, newestCachedTime] = await Promise.all([
-    getCacheBound(symbol, interval, true),
-    getCacheBound(symbol, interval, false),
+    getCacheBound(symbol, sourceInterval, true),
+    getCacheBound(symbol, sourceInterval, false),
   ]);
 
   if (newestCachedTime !== null) {
-    const cachedWindow = await getLatestCachedKlines(symbol, interval, INITIAL_RENDER_LIMIT);
+    const cachedSourceWindow = await getLatestCachedKlines(symbol, sourceInterval, sourceWindowLimit);
 
     try {
-      const fresh = await fetchFromBinance(symbol, interval, 1000, newestCachedTime * 1000);
+      const fresh = await fetchFromBinance(symbol, sourceInterval, 1000, newestCachedTime * 1000);
       const updatedLast = fresh.find(k => k.time === newestCachedTime);
       const newRows = fresh.filter(k => k.time > newestCachedTime);
       const deltaRows = updatedLast ? [updatedLast, ...newRows] : newRows;
 
       if (deltaRows.length > 0) {
-        void upsertKlines(symbol, interval, deltaRows);
+        void upsertKlines(symbol, sourceInterval, deltaRows);
       }
 
-      void backfillHistory(symbol, interval, oldestCachedTime);
-      return dedupeByTime([...cachedWindow, ...deltaRows]);
+      void backfillHistory(symbol, sourceInterval as Interval, oldestCachedTime);
+
+      const mergedSource = dedupeByTime([...cachedSourceWindow, ...deltaRows]);
+      const aggregated = aggregateForInterval(mergedSource, interval);
+      return aggregated.slice(-INITIAL_RENDER_LIMIT);
     } catch {
-      void backfillHistory(symbol, interval, oldestCachedTime);
-      return cachedWindow;
+      void backfillHistory(symbol, sourceInterval as Interval, oldestCachedTime);
+      return aggregateForInterval(cachedSourceWindow, interval).slice(-INITIAL_RENDER_LIMIT);
     }
   }
 
   try {
-    const latest = await fetchFromBinance(symbol, interval, 1000);
-    if (latest.length > 0) {
-      void upsertKlines(symbol, interval, latest);
-      void backfillHistory(symbol, interval, latest[0].time);
+    const latestSource = await fetchLatestSourceWindow(symbol, sourceInterval, sourceWindowLimit);
+    if (latestSource.length > 0) {
+      void upsertKlines(symbol, sourceInterval, latestSource);
+      void backfillHistory(symbol, sourceInterval as Interval, latestSource[0].time);
     }
-    return latest;
+    return aggregateForInterval(latestSource, interval).slice(-INITIAL_RENDER_LIMIT);
   } catch {
     return [];
   }
@@ -215,21 +299,31 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
+  const sourceInterval = getBinanceSourceInterval(interval);
+  const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
+  const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
+
   const { data, error } = await supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
-    .eq('interval', interval)
+    .eq('interval', sourceInterval)
     .lt('time', beforeTime)
     .order('time', { ascending: false })
-    .limit(limit);
+    .limit(sourceLimit);
 
   if (error || !data || data.length === 0) return [];
-  return (data as RawKline[]).reverse();
+
+  const sourceRows = (data as RawKline[]).reverse();
+  const aggregated = aggregateForInterval(sourceRows, interval)
+    .filter(k => k.time < beforeTime)
+    .slice(-limit);
+
+  return aggregated;
 }
 
 export function getBackfillStatus(symbol: string, interval: Interval): 'idle' | 'running' | 'complete' {
-  const key = `${symbol}:${interval}`;
+  const key = getBackfillKey(symbol, getBinanceSourceInterval(interval));
   if (backfillComplete.has(key)) return 'complete';
   if (backfillInProgress.has(key)) return 'running';
   return 'idle';
