@@ -85,7 +85,14 @@ export default function TopToolbar() {
 
   return (
     <>
-      <div className="flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+      <div className="relative flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
+        {/* Absolutely centered logo */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+          <img src={vizionLogo} alt="Vizion" className="h-5 w-5" />
+          <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            Vizion
+          </span>
+        </div>
         {/* User Profile - leftmost */}
         <UserProfileMenu />
         <div className="w-px h-5 bg-chart-border mx-1" />
@@ -328,20 +335,6 @@ export default function TopToolbar() {
         >
           <Settings size={16} />
         </button>
-
-        {/* Spacer to push logo to center */}
-        <div className="flex-1" />
-
-        {/* Centered Logo */}
-        <div className="flex items-center gap-1.5 px-2">
-          <img src={vizionLogo} alt="Vizion" className="h-5 w-5" />
-          <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            Vizion
-          </span>
-        </div>
-
-        {/* Spacer for symmetry */}
-        <div className="flex-1" />
 
       </div>
 
