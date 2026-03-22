@@ -1076,8 +1076,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
             replayBarRef.current = replayIndex;
             setReplayStartIndex(nextReplayStartIndex);
             setReplayBarIndex(replayIndex);
-            replayAnchorTimeRef.current = Number(cachedState.candles[replayIndex]?.time ?? replayAnchorTimeRef.current ?? 0);
-            replayStartTimeRef.current = Number(cachedState.candles[nextReplayStartIndex]?.time ?? replayStartTimeRef.current ?? 0);
+            const replayCandle = cachedState.candles[replayIndex];
+            const replayStartCandle = cachedState.candles[nextReplayStartIndex];
+            if (replayCandle) replayAnchorTimeRef.current = Number(replayCandle.time);
+            if (replayStartCandle) replayStartTimeRef.current = Number(replayStartCandle.time);
 
             setChartData(series, replayCandles, replayVolumes, volSeries);
 
@@ -1142,9 +1144,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }
 
         const isSameDataset = activeDataKeyRef.current === cacheKey;
+        const replayEndTimeSec = isReplayActive && replayAnchorTimeRef.current !== null
+          ? Math.floor(replayAnchorTimeRef.current - tzShiftSeconds)
+          : null;
 
         // Use cache-first strategy: Supabase cache → Binance fallback
-        const klineData = await getKlines(symbol, interval);
+        const klineData = await getKlines(symbol, interval, {
+          replayEndTimeSec,
+        });
 
         if (cancelled) return; // chart may have been disposed
 
@@ -1200,8 +1207,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           replayBarRef.current = replayIndex;
           setReplayStartIndex(nextReplayStartIndex);
           setReplayBarIndex(replayIndex);
-          replayAnchorTimeRef.current = Number(finalCandles[replayIndex]?.time ?? replayAnchorTimeRef.current ?? 0);
-          replayStartTimeRef.current = Number(finalCandles[nextReplayStartIndex]?.time ?? replayStartTimeRef.current ?? 0);
+          const replayCandle = finalCandles[replayIndex];
+          const replayStartCandle = finalCandles[nextReplayStartIndex];
+          if (replayCandle) replayAnchorTimeRef.current = Number(replayCandle.time);
+          if (replayStartCandle) replayStartTimeRef.current = Number(replayStartCandle.time);
         }
 
         setChartData(series, renderCandles, renderVolumes, volSeries);
@@ -1779,6 +1788,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const idx = allCandles.findIndex(c => c.time === param.time);
       if (idx < 0) return;
 
+      replayAnchorTimeRef.current = Number(allCandles[idx].time);
+      replayStartTimeRef.current = Number(allCandles[idx].time);
+
       setReplayStartIndex(idx);
       setReplayBarIndex(idx);
       setReplayState('paused');
@@ -1814,6 +1826,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     if (!chart || !series || !volSeries) return;
 
     const allCandles = allCandlesRef.current;
+    const clampedReplayIndex = Math.max(0, Math.min(replayBarIndex, allCandles.length - 1));
+    const clampedStartIndex = Math.max(0, Math.min(replayStartIndex, allCandles.length - 1));
+
+    if (allCandles[clampedReplayIndex]) {
+      replayAnchorTimeRef.current = Number(allCandles[clampedReplayIndex].time);
+    }
+    if (allCandles[clampedStartIndex]) {
+      replayStartTimeRef.current = Number(allCandles[clampedStartIndex].time);
+    }
+
     if (replayBarIndex >= allCandles.length) {
       setReplayState('off');
       return;
@@ -1836,7 +1858,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         change: prev ? ((last.close - prev.close) / prev.close) * 100 : 0,
       });
     }
-  }, [replayBarIndex, replayState]);
+  }, [replayBarIndex, replayStartIndex, replayState]);
 
   // ─── Replay: playback timer ───
   useEffect(() => {
