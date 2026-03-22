@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, WatchlistList, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
@@ -9,6 +9,8 @@ import { prefetchSymbolHistory } from '@/lib/klineCache';
 import type { IndicatorInstance } from '@/types/indicators';
 import { createInstance } from '@/types/indicators';
 import { getIndicator } from '@/lib/indicators/registry';
+import { useChartPersistence, type PersistedChartState } from '@/hooks/useChartPersistence';
+import { useAuth } from '@/context/AuthContext';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
