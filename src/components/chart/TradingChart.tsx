@@ -1788,6 +1788,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const idx = allCandles.findIndex(c => c.time === param.time);
       if (idx < 0) return;
 
+      replayAnchorTimeRef.current = Number(allCandles[idx].time);
+      replayStartTimeRef.current = Number(allCandles[idx].time);
+
       setReplayStartIndex(idx);
       setReplayBarIndex(idx);
       setReplayState('paused');
