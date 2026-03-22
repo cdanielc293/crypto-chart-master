@@ -9,6 +9,7 @@ import {
   type AssetCategory,
   EXCHANGE_COLORS,
 } from '@/lib/exchanges';
+import { registerSymbolExchange } from '@/lib/exchanges/symbolRegistry';
 
 // ─── Category tabs ───
 const CATEGORIES: { id: AssetCategory | 'all'; label: string }[] = [
