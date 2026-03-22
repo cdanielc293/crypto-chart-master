@@ -1381,7 +1381,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
         rawCandlesRef.current = merged;
         allCandlesRef.current = merged;
-        rawDataRef.current = merged.map(c => ({ time: c.time, close: c.close }));
+        rawDataRef.current = merged;
         persistSeriesCache(cacheKey, merged, true);
 
         const currentRange = chart.timeScale().getVisibleLogicalRange();
