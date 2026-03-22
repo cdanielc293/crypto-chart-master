@@ -1686,6 +1686,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     if (data.length === 0) return;
 
     for (const ind of indicators) {
+      if (hiddenIndicators.has(ind)) continue;
+
       if (ind.startsWith('EMA')) {
         const period = parseInt(ind.split(' ')[1]);
         const s = chart.addSeries(LineSeries, {
@@ -1703,6 +1705,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         s.setData(calculateSMA(data, period));
         indicatorSeriesRef.current.set(ind, s);
       } else if (ind === 'Bollinger Bands') {
+        if (hiddenIndicators.has('Bollinger Bands')) continue;
         const bb = calculateBollinger(data);
         const colors = ['#e91e63', '#2196f3', '#e91e63'];
         const names = ['BB Upper', 'BB Middle', 'BB Lower'];
@@ -1716,7 +1719,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         });
       }
     }
-  }, [indicators, rawDataRef.current.length]);
+  }, [indicators, hiddenIndicators, rawDataRef.current.length]);
 
   // ─── Replay: blue vertical line following mouse during selection ───
   useEffect(() => {
