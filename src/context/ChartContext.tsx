@@ -362,6 +362,71 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
+  // Per-panel indicator functions
+  const getOrCreatePanelState = useCallback((pi: number): PanelIndicatorState => {
+    return panelIndicatorStates.get(pi) || { indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set() };
+  }, [panelIndicatorStates]);
+
+  const addPanelIndicator = useCallback((pi: number, definitionId: string) => {
+    const def = getIndicator(definitionId);
+    if (!def) return;
+    const instanceId = `${definitionId}_${Date.now()}`;
+    const instance = createInstance(def);
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi) || { indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set() };
+      next.set(pi, {
+        ...state,
+        indicators: [...state.indicators, instanceId],
+        indicatorConfigs: new Map(state.indicatorConfigs).set(instanceId, instance),
+      });
+      return next;
+    });
+  }, []);
+
+  const removePanelIndicator = useCallback((pi: number, instanceId: string) => {
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi);
+      if (!state) return prev;
+      const configs = new Map(state.indicatorConfigs);
+      configs.delete(instanceId);
+      const hidden = new Set(state.hiddenIndicators);
+      hidden.delete(instanceId);
+      next.set(pi, {
+        indicators: state.indicators.filter(i => i !== instanceId),
+        indicatorConfigs: configs,
+        hiddenIndicators: hidden,
+      });
+      return next;
+    });
+  }, []);
+
+  const togglePanelHiddenIndicator = useCallback((pi: number, instanceId: string) => {
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi);
+      if (!state) return prev;
+      const hidden = new Set(state.hiddenIndicators);
+      if (hidden.has(instanceId)) hidden.delete(instanceId);
+      else hidden.add(instanceId);
+      next.set(pi, { ...state, hiddenIndicators: hidden });
+      return next;
+    });
+  }, []);
+
+  const updatePanelIndicatorConfig = useCallback((pi: number, instanceId: string, config: IndicatorInstance) => {
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi);
+      if (!state) return prev;
+      const configs = new Map(state.indicatorConfigs);
+      configs.set(instanceId, config);
+      next.set(pi, { ...state, indicatorConfigs: configs });
+      return next;
+    });
+  }, []);
+
   return (
     <ChartContext.Provider value={{
       symbol, setSymbol,
@@ -388,6 +453,11 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       syncOptions, setSyncOptions,
       panelSymbols, setPanelSymbol,
       activePanelIndex, setActivePanelIndex,
+      panelIndicatorStates,
+      addPanelIndicator,
+      removePanelIndicator,
+      togglePanelHiddenIndicator,
+      updatePanelIndicatorConfig,
     }}>
       {children}
     </ChartContext.Provider>
