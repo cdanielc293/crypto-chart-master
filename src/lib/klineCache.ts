@@ -744,6 +744,10 @@ export async function getOlderKlinesFromCache(
 export async function prefetchSymbolHistory(symbol: string): Promise<void> {
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return;
+  
+  // Skip heavy prefetch for non-Binance symbols - they fetch on demand
+  if (!isBinanceSymbol(normalizedSymbol)) return;
+  
   if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
 
   symbolPrefetchInProgress.add(normalizedSymbol);
