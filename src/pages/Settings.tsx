@@ -26,9 +26,7 @@ const sidebarSections = [
     label: 'ACCOUNT AND SECURITY',
     items: [
       { id: 'account', label: 'Account settings', icon: Shield },
-    ],
-  },
-  {
+      { id: 'sessions', label: 'Active sessions', icon: Monitor },
     label: 'BILLING',
     items: [
       { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
