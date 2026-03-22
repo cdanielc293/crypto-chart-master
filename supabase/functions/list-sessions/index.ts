@@ -20,16 +20,16 @@ serve(async (req) => {
       });
     }
 
-    // Create client with user's token to get their user id
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Use service role client but with user's JWT to get user info
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    // Extract user from JWT
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
+
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -37,12 +37,9 @@ serve(async (req) => {
       });
     }
 
-    // Use service role to query auth.sessions
-    const adminClient = createClient(supabaseUrl, supabaseKey, {
-      db: { schema: "auth" },
-    });
-
+    // Query auth.sessions using raw SQL via rpc or direct query
     const { data: sessions, error: sessionsError } = await adminClient
+      .schema("auth")
       .from("sessions")
       .select("id, created_at, updated_at, ip, user_agent, refreshed_at")
       .eq("user_id", user.id)
@@ -50,19 +47,12 @@ serve(async (req) => {
 
     if (sessionsError) {
       console.error("Sessions query error:", sessionsError);
-      return new Response(JSON.stringify({ error: "Failed to fetch sessions" }), {
+      return new Response(JSON.stringify({ error: "Failed to fetch sessions", detail: sessionsError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get current session id from token
-    const { data: { session: currentSession } } = await userClient.auth.getSession();
-    const currentSessionId = currentSession?.access_token
-      ? undefined // We'll mark by matching IP + user_agent of the request
-      : undefined;
-
-    // Parse user agents and enrich session data
     const enrichedSessions = (sessions || []).map((s: any) => {
       const ua = s.user_agent || "";
       const parsed = parseUserAgent(ua);
@@ -94,16 +84,13 @@ function parseUserAgent(ua: string) {
   let os = "Unknown";
   let browser = "Unknown";
 
-  // Device type
   if (/iPad/i.test(ua)) device = "iPad";
   else if (/iPhone/i.test(ua)) device = "iPhone";
   else if (/Android.*Mobile/i.test(ua)) device = "Mobile";
   else if (/Android/i.test(ua)) device = "Tablet";
   else if (/Macintosh/i.test(ua)) device = "Mac";
 
-  // OS
   if (/Windows NT 10/i.test(ua)) os = "Windows 10";
-  else if (/Windows NT 11/i.test(ua)) os = "Windows 11";
   else if (/Windows/i.test(ua)) os = "Windows";
   else if (/Mac OS X ([\d_]+)/i.test(ua)) {
     const match = ua.match(/Mac OS X ([\d_]+)/i);
@@ -111,15 +98,11 @@ function parseUserAgent(ua: string) {
   } else if (/iPhone OS ([\d_]+)/i.test(ua)) {
     const match = ua.match(/iPhone OS ([\d_]+)/i);
     os = "iOS " + (match?.[1]?.replace(/_/g, ".") || "");
-  } else if (/iPad.*OS ([\d_]+)/i.test(ua)) {
-    const match = ua.match(/OS ([\d_]+)/i);
-    os = "iOS " + (match?.[1]?.replace(/_/g, ".") || "");
   } else if (/Android ([\d.]+)/i.test(ua)) {
     const match = ua.match(/Android ([\d.]+)/i);
     os = "Android " + (match?.[1] || "");
   } else if (/Linux/i.test(ua)) os = "Linux";
 
-  // Browser
   if (/Edg\/([\d.]+)/i.test(ua)) {
     const match = ua.match(/Edg\/([\d.]+)/i);
     browser = "Edge " + (match?.[1] || "");

@@ -29,14 +29,13 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Verify user
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -44,12 +43,9 @@ serve(async (req) => {
       });
     }
 
-    // Verify the session belongs to this user before deleting
-    const adminClient = createClient(supabaseUrl, supabaseKey, {
-      db: { schema: "auth" },
-    });
-
+    // Verify session belongs to user
     const { data: session, error: sessionError } = await adminClient
+      .schema("auth")
       .from("sessions")
       .select("id, user_id")
       .eq("id", session_id)
@@ -69,13 +65,15 @@ serve(async (req) => {
       });
     }
 
-    // Delete the session and its refresh tokens
-    const { error: deleteRefreshError } = await adminClient
+    // Delete refresh tokens then session
+    await adminClient
+      .schema("auth")
       .from("refresh_tokens")
       .delete()
       .eq("session_id", session_id);
 
     const { error: deleteError } = await adminClient
+      .schema("auth")
       .from("sessions")
       .delete()
       .eq("id", session_id);
