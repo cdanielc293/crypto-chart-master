@@ -10,6 +10,7 @@ import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import LayoutManager from './LayoutManager';
 import MultiChartLayoutSelector from './MultiChartLayoutSelector';
+import UserProfileMenu from './UserProfileMenu';
 import type { LayoutSyncOptions } from '@/types/layout';
 
 const chartTypes: { label: string; value: ChartType; group?: string }[] = [
@@ -323,6 +324,12 @@ export default function TopToolbar() {
         >
           <Settings size={16} />
         </button>
+
+        {/* Spacer to push profile to the right */}
+        <div className="flex-1" />
+
+        {/* User Profile */}
+        <UserProfileMenu />
       </div>
 
       {/* Close dropdowns on outside click */}
