@@ -646,8 +646,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
   const removeAllIndicators = useCallback(() => {
     if (indicators.length === 0) return;
-    indicators.forEach((name) => toggleIndicator(name));
-  }, [indicators, toggleIndicator]);
+    indicators.forEach((id) => localRemoveIndicator(id));
+  }, [indicators, localRemoveIndicator]);
 
   const getCanvasContextMenuOpenMode = useCallback((event: React.MouseEvent<HTMLElement>): CanvasMenuOpenMode => {
     const container = containerRef.current;
