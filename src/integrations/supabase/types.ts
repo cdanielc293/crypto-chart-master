@@ -47,6 +47,69 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          facebook_profile: string | null
+          full_name: string | null
+          id: string
+          instagram_profile: string | null
+          plan: string
+          referral_balance: number
+          referral_code: string | null
+          referrals_free: number
+          referrals_paid: number
+          signature: string | null
+          updated_at: string
+          username: string | null
+          website: string | null
+          x_profile: string | null
+          youtube_channel: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          facebook_profile?: string | null
+          full_name?: string | null
+          id: string
+          instagram_profile?: string | null
+          plan?: string
+          referral_balance?: number
+          referral_code?: string | null
+          referrals_free?: number
+          referrals_paid?: number
+          signature?: string | null
+          updated_at?: string
+          username?: string | null
+          website?: string | null
+          x_profile?: string | null
+          youtube_channel?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          facebook_profile?: string | null
+          full_name?: string | null
+          id?: string
+          instagram_profile?: string | null
+          plan?: string
+          referral_balance?: number
+          referral_code?: string | null
+          referrals_free?: number
+          referrals_paid?: number
+          signature?: string | null
+          updated_at?: string
+          username?: string | null
+          website?: string | null
+          x_profile?: string | null
+          youtube_channel?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
