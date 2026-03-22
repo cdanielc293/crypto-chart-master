@@ -729,6 +729,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     chart.timeScale().subscribeVisibleLogicalRangeChange(updatePriceScaleWidth);
     return () => {
       disposedRef.current = true;
+      clearInterval(psInterval);
+      try { chart.timeScale().unsubscribeVisibleLogicalRangeChange(updatePriceScaleWidth); } catch {}
       observer.disconnect();
       try { chart.remove(); } catch {}
       chartRef.current = null;
