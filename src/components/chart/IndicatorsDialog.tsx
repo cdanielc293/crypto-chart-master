@@ -43,7 +43,11 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
   }, [activeCategory, search, favorites, allIndicators, byCategory]);
 
   const handleAdd = (defId: string) => {
-    addIndicator(defId);
+    if (gridLayout.count > 1 && activePanelIndex !== null) {
+      addPanelIndicator(activePanelIndex, defId);
+    } else {
+      addIndicator(defId);
+    }
     onClose();
   };
 
