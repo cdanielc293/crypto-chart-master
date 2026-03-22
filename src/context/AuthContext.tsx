@@ -26,16 +26,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const registerDevice = async (accessToken: string) => {
+      try {
+        await supabase.functions.invoke('register-device', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'x-real-user-agent': navigator.userAgent,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to register device', e);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.access_token && (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED')) {
+        registerDevice(session.access_token);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.access_token) {
+        registerDevice(session.access_token);
+      }
     });
 
     return () => subscription.unsubscribe();
