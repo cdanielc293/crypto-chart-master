@@ -572,6 +572,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     interval, chartType, drawingTool, indicators, hiddenIndicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
+    indicatorConfigs,
   } = ctx;
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
