@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Pencil } from 'lucide-react';
+import DraggableDialog from './DraggableDialog';
 import type { Drawing } from '@/types/chart';
 
 const LINE_STYLES = [
