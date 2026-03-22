@@ -398,13 +398,18 @@ export default function Watchlist() {
       const data = msg.data;
       if (!data) return;
 
+      const close = parseFloat(data.c);
+      const open = parseFloat(data.o);
+      const change = close - open;
+      const changePercent = open > 0 ? ((change / open) * 100) : 0;
+
       setWatchlistPrices(prev => {
         const next = new Map(prev);
         next.set(data.s, {
           symbol: data.s,
-          lastPrice: parseFloat(data.c),
-          priceChange: parseFloat(data.p),
-          priceChangePercent: parseFloat(data.P),
+          lastPrice: close,
+          priceChange: change,
+          priceChangePercent: changePercent,
           volume: parseFloat(data.v),
         });
         return next;
