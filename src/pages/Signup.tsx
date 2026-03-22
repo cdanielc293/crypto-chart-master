@@ -18,7 +18,6 @@ export default function Signup() {
   const [searchParams] = useSearchParams();
   const { user, signInWithEmail, signUpWithEmail, signingIn } = useAuth();
   const { enterAsGuest } = useAuth();
-  const navigate2 = useNavigate();
   const tier = searchParams.get('tier') || 'zenith';
   const tierLabel = tierNames[tier] || 'Vizion Zenith';
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
