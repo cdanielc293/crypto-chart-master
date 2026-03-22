@@ -245,16 +245,19 @@ async function getCacheBound(
 }
 
 async function getLatestCachedKlines(symbol: string, cacheInterval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', cacheInterval)
     .order('time', { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      return (data as RawKline[]).reverse();
+    });
 
-  if (error || !data || data.length === 0) return [];
-  return (data as RawKline[]).reverse();
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 async function getCachedKlinesEndingAt(
