@@ -1,11 +1,27 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChart } from '@/context/ChartContext';
 import type { WatchlistList, WatchlistSection, WatchlistItem } from '@/types/chart';
 import {
-  X, Plus, Star, ChevronDown, ChevronRight, MoreHorizontal,
+  X, Plus, Star, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal,
   Copy, Trash2, Edit3, FolderPlus, List, Upload, Search, Grid3X3,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
+
+// ─── Deterministic color from symbol name ───
+const SYMBOL_COLORS = [
+  '#F7931A', '#627EEA', '#26A17B', '#F3BA2F', '#E84142',
+  '#2775CA', '#8247E5', '#00D395', '#E6007A', '#14F195',
+  '#FF007A', '#2B6DEF', '#C3A634', '#FF6B00', '#00AEFF',
+];
+
+function getSymbolColor(sym: string): string {
+  let hash = 0;
+  for (let i = 0; i < sym.length; i++) hash = sym.charCodeAt(i) + ((hash << 5) - hash);
+  return SYMBOL_COLORS[Math.abs(hash) % SYMBOL_COLORS.length];
+}
+
+type SortField = 'symbol' | 'last' | 'chg' | 'chgp';
+type SortDir = 'asc' | 'desc';
 
 // ─── Watchlist Manager Dialog ───
 
