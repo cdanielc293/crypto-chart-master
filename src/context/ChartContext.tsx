@@ -14,6 +14,12 @@ import { useAuth } from '@/context/AuthContext';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
+export interface PanelIndicatorState {
+  indicators: string[];
+  indicatorConfigs: Map<string, IndicatorInstance>;
+  hiddenIndicators: Set<string>;
+}
+
 const DEFAULT_WATCHLISTS: WatchlistList[] = [
   {
     id: 'private',
