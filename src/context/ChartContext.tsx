@@ -74,6 +74,8 @@ interface ChartContextType {
   toggleIndicator: (name: string) => void;
   hiddenIndicators: Set<string>;
   toggleHiddenIndicator: (name: string) => void;
+  indicatorConfigs: Map<string, IndicatorConfig>;
+  updateIndicatorConfig: (name: string, config: IndicatorConfig) => void;
   favoriteIntervals: Interval[];
   toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
