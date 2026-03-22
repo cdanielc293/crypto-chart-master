@@ -207,7 +207,7 @@ export default function Pricing() {
               notice. No credit card, no strings attached.
             </p>
             <motion.button
-              onClick={() => navigate('/chart')}
+              onClick={() => navigate('/signup?tier=zenith')}
               className="px-8 py-3.5 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
