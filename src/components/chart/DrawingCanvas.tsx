@@ -485,6 +485,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const rect = container.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
+
+      // Don't capture hover in the price scale area
+      if (mx > container.clientWidth - priceScaleWidth) {
+        setIsHoveringDrawing(false);
+        return;
+      }
+
       const coord = getCoordHelper();
       if (!coord) {
         setIsHoveringDrawing(false);
