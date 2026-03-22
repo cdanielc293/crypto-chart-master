@@ -79,6 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSigningIn(true);
 
     try {
+      // Preview/iframe environments often block OAuth popups.
+      if (window.self !== window.top) {
+        const standaloneUrl = window.location.href;
+        window.open(standaloneUrl, '_blank', 'noopener,noreferrer');
+        toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם את ההתחברות.');
+        return;
+      }
+
       const result = await Promise.race([
         lovable.auth.signInWithOAuth(provider, {
           redirect_uri: window.location.origin,
@@ -92,12 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
 
-      if (msg.includes('Popup was blocked')) {
-        toast.error('הדפדפן חסם את חלון ההתחברות. אפשר חלונות קופצים ונסה שוב.');
+      if (msg.includes('Popup was blocked') || msg.includes('Preview mode') || msg.includes('legacy_flow')) {
+        window.open(window.location.href, '_blank', 'noopener,noreferrer');
+        toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם את ההתחברות.');
       } else if (msg.includes('timeout') || msg.includes('deadline')) {
-        toast.error('ההתחברות נתקעה זמנית. סגור את חלון Google ונסה שוב בעוד כמה שניות.');
-      } else if (msg.includes('Preview mode') || msg.includes('legacy_flow')) {
-        toast.error('במצב Preview ההתחברות עשויה להיתקע. פתח את האפליקציה בטאב חדש ונסה שוב.');
+        toast.error('ההתחברות נתקעה זמנית. סגור חלונות התחברות פתוחים ונסה שוב.');
       } else if (!msg.includes('closed') && !msg.includes('cancelled')) {
         toast.error('ההתחברות נכשלה. נסה שוב.');
       }
