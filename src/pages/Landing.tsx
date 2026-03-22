@@ -47,7 +47,7 @@ export default function Landing() {
           ))}
         </div>
         <button
-          onClick={() => navigate('/chart')}
+          onClick={() => navigate('/pricing')}
           className="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
         >
           Get started
