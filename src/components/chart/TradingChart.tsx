@@ -1826,6 +1826,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     if (!chart || !series || !volSeries) return;
 
     const allCandles = allCandlesRef.current;
+    const clampedReplayIndex = Math.max(0, Math.min(replayBarIndex, allCandles.length - 1));
+    const clampedStartIndex = Math.max(0, Math.min(replayStartIndex, allCandles.length - 1));
+
+    if (allCandles[clampedReplayIndex]) {
+      replayAnchorTimeRef.current = Number(allCandles[clampedReplayIndex].time);
+    }
+    if (allCandles[clampedStartIndex]) {
+      replayStartTimeRef.current = Number(allCandles[clampedStartIndex].time);
+    }
+
     if (replayBarIndex >= allCandles.length) {
       setReplayState('off');
       return;
@@ -1848,7 +1858,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         change: prev ? ((last.close - prev.close) / prev.close) * 100 : 0,
       });
     }
-  }, [replayBarIndex, replayState]);
+  }, [replayBarIndex, replayStartIndex, replayState]);
 
   // ─── Replay: playback timer ───
   useEffect(() => {
