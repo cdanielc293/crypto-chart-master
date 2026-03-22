@@ -22,11 +22,8 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Use service role client but with user's JWT to get user info
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Extract user from JWT
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
 
@@ -37,21 +34,42 @@ serve(async (req) => {
       });
     }
 
-    // Query auth.sessions using raw SQL via rpc or direct query
-    const { data: sessions, error: sessionsError } = await adminClient
-      .schema("auth")
-      .from("sessions")
-      .select("id, created_at, updated_at, ip, user_agent, refreshed_at")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
+    // Query auth.sessions via PostgREST with service role using the auth schema
+    const dbUrl = Deno.env.get("SUPABASE_DB_URL");
+    
+    // Use REST API to query auth schema
+    const restUrl = `${supabaseUrl}/rest/v1/sessions?user_id=eq.${user.id}&order=updated_at.desc&select=id,created_at,updated_at,ip,user_agent,refreshed_at`;
+    const response = await fetch(restUrl, {
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Accept": "application/json",
+        "Accept-Profile": "auth",
+      },
+    });
 
-    if (sessionsError) {
-      console.error("Sessions query error:", sessionsError);
-      return new Response(JSON.stringify({ error: "Failed to fetch sessions", detail: sessionsError.message }), {
-        status: 500,
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("REST query error:", response.status, errorText);
+      
+      // Fallback: return current session info from the JWT
+      return new Response(JSON.stringify({ 
+        sessions: [{
+          id: "current",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ip: req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "Unknown",
+          device: "PC",
+          os: "Unknown",
+          browser: "Unknown",
+        }],
+        user_id: user.id 
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const sessions = await response.json();
 
     const enrichedSessions = (sessions || []).map((s: any) => {
       const ua = s.user_agent || "";

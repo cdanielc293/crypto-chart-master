@@ -32,7 +32,6 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
 
@@ -43,43 +42,50 @@ serve(async (req) => {
       });
     }
 
-    // Verify session belongs to user
-    const { data: session, error: sessionError } = await adminClient
-      .schema("auth")
-      .from("sessions")
-      .select("id, user_id")
-      .eq("id", session_id)
-      .single();
+    // Verify session belongs to user via REST API
+    const verifyUrl = `${supabaseUrl}/rest/v1/sessions?id=eq.${session_id}&user_id=eq.${user.id}&select=id`;
+    const verifyRes = await fetch(verifyUrl, {
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Accept": "application/json",
+        "Accept-Profile": "auth",
+      },
+    });
 
-    if (sessionError || !session) {
-      return new Response(JSON.stringify({ error: "Session not found" }), {
+    const sessions = await verifyRes.json();
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return new Response(JSON.stringify({ error: "Session not found or not yours" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (session.user_id !== user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Delete refresh tokens
+    await fetch(`${supabaseUrl}/rest/v1/refresh_tokens?session_id=eq.${session_id}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Profile": "auth",
+        "Accept-Profile": "auth",
+      },
+    });
 
-    // Delete refresh tokens then session
-    await adminClient
-      .schema("auth")
-      .from("refresh_tokens")
-      .delete()
-      .eq("session_id", session_id);
+    // Delete session
+    const deleteRes = await fetch(`${supabaseUrl}/rest/v1/sessions?id=eq.${session_id}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Profile": "auth",
+        "Accept-Profile": "auth",
+      },
+    });
 
-    const { error: deleteError } = await adminClient
-      .schema("auth")
-      .from("sessions")
-      .delete()
-      .eq("id", session_id);
-
-    if (deleteError) {
-      console.error("Delete session error:", deleteError);
+    if (!deleteRes.ok) {
+      const errText = await deleteRes.text();
+      console.error("Delete error:", errText);
       return new Response(JSON.stringify({ error: "Failed to revoke session" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
