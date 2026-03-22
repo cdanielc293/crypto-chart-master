@@ -5,6 +5,7 @@ import {
 } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, CandlestickData, LineData, Time } from 'lightweight-charts';
 import { Settings } from 'lucide-react';
+import IndicatorOverlay from './IndicatorOverlay';
 import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
