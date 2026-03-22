@@ -48,7 +48,7 @@ export default function ChartPage() {
   return (
     <ThemeProvider>
       <ChartProvider>
-        <div className="flex flex-col h-full w-full overflow-hidden">
+        <div className="flex flex-col h-screen w-full overflow-hidden">
           <TopToolbar />
           <ReplayControls />
           <div className="flex flex-1 min-h-0 overflow-hidden">
