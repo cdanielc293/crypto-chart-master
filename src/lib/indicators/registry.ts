@@ -1603,6 +1603,679 @@ const INDICATORS: IndicatorDefinition[] = [
       return result;
     },
   },
+
+  // ─── Additional Missing Indicators ───
+
+  // 52 Week High/Low
+  {
+    id: '52wk', name: '52 Week High/Low', shortName: '52Wk',
+    category: 'Trend', overlay: true,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 260, min: 1, max: 1000 }],
+    lines: [
+      { key: 'high', label: 'High', color: '#4caf50', width: 1, style: 'solid', visible: true },
+      { key: 'low', label: 'Low', color: '#ef5350', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const p = params.period;
+      const hi: Point[] = [], lo: Point[] = [];
+      for (let i = p - 1; i < data.length; i++) {
+        let h = -Infinity, l = Infinity;
+        for (let j = i - p + 1; j <= i; j++) { h = Math.max(h, data[j].high); l = Math.min(l, data[j].low); }
+        hi.push({ time: data[i].time, value: h });
+        lo.push({ time: data[i].time, value: l });
+      }
+      return { high: hi, low: lo };
+    },
+  },
+
+  // Chaikin Volatility
+  {
+    id: 'chaikin_vol', name: 'Chaikin Volatility', shortName: 'ChaikVol',
+    category: 'Volatility', overlay: false,
+    params: [
+      { key: 'emaPeriod', label: 'EMA Period', type: 'number', default: 10, min: 1, max: 200 },
+      { key: 'rocPeriod', label: 'ROC Period', type: 'number', default: 10, min: 1, max: 200 },
+    ],
+    lines: [{ key: 'line', label: 'ChaikVol', color: '#ab47bc', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const hl = data.map(d => d.high - d.low);
+      const e = ema(hl, params.emaPeriod);
+      const result: Point[] = [];
+      for (let i = params.rocPeriod; i < data.length; i++) {
+        const prev = e[i - params.rocPeriod];
+        const curr = e[i];
+        if (prev !== null && curr !== null && prev !== 0) {
+          result.push({ time: data[i].time, value: ((curr - prev) / prev) * 100 });
+        }
+      }
+      return { line: result };
+    },
+  },
+
+  // Chop Zone
+  {
+    id: 'chop_zone', name: 'Chop Zone', shortName: 'ChopZone',
+    category: 'Trend', overlay: false,
+    params: [
+      { key: 'length', label: 'Length', type: 'number', default: 30, min: 1, max: 200 },
+      { key: 'emaLength', label: 'EMA Length', type: 'number', default: 34, min: 1, max: 200 },
+    ],
+    lines: [{ key: 'line', label: 'ChopZone', color: '#ff9800', width: 2, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const closes = data.map(d => d.close);
+      const e = ema(closes, params.emaLength);
+      const result: Point[] = [];
+      for (let i = 1; i < data.length; i++) {
+        if (e[i] === null || e[i - 1] === null) continue;
+        const angle = Math.atan2(e[i]! - e[i - 1]!, 1) * (180 / Math.PI);
+        result.push({ time: data[i].time, value: angle });
+      }
+      return { line: result };
+    },
+  },
+
+  // Know Sure Thing (KST)
+  {
+    id: 'kst', name: 'Know Sure Thing', shortName: 'KST',
+    category: 'Momentum', overlay: false,
+    params: [
+      { key: 'r1', label: 'ROC 1', type: 'number', default: 10, min: 1, max: 100 },
+      { key: 'r2', label: 'ROC 2', type: 'number', default: 15, min: 1, max: 100 },
+      { key: 'r3', label: 'ROC 3', type: 'number', default: 20, min: 1, max: 100 },
+      { key: 'r4', label: 'ROC 4', type: 'number', default: 30, min: 1, max: 100 },
+      { key: 's1', label: 'SMA 1', type: 'number', default: 10, min: 1, max: 100 },
+      { key: 's2', label: 'SMA 2', type: 'number', default: 10, min: 1, max: 100 },
+      { key: 's3', label: 'SMA 3', type: 'number', default: 10, min: 1, max: 100 },
+      { key: 's4', label: 'SMA 4', type: 'number', default: 15, min: 1, max: 100 },
+      { key: 'signal', label: 'Signal', type: 'number', default: 9, min: 1, max: 100 },
+    ],
+    lines: [
+      { key: 'kst', label: 'KST', color: '#2196f3', width: 1, style: 'solid', visible: true },
+      { key: 'signal', label: 'Signal', color: '#ff5722', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const closes = data.map(d => d.close);
+      const rocArr = (p: number) => {
+        const r: number[] = [];
+        for (let i = 0; i < closes.length; i++) r.push(i >= p ? ((closes[i] - closes[i - p]) / closes[i - p]) * 100 : 0);
+        return r;
+      };
+      const r1 = sma(rocArr(params.r1), params.s1);
+      const r2 = sma(rocArr(params.r2), params.s2);
+      const r3 = sma(rocArr(params.r3), params.s3);
+      const r4 = sma(rocArr(params.r4), params.s4);
+      const kstValues: number[] = [];
+      for (let i = 0; i < data.length; i++) {
+        kstValues.push(((r1[i] || 0) * 1) + ((r2[i] || 0) * 2) + ((r3[i] || 0) * 3) + ((r4[i] || 0) * 4));
+      }
+      const sig = sma(kstValues, params.signal);
+      return {
+        kst: toPoints(data, kstValues.map(v => v as number | null)),
+        signal: toPoints(data, sig),
+      };
+    },
+  },
+
+  // MA with EMA Cross
+  {
+    id: 'ma_ema_cross', name: 'MA with EMA Cross', shortName: 'MA/EMA Cross',
+    category: 'Moving Averages', overlay: true,
+    params: [
+      { key: 'maPeriod', label: 'MA Period', type: 'number', default: 20, min: 1, max: 500 },
+      { key: 'emaPeriod', label: 'EMA Period', type: 'number', default: 9, min: 1, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [
+      { key: 'ma', label: 'MA', color: '#ff9800', width: 1, style: 'solid', visible: true },
+      { key: 'ema_line', label: 'EMA', color: '#2196f3', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      return { ma: toPoints(data, sma(src, params.maPeriod)), ema_line: toPoints(data, ema(src, params.emaPeriod)) };
+    },
+  },
+
+  // Moving Average Adaptive (Kaufman - KAMA)
+  {
+    id: 'kama', name: 'Moving Average Adaptive', shortName: 'KAMA',
+    category: 'Moving Averages', overlay: true,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 10, min: 1, max: 500 },
+      { key: 'fast', label: 'Fast', type: 'number', default: 2, min: 1, max: 100 },
+      { key: 'slow', label: 'Slow', type: 'number', default: 30, min: 1, max: 100 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'KAMA', color: '#e91e63', width: 2, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const fastSC = 2 / (params.fast + 1);
+      const slowSC = 2 / (params.slow + 1);
+      const result: (number | null)[] = [];
+      let kama: number | null = null;
+      for (let i = 0; i < src.length; i++) {
+        if (i < params.period) { result.push(null); continue; }
+        if (kama === null) { kama = src[i]; result.push(kama); continue; }
+        const direction = Math.abs(src[i] - src[i - params.period]);
+        let volatility = 0;
+        for (let j = i - params.period + 1; j <= i; j++) volatility += Math.abs(src[j] - src[j - 1]);
+        const er = volatility !== 0 ? direction / volatility : 0;
+        const sc = Math.pow(er * (fastSC - slowSC) + slowSC, 2);
+        kama = kama + sc * (src[i] - kama);
+        result.push(kama);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Moving Average Hamming
+  {
+    id: 'hamming', name: 'Moving Average Hamming', shortName: 'Hamming',
+    category: 'Moving Averages', overlay: true,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 20, min: 1, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'Hamming', color: '#673ab7', width: 2, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < src.length; i++) {
+        if (i < p - 1) { result.push(null); continue; }
+        let wSum = 0, wTotal = 0;
+        for (let j = 0; j < p; j++) {
+          const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * j) / (p - 1));
+          wSum += src[i - p + 1 + j] * w;
+          wTotal += w;
+        }
+        result.push(wSum / wTotal);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Relative Volatility Index
+  {
+    id: 'relvol_idx', name: 'Relative Volatility Index', shortName: 'RelVolIdx',
+    category: 'Volatility', overlay: false,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 10, min: 1, max: 200 },
+      { key: 'emaPeriod', label: 'EMA Period', type: 'number', default: 14, min: 1, max: 200 },
+    ],
+    lines: [{ key: 'line', label: 'RVI', color: '#00897b', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const closes = data.map(d => d.close);
+      const stds = stddev(closes, params.period);
+      const upVol: number[] = [], dnVol: number[] = [];
+      for (let i = 1; i < closes.length; i++) {
+        const s = stds[i] || 0;
+        if (closes[i] > closes[i - 1]) { upVol.push(s); dnVol.push(0); }
+        else { upVol.push(0); dnVol.push(s); }
+      }
+      upVol.unshift(0); dnVol.unshift(0);
+      const upEma = ema(upVol, params.emaPeriod);
+      const dnEma = ema(dnVol, params.emaPeriod);
+      const result: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        const u = upEma[i], d = dnEma[i];
+        if (u === null || d === null || (u + d) === 0) { result.push(null); continue; }
+        result.push(100 * u / (u + d));
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Standard Error
+  {
+    id: 'stderr', name: 'Standard Error', shortName: 'StdErr',
+    category: 'Volatility', overlay: false,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 20, min: 2, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'StdErr', color: '#78909c', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < src.length; i++) {
+        if (i < p - 1) { result.push(null); continue; }
+        let sum = 0;
+        for (let j = i - p + 1; j <= i; j++) sum += src[j];
+        const mean = sum / p;
+        let variance = 0;
+        for (let j = i - p + 1; j <= i; j++) variance += (src[j] - mean) ** 2;
+        result.push(Math.sqrt(variance / p) / Math.sqrt(p));
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Standard Error Bands
+  {
+    id: 'stderr_bands', name: 'Standard Error Bands', shortName: 'SE Bands',
+    category: 'Bands & Channels', overlay: true,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 20, min: 2, max: 500 },
+      { key: 'mult', label: 'Multiplier', type: 'number', default: 2, min: 0.1, max: 10, step: 0.1 },
+      SOURCE_PARAM,
+    ],
+    lines: [
+      { key: 'upper', label: 'Upper', color: '#26a69a', width: 1, style: 'solid', visible: true },
+      { key: 'basis', label: 'Basis', color: '#787b86', width: 1, style: 'solid', visible: true },
+      { key: 'lower', label: 'Lower', color: '#ef5350', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const p = params.period;
+      const upper: Point[] = [], basis: Point[] = [], lower: Point[] = [];
+      for (let i = p - 1; i < src.length; i++) {
+        // Linear regression
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        for (let j = 0; j < p; j++) { sumX += j; sumY += src[i - p + 1 + j]; sumXY += j * src[i - p + 1 + j]; sumX2 += j * j; }
+        const slope = (p * sumXY - sumX * sumY) / (p * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / p;
+        const regValue = intercept + slope * (p - 1);
+        let variance = 0;
+        for (let j = 0; j < p; j++) {
+          const expected = intercept + slope * j;
+          variance += (src[i - p + 1 + j] - expected) ** 2;
+        }
+        const se = Math.sqrt(variance / p) / Math.sqrt(p);
+        basis.push({ time: data[i].time, value: regValue });
+        upper.push({ time: data[i].time, value: regValue + params.mult * se });
+        lower.push({ time: data[i].time, value: regValue - params.mult * se });
+      }
+      return { upper, basis, lower };
+    },
+  },
+
+  // SMI Ergodic Indicator
+  {
+    id: 'smi_ergodic', name: 'SMI Ergodic Indicator', shortName: 'SMI Ergodic',
+    category: 'Momentum', overlay: false,
+    params: [
+      { key: 'fast', label: 'Fast', type: 'number', default: 5, min: 1, max: 100 },
+      { key: 'slow', label: 'Slow', type: 'number', default: 20, min: 1, max: 200 },
+      { key: 'signal', label: 'Signal', type: 'number', default: 5, min: 1, max: 100 },
+    ],
+    lines: [
+      { key: 'smi', label: 'SMI', color: '#2196f3', width: 1, style: 'solid', visible: true },
+      { key: 'signal', label: 'Signal', color: '#ff5722', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const closes = data.map(d => d.close);
+      const pc: number[] = [0];
+      const apc: number[] = [0];
+      for (let i = 1; i < closes.length; i++) {
+        pc.push(closes[i] - closes[i - 1]);
+        apc.push(Math.abs(closes[i] - closes[i - 1]));
+      }
+      const dblSmthPc = ema(ema(pc, params.fast).map(v => v ?? 0), params.slow);
+      const dblSmthApc = ema(ema(apc, params.fast).map(v => v ?? 0), params.slow);
+      const smiValues: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        const n = dblSmthPc[i], d = dblSmthApc[i];
+        if (n === null || d === null || d === 0) { smiValues.push(null); continue; }
+        smiValues.push((n / d) * 100);
+      }
+      const sig = ema(smiValues.map(v => v ?? 0), params.signal);
+      return { smi: toPoints(data, smiValues), signal: toPoints(data, sig) };
+    },
+  },
+
+  // Williams Alligator
+  {
+    id: 'alligator', name: 'Williams Alligator', shortName: 'Alligator',
+    category: 'Trend', overlay: true,
+    params: [
+      { key: 'jawPeriod', label: 'Jaw Period', type: 'number', default: 13, min: 1, max: 200 },
+      { key: 'jawOffset', label: 'Jaw Offset', type: 'number', default: 8, min: 0, max: 50 },
+      { key: 'teethPeriod', label: 'Teeth Period', type: 'number', default: 8, min: 1, max: 200 },
+      { key: 'teethOffset', label: 'Teeth Offset', type: 'number', default: 5, min: 0, max: 50 },
+      { key: 'lipsPeriod', label: 'Lips Period', type: 'number', default: 5, min: 1, max: 200 },
+      { key: 'lipsOffset', label: 'Lips Offset', type: 'number', default: 3, min: 0, max: 50 },
+    ],
+    lines: [
+      { key: 'jaw', label: 'Jaw', color: '#2196f3', width: 1, style: 'solid', visible: true },
+      { key: 'teeth', label: 'Teeth', color: '#ef5350', width: 1, style: 'solid', visible: true },
+      { key: 'lips', label: 'Lips', color: '#4caf50', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const hl2 = data.map(d => (d.high + d.low) / 2);
+      const jawSmma = smma(hl2, params.jawPeriod);
+      const teethSmma = smma(hl2, params.teethPeriod);
+      const lipsSmma = smma(hl2, params.lipsPeriod);
+      const offset = (arr: (number | null)[], shift: number) => {
+        const r: Point[] = [];
+        for (let i = 0; i < arr.length; i++) {
+          const idx = i + shift;
+          if (idx < data.length && arr[i] !== null) r.push({ time: data[idx].time, value: arr[i]! });
+        }
+        return r;
+      };
+      return {
+        jaw: offset(jawSmma, params.jawOffset),
+        teeth: offset(teethSmma, params.teethOffset),
+        lips: offset(lipsSmma, params.lipsOffset),
+      };
+    },
+  },
+
+  // Williams Fractal
+  {
+    id: 'fractal', name: 'Williams Fractal', shortName: 'Fractal',
+    category: 'Trend', overlay: true,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 2, min: 1, max: 10 }],
+    lines: [
+      { key: 'up', label: 'Up', color: '#4caf50', width: 1, style: 'solid', visible: true },
+      { key: 'down', label: 'Down', color: '#ef5350', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const n = params.period;
+      const up: Point[] = [], down: Point[] = [];
+      for (let i = n; i < data.length - n; i++) {
+        let isUp = true, isDown = true;
+        for (let j = 1; j <= n; j++) {
+          if (data[i].high <= data[i - j].high || data[i].high <= data[i + j].high) isUp = false;
+          if (data[i].low >= data[i - j].low || data[i].low >= data[i + j].low) isDown = false;
+        }
+        if (isUp) up.push({ time: data[i].time, value: data[i].high });
+        if (isDown) down.push({ time: data[i].time, value: data[i].low });
+      }
+      return { up, down };
+    },
+  },
+
+  // Zig Zag
+  {
+    id: 'zigzag', name: 'Zig Zag', shortName: 'ZigZag',
+    category: 'Trend', overlay: true,
+    params: [{ key: 'deviation', label: 'Deviation %', type: 'number', default: 5, min: 0.1, max: 50, step: 0.1 }],
+    lines: [{ key: 'line', label: 'ZigZag', color: '#7c4dff', width: 2, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const dev = params.deviation / 100;
+      if (data.length < 2) return { line: [] };
+      const pivots: { idx: number; value: number }[] = [{ idx: 0, value: data[0].close }];
+      let lastDir = 0; // 1=up, -1=down
+      let lastPivot = data[0].close;
+      let lastPivotIdx = 0;
+      for (let i = 1; i < data.length; i++) {
+        const h = data[i].high, l = data[i].low;
+        if (lastDir >= 0 && h >= lastPivot) { lastPivot = h; lastPivotIdx = i; }
+        if (lastDir <= 0 && l <= lastPivot) { lastPivot = l; lastPivotIdx = i; }
+        if (lastDir >= 0 && l <= lastPivot * (1 - dev)) {
+          pivots.push({ idx: lastPivotIdx, value: lastPivot });
+          lastDir = -1; lastPivot = l; lastPivotIdx = i;
+        } else if (lastDir <= 0 && h >= lastPivot * (1 + dev)) {
+          pivots.push({ idx: lastPivotIdx, value: lastPivot });
+          lastDir = 1; lastPivot = h; lastPivotIdx = i;
+        }
+      }
+      pivots.push({ idx: lastPivotIdx, value: lastPivot });
+      // Interpolate between pivots
+      const result: Point[] = [];
+      for (let p = 0; p < pivots.length - 1; p++) {
+        const from = pivots[p], to = pivots[p + 1];
+        for (let i = from.idx; i <= to.idx; i++) {
+          const t = (i - from.idx) / Math.max(1, to.idx - from.idx);
+          result.push({ time: data[i].time, value: from.value + t * (to.value - from.value) });
+        }
+      }
+      return { line: result };
+    },
+  },
+
+  // Volatility Close-to-Close
+  {
+    id: 'vol_cc', name: 'Volatility Close-to-Close', shortName: 'Vol C-C',
+    category: 'Volatility', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 20, min: 2, max: 500 }],
+    lines: [{ key: 'line', label: 'Vol C-C', color: '#ff7043', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const logReturns: number[] = [0];
+      for (let i = 1; i < data.length; i++) logReturns.push(Math.log(data[i].close / data[i - 1].close));
+      const result: (number | null)[] = [];
+      const p = params.period;
+      for (let i = 0; i < data.length; i++) {
+        if (i < p) { result.push(null); continue; }
+        let sum = 0, sum2 = 0;
+        for (let j = i - p + 1; j <= i; j++) { sum += logReturns[j]; sum2 += logReturns[j] ** 2; }
+        const mean = sum / p;
+        const variance = (sum2 - p * mean * mean) / (p - 1);
+        result.push(Math.sqrt(variance) * Math.sqrt(252) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Volatility O-H-L-C (Garman-Klass)
+  {
+    id: 'vol_ohlc', name: 'Volatility O-H-L-C', shortName: 'Vol OHLC',
+    category: 'Volatility', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 20, min: 2, max: 500 }],
+    lines: [{ key: 'line', label: 'Vol OHLC', color: '#5c6bc0', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < p - 1) { result.push(null); continue; }
+        let sum = 0;
+        for (let j = i - p + 1; j <= i; j++) {
+          const hl = Math.log(data[j].high / data[j].low);
+          const co = Math.log(data[j].close / data[j].open);
+          sum += 0.5 * hl * hl - (2 * Math.log(2) - 1) * co * co;
+        }
+        result.push(Math.sqrt((sum / p) * 252) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Correlation Coefficient
+  {
+    id: 'correlation', name: 'Correlation Coefficient', shortName: 'Corr',
+    category: 'Oscillators', overlay: false,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 20, min: 2, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'Corr', color: '#26a69a', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      // Correlation between price and time index
+      const src = data.map(d => getSource(d, params.source));
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < src.length; i++) {
+        if (i < p - 1) { result.push(null); continue; }
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+        for (let j = 0; j < p; j++) {
+          const x = j, y = src[i - p + 1 + j];
+          sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; sumY2 += y * y;
+        }
+        const num = p * sumXY - sumX * sumY;
+        const den = Math.sqrt((p * sumX2 - sumX * sumX) * (p * sumY2 - sumY * sumY));
+        result.push(den === 0 ? 0 : num / den);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Rank Correlation Index (Spearman)
+  {
+    id: 'rank_corr', name: 'Rank Correlation Index', shortName: 'RankCorr',
+    category: 'Oscillators', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 14, min: 2, max: 500 }],
+    lines: [{ key: 'line', label: 'RCI', color: '#42a5f5', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < p - 1) { result.push(null); continue; }
+        const slice = data.slice(i - p + 1, i + 1).map((d, idx) => ({ price: d.close, timeRank: idx + 1 }));
+        const sorted = [...slice].sort((a, b) => a.price - b.price);
+        sorted.forEach((s, idx) => (s as any).priceRank = idx + 1);
+        let d2Sum = 0;
+        for (const s of sorted) d2Sum += ((s as any).priceRank - s.timeRank) ** 2;
+        result.push((1 - (6 * d2Sum) / (p * (p * p - 1))) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Trend Strength Index
+  {
+    id: 'trend_strength', name: 'Trend Strength Index', shortName: 'TSI',
+    category: 'Trend', overlay: false,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 14, min: 1, max: 200 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'TSI', color: '#26c6da', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < src.length; i++) {
+        if (i < p) { result.push(null); continue; }
+        let upSum = 0, dnSum = 0;
+        for (let j = i - p + 1; j <= i; j++) {
+          const diff = src[j] - src[j - 1];
+          if (diff > 0) upSum += diff; else dnSum += Math.abs(diff);
+        }
+        const total = upSum + dnSum;
+        result.push(total === 0 ? 50 : (upSum / total) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Majority Rule
+  {
+    id: 'majority', name: 'Majority Rule', shortName: 'Majority',
+    category: 'Oscillators', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 10, min: 2, max: 200 }],
+    lines: [{ key: 'line', label: 'Majority', color: '#8d6e63', width: 2, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const p = params.period;
+      const result: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < p) { result.push(null); continue; }
+        let ups = 0;
+        for (let j = i - p + 1; j <= i; j++) { if (data[j].close > data[j - 1].close) ups++; }
+        result.push((ups / p) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Moving Average Multiple
+  {
+    id: 'ma_multiple', name: 'Moving Average Multiple', shortName: 'MA Multi',
+    category: 'Moving Averages', overlay: true,
+    params: [
+      { key: 'p1', label: 'MA 1', type: 'number', default: 10, min: 1, max: 500 },
+      { key: 'p2', label: 'MA 2', type: 'number', default: 20, min: 1, max: 500 },
+      { key: 'p3', label: 'MA 3', type: 'number', default: 50, min: 1, max: 500 },
+      { key: 'p4', label: 'MA 4', type: 'number', default: 100, min: 1, max: 500 },
+      { key: 'p5', label: 'MA 5', type: 'number', default: 200, min: 1, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [
+      { key: 'ma1', label: 'MA 1', color: '#f44336', width: 1, style: 'solid', visible: true },
+      { key: 'ma2', label: 'MA 2', color: '#ff9800', width: 1, style: 'solid', visible: true },
+      { key: 'ma3', label: 'MA 3', color: '#4caf50', width: 1, style: 'solid', visible: true },
+      { key: 'ma4', label: 'MA 4', color: '#2196f3', width: 1, style: 'solid', visible: true },
+      { key: 'ma5', label: 'MA 5', color: '#9c27b0', width: 1, style: 'solid', visible: true },
+    ],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      return {
+        ma1: toPoints(data, sma(src, params.p1)),
+        ma2: toPoints(data, sma(src, params.p2)),
+        ma3: toPoints(data, sma(src, params.p3)),
+        ma4: toPoints(data, sma(src, params.p4)),
+        ma5: toPoints(data, sma(src, params.p5)),
+      };
+    },
+  },
+
+  // Advance/Decline (approximated with up/down candle counting)
+  {
+    id: 'advance_decline', name: 'Advance/Decline', shortName: 'A/D Line',
+    category: 'Oscillators', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 14, min: 1, max: 200 }],
+    lines: [{ key: 'line', label: 'A/D', color: '#66bb6a', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const p = params.period;
+      const result: (number | null)[] = [];
+      let cumulative = 0;
+      for (let i = 0; i < data.length; i++) {
+        cumulative += data[i].close >= data[i].open ? 1 : -1;
+        if (i < p - 1) { result.push(null); continue; }
+        result.push(cumulative);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Volatility Index (VIX-like proxy using ATR ratio)
+  {
+    id: 'vol_index', name: 'Volatility Index', shortName: 'VolIdx',
+    category: 'Volatility', overlay: false,
+    params: [{ key: 'period', label: 'Period', type: 'number', default: 14, min: 2, max: 200 }],
+    lines: [{ key: 'line', label: 'VolIdx', color: '#e65100', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const p = params.period;
+      const atrValues = atr(data, p);
+      const result: (number | null)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (atrValues[i] === null || data[i].close === 0) { result.push(null); continue; }
+        result.push((atrValues[i]! / data[i].close) * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
+
+  // Spread (High-Low)
+  {
+    id: 'spread', name: 'Spread', shortName: 'Spread',
+    category: 'Volatility', overlay: false,
+    params: [{ key: 'period', label: 'SMA Period', type: 'number', default: 14, min: 1, max: 200 }],
+    lines: [
+      { key: 'spread', label: 'Spread', color: '#7e57c2', width: 1, style: 'solid', visible: true },
+      { key: 'avg', label: 'Average', color: '#ff7043', width: 1, style: 'dashed', visible: true },
+    ],
+    calculate: (data, params) => {
+      const raw = data.map(d => d.high - d.low);
+      const avg = sma(raw, params.period);
+      return {
+        spread: data.map((d, i) => ({ time: d.time, value: raw[i] })),
+        avg: toPoints(data, avg),
+      };
+    },
+  },
+
+  // Ratio
+  {
+    id: 'ratio', name: 'Ratio', shortName: 'Ratio',
+    category: 'Oscillators', overlay: false,
+    params: [
+      { key: 'period', label: 'Period', type: 'number', default: 14, min: 1, max: 500 },
+      SOURCE_PARAM,
+    ],
+    lines: [{ key: 'line', label: 'Ratio', color: '#00acc1', width: 1, style: 'solid', visible: true }],
+    calculate: (data, params) => {
+      const src = data.map(d => getSource(d, params.source));
+      const ma = sma(src, params.period);
+      const result: (number | null)[] = [];
+      for (let i = 0; i < src.length; i++) {
+        if (ma[i] === null || ma[i] === 0) { result.push(null); continue; }
+        result.push(src[i] / ma[i]! * 100);
+      }
+      return { line: toPoints(data, result) };
+    },
+  },
 ];
 
 // ═══════════════════════════════════════════
