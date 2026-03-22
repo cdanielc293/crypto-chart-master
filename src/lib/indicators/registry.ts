@@ -2227,7 +2227,7 @@ const INDICATORS: IndicatorDefinition[] = [
     lines: [{ key: 'line', label: 'VolIdx', color: '#e65100', width: 1, style: 'solid', visible: true }],
     calculate: (data, params) => {
       const p = params.period;
-      const atrValues = atr(data, p);
+      const atrValues = rma(trueRange(data), p);
       const result: (number | null)[] = [];
       for (let i = 0; i < data.length; i++) {
         if (atrValues[i] === null || data[i].close === 0) { result.push(null); continue; }
