@@ -1030,7 +1030,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     } else {
       volumeSeriesRef.current = null;
     }
-  }, [chartType]);
+  }, [chartType, indicators, indicatorConfigs, hiddenIndicators]);
 
   // Fetch data and connect WebSocket
   // Compute timezone offset in seconds for shifting candle timestamps
