@@ -24,39 +24,6 @@ export function useAuth() {
   return ctx;
 }
 
-const AUTH_URL_KEYS = new Set([
-  'access_token',
-  'refresh_token',
-  'expires_at',
-  'expires_in',
-  'token_type',
-  'type',
-]);
-
-function getTokensFromUrl() {
-  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-  const hashParams = new URLSearchParams(hash);
-  const searchParams = new URLSearchParams(window.location.search);
-
-  const accessToken = hashParams.get('access_token') ?? searchParams.get('access_token');
-  const refreshToken = hashParams.get('refresh_token') ?? searchParams.get('refresh_token');
-
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken };
-}
-
-function cleanAuthParamsFromUrl() {
-  const currentUrl = new URL(window.location.href);
-  currentUrl.hash = '';
-
-  AUTH_URL_KEYS.forEach((key) => {
-    currentUrl.searchParams.delete(key);
-  });
-
-  const next = `${currentUrl.pathname}${currentUrl.search}`;
-  window.history.replaceState({}, document.title, next);
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -94,18 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const bootstrapAuth = async () => {
-      const tokens = getTokensFromUrl();
-      if (tokens) {
-        const { error } = await supabase.auth.setSession({
-          access_token: tokens.accessToken,
-          refresh_token: tokens.refreshToken,
-        });
-
-        if (!error) {
-          cleanAuthParamsFromUrl();
-        }
-      }
-
       const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -121,14 +76,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const openStandaloneOAuthTab = (provider: 'google' | 'apple') => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('oauth', provider);
+    window.open(url.toString(), '_blank', 'noopener,noreferrer');
+  };
+
   const signInWithProvider = async (provider: 'google' | 'apple') => {
     if (signingIn) return;
+
+    if (window.self !== window.top) {
+      openStandaloneOAuthTab(provider);
+      toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם.');
+      return;
+    }
+
     setSigningIn(true);
 
     try {
       const result = await Promise.race([
         lovable.auth.signInWithOAuth(provider, {
-          redirect_uri: `${window.location.origin}/chart`,
           ...(provider === 'google' ? { extraParams: { prompt: 'select_account' } } : {}),
         }),
         new Promise<never>((_, reject) => {
@@ -141,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
 
       if (msg.includes('Popup was blocked') || msg.includes('Preview mode') || msg.includes('legacy_flow')) {
-        window.open(window.location.href, '_blank', 'noopener,noreferrer');
+        openStandaloneOAuthTab(provider);
         toast.info('התחברות נפתחה בטאב חדש. המשך שם.');
       } else if (msg.includes('timeout') || msg.includes('deadline')) {
         toast.error('ההתחברות נתקעה זמנית. נסה שוב.');
