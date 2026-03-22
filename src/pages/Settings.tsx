@@ -11,8 +11,9 @@ import { toast } from 'sonner';
 import vizionLogo from '@/assets/vizion-logo.png';
 import {
   ArrowLeft, User, Shield, CreditCard, Receipt, Bell, Globe, Youtube, Instagram, Twitter,
-  Facebook, Link2, Save,
+  Facebook, Link2, Save, Monitor, Smartphone, Tablet, Laptop, LogOut, Loader2,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const sidebarSections = [
   {
