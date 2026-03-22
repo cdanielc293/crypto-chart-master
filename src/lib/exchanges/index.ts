@@ -31,3 +31,5 @@ export {
   registerExchange,
   EXCHANGE_COLORS,
 } from './types';
+
+export { registerSymbolExchange, getSymbolExchange, isBinanceSymbol } from './symbolRegistry';
