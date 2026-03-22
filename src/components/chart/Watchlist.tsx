@@ -369,6 +369,7 @@ export default function Watchlist() {
   const [renameValue, setRenameValue] = useState('');
   const [renamingSectionId, setRenamingSectionId] = useState<string | null>(null);
   const [sectionRenameValue, setSectionRenameValue] = useState('');
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'rows'>('table');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
