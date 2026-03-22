@@ -6,6 +6,8 @@ import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSet
 import type { GridLayout, LayoutSyncOptions } from '@/types/layout';
 import { ALL_GRID_LAYOUTS, DEFAULT_SYNC_OPTIONS } from '@/types/layout';
 import { prefetchSymbolHistory } from '@/lib/klineCache';
+import type { IndicatorConfig } from '@/types/indicators';
+import { getDefaultConfig } from '@/types/indicators';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
