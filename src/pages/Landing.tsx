@@ -47,7 +47,7 @@ export default function Landing() {
           ))}
         </div>
         <button
-          onClick={() => navigate('/chart')}
+          onClick={() => navigate('/pricing')}
           className="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
         >
           Get started
@@ -100,7 +100,7 @@ export default function Landing() {
             transition={{ duration: 0.5, delay: 0.9, type: 'spring', stiffness: 200 }}
           >
             <button
-              onClick={() => navigate('/chart')}
+              onClick={() => navigate('/pricing')}
               className="group relative px-8 py-3.5 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-400/40 hover:scale-[1.02] active:scale-[0.98]"
             >
               Get started for free
@@ -183,8 +183,8 @@ export default function Landing() {
             Join thousands of traders who chose signal over noise.
           </p>
           <motion.button
-            onClick={() => navigate('/chart')}
-            className="px-10 py-4 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-400/40"
+          onClick={() => navigate('/pricing')}
+          className="px-10 py-4 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-400/40"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
