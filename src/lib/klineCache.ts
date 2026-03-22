@@ -172,7 +172,7 @@ async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKl
   }
 }
 
-async function backfillHistory(symbol: string, interval: Interval, oldestKnownTime?: number | null) {
+async function backfillHistory(symbol: string, interval: string, oldestKnownTime?: number | null) {
   const key = getBackfillKey(symbol, interval);
   if (backfillInProgress.has(key) || backfillComplete.has(key)) return;
 
@@ -269,13 +269,13 @@ export async function getKlines(symbol: string, interval: Interval): Promise<Raw
         void upsertKlines(symbol, sourceInterval, deltaRows);
       }
 
-      void backfillHistory(symbol, sourceInterval as Interval, oldestCachedTime);
+      void backfillHistory(symbol, sourceInterval, oldestCachedTime);
 
       const mergedSource = dedupeByTime([...cachedSourceWindow, ...deltaRows]);
       const aggregated = aggregateForInterval(mergedSource, interval);
       return aggregated.slice(-INITIAL_RENDER_LIMIT);
     } catch {
-      void backfillHistory(symbol, sourceInterval as Interval, oldestCachedTime);
+      void backfillHistory(symbol, sourceInterval, oldestCachedTime);
       return aggregateForInterval(cachedSourceWindow, interval).slice(-INITIAL_RENDER_LIMIT);
     }
   }
@@ -284,7 +284,7 @@ export async function getKlines(symbol: string, interval: Interval): Promise<Raw
     const latestSource = await fetchLatestSourceWindow(symbol, sourceInterval, sourceWindowLimit);
     if (latestSource.length > 0) {
       void upsertKlines(symbol, sourceInterval, latestSource);
-      void backfillHistory(symbol, sourceInterval as Interval, latestSource[0].time);
+      void backfillHistory(symbol, sourceInterval, latestSource[0].time);
     }
     return aggregateForInterval(latestSource, interval).slice(-INITIAL_RENDER_LIMIT);
   } catch {
