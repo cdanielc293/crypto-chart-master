@@ -2211,7 +2211,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
       {/* Active indicators overlay */}
       <div className="absolute top-10 left-3 z-20">
-        <IndicatorOverlay />
+        <IndicatorOverlay
+          symbol={symbol}
+          interval={interval}
+          indicators={indicators}
+          hiddenIndicators={hiddenIndicators}
+          indicatorConfigs={indicatorConfigs}
+          onRemoveIndicator={localRemoveIndicator}
+          onToggleHidden={localToggleHidden}
+          onUpdateConfig={localUpdateConfig}
+        />
       </div>
 
       {watermarkText && (
