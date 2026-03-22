@@ -12,17 +12,17 @@ import {
 import { registerSymbolExchange } from '@/lib/exchanges/symbolRegistry';
 
 // ─── Category tabs ───
-const CATEGORIES: { id: AssetCategory | 'all'; label: string }[] = [
+const CATEGORIES: { id: AssetCategory | 'all'; label: string; soon?: boolean }[] = [
   { id: 'all', label: 'All' },
   { id: 'crypto', label: 'Crypto' },
   { id: 'futures', label: 'Futures' },
-  { id: 'stocks', label: 'Stocks' },
-  { id: 'forex', label: 'Forex' },
-  { id: 'indices', label: 'Indices' },
-  { id: 'funds', label: 'Funds' },
-  { id: 'bonds', label: 'Bonds' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'options', label: 'Options' },
+  { id: 'stocks', label: 'Stocks', soon: true },
+  { id: 'forex', label: 'Forex', soon: true },
+  { id: 'indices', label: 'Indices', soon: true },
+  { id: 'funds', label: 'Funds', soon: true },
+  { id: 'bonds', label: 'Bonds', soon: true },
+  { id: 'economy', label: 'Economy', soon: true },
+  { id: 'options', label: 'Options', soon: true },
 ];
 
 // ─── Exchange logo component ───
