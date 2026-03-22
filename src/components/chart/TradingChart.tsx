@@ -22,42 +22,68 @@ import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types'
 
 // ─── Indicator calculations ───
 
-function calculateEMA(data: { close: number; time: Time }[], period: number): LineData[] {
+import type { MASource, IndicatorConfig, EMAConfig, SMAConfig, BollingerConfig, LineStyleType } from '@/types/indicators';
+import { getDefaultConfig } from '@/types/indicators';
+
+function getSourceValue(candle: { open?: number; high?: number; low?: number; close: number }, source: MASource): number {
+  const o = candle.open ?? candle.close;
+  const h = candle.high ?? candle.close;
+  const l = candle.low ?? candle.close;
+  const c = candle.close;
+  switch (source) {
+    case 'open': return o;
+    case 'high': return h;
+    case 'low': return l;
+    case 'hl2': return (h + l) / 2;
+    case 'hlc3': return (h + l + c) / 3;
+    case 'ohlc4': return (o + h + l + c) / 4;
+    default: return c;
+  }
+}
+
+function calculateEMA(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period: number, source: MASource = 'close'): LineData[] {
   const k = 2 / (period + 1);
   const result: LineData[] = [];
-  let ema = data[0]?.close ?? 0;
+  let ema = getSourceValue(data[0], source);
   for (let i = 0; i < data.length; i++) {
-    ema = i === 0 ? data[i].close : data[i].close * k + ema * (1 - k);
+    const val = getSourceValue(data[i], source);
+    ema = i === 0 ? val : val * k + ema * (1 - k);
     if (i >= period - 1) result.push({ time: data[i].time, value: ema });
   }
   return result;
 }
 
-function calculateSMA(data: { close: number; time: Time }[], period: number): LineData[] {
+function calculateSMA(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period: number, source: MASource = 'close'): LineData[] {
   const result: LineData[] = [];
   for (let i = period - 1; i < data.length; i++) {
     let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+    for (let j = i - period + 1; j <= i; j++) sum += getSourceValue(data[j], source);
     result.push({ time: data[i].time, value: sum / period });
   }
   return result;
 }
 
-function calculateBollinger(data: { close: number; time: Time }[], period = 20) {
+function calculateBollinger(data: { open?: number; high?: number; low?: number; close: number; time: Time }[], period = 20, stdDev = 2, source: MASource = 'close', maType: 'SMA' | 'EMA' = 'SMA') {
   const upper: LineData[] = [], middle: LineData[] = [], lower: LineData[] = [];
   for (let i = period - 1; i < data.length; i++) {
     let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+    for (let j = i - period + 1; j <= i; j++) sum += getSourceValue(data[j], source);
     const avg = sum / period;
     let variance = 0;
-    for (let j = i - period + 1; j <= i; j++) variance += (data[j].close - avg) ** 2;
+    for (let j = i - period + 1; j <= i; j++) variance += (getSourceValue(data[j], source) - avg) ** 2;
     const std = Math.sqrt(variance / period);
     const t = data[i].time;
-    upper.push({ time: t, value: avg + 2 * std });
+    upper.push({ time: t, value: avg + stdDev * std });
     middle.push({ time: t, value: avg });
-    lower.push({ time: t, value: avg - 2 * std });
+    lower.push({ time: t, value: avg - stdDev * std });
   }
   return { upper, middle, lower };
+}
+
+function mapLineStyleType(ls: LineStyleType): number {
+  if (ls === 'dashed') return LineStyle.Dashed;
+  if (ls === 'dotted') return LineStyle.Dotted;
+  return LineStyle.Solid;
 }
 
 // ─── Chart type transformations ───
@@ -546,6 +572,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     interval, chartType, drawingTool, indicators, hiddenIndicators, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
+    indicatorConfigs,
   } = ctx;
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -1688,30 +1715,39 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     for (const ind of indicators) {
       if (hiddenIndicators.has(ind)) continue;
 
-      if (ind.startsWith('EMA')) {
-        const period = parseInt(ind.split(' ')[1]);
+      const cfg = indicatorConfigs.get(ind) || getDefaultConfig(ind);
+
+      if (cfg.type === 'EMA') {
+        const emaCfg = cfg as import('@/types/indicators').EMAConfig;
+        if (!emaCfg.style.visible) continue;
         const s = chart.addSeries(LineSeries, {
-          color: EMA_COLORS[ind] || '#ffffff', lineWidth: 1,
+          color: emaCfg.style.color, lineWidth: emaCfg.style.lineWidth as any,
+          lineStyle: mapLineStyleType(emaCfg.style.lineStyle),
           priceLineVisible: false, lastValueVisible: false,
         });
-        s.setData(calculateEMA(data, period));
+        s.setData(calculateEMA(data, emaCfg.period, emaCfg.source));
         indicatorSeriesRef.current.set(ind, s);
-      } else if (ind.startsWith('SMA')) {
-        const period = parseInt(ind.split(' ')[1]);
+      } else if (cfg.type === 'SMA') {
+        const smaCfg = cfg as import('@/types/indicators').SMAConfig;
+        if (!smaCfg.style.visible) continue;
         const s = chart.addSeries(LineSeries, {
-          color: EMA_COLORS[ind] || '#ffffff', lineWidth: 1,
+          color: smaCfg.style.color, lineWidth: smaCfg.style.lineWidth as any,
+          lineStyle: mapLineStyleType(smaCfg.style.lineStyle),
           priceLineVisible: false, lastValueVisible: false,
         });
-        s.setData(calculateSMA(data, period));
+        s.setData(calculateSMA(data, smaCfg.period, smaCfg.source));
         indicatorSeriesRef.current.set(ind, s);
-      } else if (ind === 'Bollinger Bands') {
-        if (hiddenIndicators.has('Bollinger Bands')) continue;
-        const bb = calculateBollinger(data);
-        const colors = ['#e91e63', '#2196f3', '#e91e63'];
+      } else if (cfg.type === 'Bollinger Bands') {
+        const bbCfg = cfg as import('@/types/indicators').BollingerConfig;
+        const bb = calculateBollinger(data, bbCfg.length, bbCfg.stdDev, bbCfg.source, bbCfg.basisMAType);
+        const styles = [bbCfg.upperStyle, bbCfg.basisStyle, bbCfg.lowerStyle];
+        const datasets = [bb.upper, bb.middle, bb.lower];
         const names = ['BB Upper', 'BB Middle', 'BB Lower'];
-        [bb.upper, bb.middle, bb.lower].forEach((d, i) => {
+        datasets.forEach((d, i) => {
+          if (!styles[i].visible) return;
           const s = chart.addSeries(LineSeries, {
-            color: colors[i], lineWidth: 1, lineStyle: i === 1 ? 0 : 2,
+            color: styles[i].color, lineWidth: styles[i].lineWidth as any,
+            lineStyle: mapLineStyleType(styles[i].lineStyle),
             priceLineVisible: false, lastValueVisible: false,
           });
           s.setData(d);
@@ -1719,7 +1755,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         });
       }
     }
-  }, [indicators, hiddenIndicators, rawDataRef.current.length]);
+  }, [indicators, hiddenIndicators, indicatorConfigs, rawDataRef.current.length]);
 
   // ─── Replay: blue vertical line following mouse during selection ───
   useEffect(() => {

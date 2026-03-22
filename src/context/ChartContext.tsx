@@ -6,6 +6,8 @@ import { DEFAULT_CHART_SETTINGS, normalizeChartSettings } from '@/types/chartSet
 import type { GridLayout, LayoutSyncOptions } from '@/types/layout';
 import { ALL_GRID_LAYOUTS, DEFAULT_SYNC_OPTIONS } from '@/types/layout';
 import { prefetchSymbolHistory } from '@/lib/klineCache';
+import type { IndicatorConfig } from '@/types/indicators';
+import { getDefaultConfig } from '@/types/indicators';
 
 export type ReplayState = 'off' | 'selecting' | 'ready' | 'playing' | 'paused';
 
@@ -72,6 +74,8 @@ interface ChartContextType {
   toggleIndicator: (name: string) => void;
   hiddenIndicators: Set<string>;
   toggleHiddenIndicator: (name: string) => void;
+  indicatorConfigs: Map<string, IndicatorConfig>;
+  updateIndicatorConfig: (name: string, config: IndicatorConfig) => void;
   favoriteIntervals: Interval[];
   toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
@@ -161,6 +165,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
   const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
+  const [indicatorConfigs, setIndicatorConfigs] = useState<Map<string, IndicatorConfig>>(new Map());
   const [favoriteIntervals, setFavoriteIntervals] = useState<Interval[]>(() => {
     const saved = localStorage.getItem('favoriteIntervals');
     return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
@@ -257,17 +262,29 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const toggleIndicator = useCallback((name: string) => {
-    setIndicators(prev =>
-      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
-    );
-    // Also remove from hidden when removing indicator
-    setHiddenIndicators(prev => {
-      if (prev.has(name)) {
-        const next = new Set(prev);
-        next.delete(name);
-        return next;
+    setIndicators(prev => {
+      if (prev.includes(name)) {
+        // Removing: clean up config and hidden
+        setIndicatorConfigs(c => { const next = new Map(c); next.delete(name); return next; });
+        setHiddenIndicators(h => { const next = new Set(h); next.delete(name); return next; });
+        return prev.filter(i => i !== name);
       }
-      return prev;
+      // Adding: initialize config if not present
+      setIndicatorConfigs(c => {
+        if (c.has(name)) return c;
+        const next = new Map(c);
+        next.set(name, getDefaultConfig(name));
+        return next;
+      });
+      return [...prev, name];
+    });
+  }, []);
+
+  const updateIndicatorConfig = useCallback((name: string, config: IndicatorConfig) => {
+    setIndicatorConfigs(prev => {
+      const next = new Map(prev);
+      next.set(name, config);
+      return next;
     });
   }, []);
 
@@ -302,6 +319,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
       indicators, toggleIndicator, hiddenIndicators, toggleHiddenIndicator,
+      indicatorConfigs, updateIndicatorConfig,
       favoriteIntervals, toggleFavoriteInterval,
       replayState, setReplayState,
       replayBarIndex, setReplayBarIndex,
