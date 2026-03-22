@@ -9,6 +9,7 @@ import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import { getKlines, getOlderKlinesFromCache } from '@/lib/klineCache';
+import { getBinanceSourceInterval, getIntervalDurationMs, shouldAggregateInterval, toIntervalBucketStart } from '@/lib/chartIntervals';
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
 import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasContextMenu';
@@ -977,7 +978,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
       loadingOlderRef.current = true;
       try {
-        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time), 2500);
+        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, 2500);
         if (cancelled) return;
 
         if (older.length === 0) {
@@ -1043,7 +1044,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const volSeries = volumeSeriesRef.current;
     if (!series || !volSeries) return;
 
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
+    const sourceInterval = getBinanceSourceInterval(interval);
+    const aggregateLive = shouldAggregateInterval(interval);
+
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${sourceInterval}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -1057,6 +1061,58 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const l = parseFloat(k.l);
       const c = parseFloat(k.c);
       const v = parseFloat(k.v);
+
+      if (aggregateLive) {
+        if (!k.x) return;
+
+        const bucketTime = toIntervalBucketStart(k.t / 1000 + tzShiftSeconds, interval) as Time;
+        const existingCandles = rawCandlesRef.current;
+        const last = existingCandles[existingCandles.length - 1];
+
+        let nextCandles: RawCandle[];
+        if (last && Number(last.time) === Number(bucketTime)) {
+          nextCandles = [
+            ...existingCandles.slice(0, -1),
+            {
+              ...last,
+              high: Math.max(last.high, h),
+              low: Math.min(last.low, l),
+              close: c,
+              volume: last.volume + v,
+            },
+          ];
+        } else {
+          nextCandles = [
+            ...existingCandles,
+            { time: bucketTime, open: o, high: h, low: l, close: c, volume: v },
+          ];
+        }
+
+        rawCandlesRef.current = nextCandles;
+        allCandlesRef.current = nextCandles;
+        rawDataRef.current = nextCandles.map(candle => ({ time: candle.time, close: candle.close }));
+
+        const nextVolumes = nextCandles.map(candle => ({
+          time: candle.time,
+          value: candle.volume,
+          color: candle.close >= candle.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        }));
+
+        setChartData(series, nextCandles, nextVolumes, volSeries);
+
+        const lastCandle = nextCandles[nextCandles.length - 1];
+        if (lastCandle) {
+          setOhlc(prev => ({
+            ...prev,
+            o: lastCandle.open,
+            h: lastCandle.high,
+            l: lastCandle.low,
+            c: lastCandle.close,
+            v: lastCandle.volume,
+          }));
+        }
+        return;
+      }
 
       if (!isTransformType) {
         if (isLineType || isAreaType || isBaselineType || isColumnsType) {
@@ -1508,13 +1564,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       return;
     }
 
-    const intervalMs: Record<string, number> = {
-      '1s': 1000, '1m': 60_000, '3m': 180_000, '5m': 300_000, '15m': 900_000,
-      '30m': 1_800_000, '1h': 3_600_000, '2h': 7_200_000, '4h': 14_400_000,
-      '6h': 21_600_000, '8h': 28_800_000, '12h': 43_200_000,
-      '1d': 86_400_000, '3d': 259_200_000, '1w': 604_800_000, '1M': 2_592_000_000,
-    };
-    const barMs = intervalMs[interval] || 60_000;
+    const barMs = getIntervalDurationMs(interval);
 
     const update = () => {
       const now = Date.now();
