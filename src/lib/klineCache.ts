@@ -210,12 +210,21 @@ async function fetchFromBinance(
   throw lastError || new Error('Failed to fetch klines from Binance');
 }
 
+const SUPABASE_QUERY_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 async function getCacheBound(
   symbol: string,
   cacheInterval: string,
   ascending: boolean,
 ): Promise<number | null> {
-  const { data, error } = await supabase
+  const query = supabase
     .from('klines')
     .select('time')
     .eq('symbol', symbol)
@@ -223,21 +232,32 @@ async function getCacheBound(
     .order('time', { ascending })
     .limit(1);
 
-  if (error || !data || data.length === 0) return null;
-  return data[0].time as number;
+  const p = query.then(({ data, error }) => {
+    if (error || !data || data.length === 0) return null;
+    return data[0].time as number;
+  });
+
+  return withTimeout(
+    Promise.resolve(p),
+    SUPABASE_QUERY_TIMEOUT_MS,
+    null,
+  );
 }
 
 async function getLatestCachedKlines(symbol: string, cacheInterval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', cacheInterval)
     .order('time', { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      return (data as RawKline[]).reverse();
+    });
 
-  if (error || !data || data.length === 0) return [];
-  return (data as RawKline[]).reverse();
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 async function getCachedKlinesEndingAt(
@@ -246,17 +266,20 @@ async function getCachedKlinesEndingAt(
   endTimeSec: number,
   limit: number,
 ): Promise<RawKline[]> {
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', cacheInterval)
     .lte('time', endTimeSec)
     .order('time', { ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      return (data as RawKline[]).reverse();
+    });
 
-  if (error || !data || data.length === 0) return [];
-  return (data as RawKline[]).reverse();
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 async function getCachedKlinesStartingAt(
@@ -265,17 +288,20 @@ async function getCachedKlinesStartingAt(
   startTimeSec: number,
   limit: number,
 ): Promise<RawKline[]> {
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', cacheInterval)
     .gt('time', startTimeSec)
     .order('time', { ascending: true })
-    .limit(limit);
+    .limit(limit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      return data as RawKline[];
+    });
 
-  if (error || !data || data.length === 0) return [];
-  return data as RawKline[];
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKline[]) {
@@ -658,23 +684,23 @@ export async function getOlderKlinesFromCache(
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
 
-  const { data, error } = await supabase
+  const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
     .eq('symbol', symbol)
     .eq('interval', sourceInterval)
     .lt('time', beforeTime)
     .order('time', { ascending: false })
-    .limit(sourceLimit);
+    .limit(sourceLimit)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) return [];
+      const sourceRows = (data as RawKline[]).reverse();
+      return aggregateForInterval(sourceRows, interval)
+        .filter(k => k.time < beforeTime)
+        .slice(-limit);
+    });
 
-  if (error || !data || data.length === 0) return [];
-
-  const sourceRows = (data as RawKline[]).reverse();
-  const aggregated = aggregateForInterval(sourceRows, interval)
-    .filter(k => k.time < beforeTime)
-    .slice(-limit);
-
-  return aggregated;
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
 }
 
 /** Warm cache for all source intervals used across timeframe options for a symbol. */
