@@ -14,3 +14,8 @@ TradingView-style charting app with Binance data, dark theme, Hebrew-speaking us
 - useChartPersistence hook: debounced save (1.5s), load on symbol change, beforeunload save
 - Drawings/indicators/configs/hidden state all persist per symbol
 - Last symbol saved to localStorage for restore on refresh
+- Multi-exchange abstraction: src/lib/exchanges/ with adapter pattern
+- Registered exchanges: Binance, Bybit, Coinbase (extensible)
+- user_exchange_keys table for secure API key storage per user per exchange
+- SymbolSearch redesigned TradingView-style with category tabs, source/type filters, exchange logos
+- Per-panel indicator states for multi-chart layouts
