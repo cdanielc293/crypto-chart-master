@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      klines: {
+        Row: {
+          close: number
+          high: number
+          interval: string
+          low: number
+          open: number
+          symbol: string
+          time: number
+          volume: number
+        }
+        Insert: {
+          close: number
+          high: number
+          interval: string
+          low: number
+          open: number
+          symbol: string
+          time: number
+          volume: number
+        }
+        Update: {
+          close?: number
+          high?: number
+          interval?: string
+          low?: number
+          open?: number
+          symbol?: string
+          time?: number
+          volume?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
