@@ -1506,7 +1506,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
         rawCandlesRef.current = nextCandles;
         allCandlesRef.current = nextCandles;
-        rawDataRef.current = nextCandles.map(candle => ({ time: candle.time, close: candle.close }));
+        rawDataRef.current = nextCandles;
         activeDataKeyRef.current = cacheKey;
         persistSeriesCache(cacheKey, nextCandles, hasMoreOlderRef.current);
 
