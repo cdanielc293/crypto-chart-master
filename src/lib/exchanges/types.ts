@@ -100,8 +100,6 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   htx: '#2B6DEF',
   bitget: '#00F0FF',
   bitstamp: '#15A157',
-  yahoo_stocks: '#6001D2',
-  yahoo_forex: '#6001D2',
-  yahoo_indices: '#FF6B00',
+  yahoo: '#6001D2',
   coingecko: '#8DC63F',
 };

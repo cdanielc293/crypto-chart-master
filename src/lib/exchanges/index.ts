@@ -1,5 +1,4 @@
 // Import all exchange adapters to register them
-// Crypto
 import './binance';
 import './bybit';
 import './coinbase';
@@ -11,10 +10,6 @@ import './mexc';
 import './htx';
 import './bitget';
 import './bitstamp';
-// Stocks & Forex & Indices — coming soon
-// import './yahoo-stocks';
-// import './yahoo-forex';
-// import './yahoo-indices';
 
 // Re-export types and registry
 export {
@@ -31,5 +26,3 @@ export {
   registerExchange,
   EXCHANGE_COLORS,
 } from './types';
-
-export { registerSymbolExchange, getSymbolExchange, isBinanceSymbol } from './symbolRegistry';

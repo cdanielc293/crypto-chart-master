@@ -9,20 +9,19 @@ import {
   type AssetCategory,
   EXCHANGE_COLORS,
 } from '@/lib/exchanges';
-import { registerSymbolExchange } from '@/lib/exchanges/symbolRegistry';
 
 // ─── Category tabs ───
-const CATEGORIES: { id: AssetCategory | 'all'; label: string; soon?: boolean }[] = [
+const CATEGORIES: { id: AssetCategory | 'all'; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'crypto', label: 'Crypto' },
   { id: 'futures', label: 'Futures' },
-  { id: 'stocks', label: 'Stocks', soon: true },
-  { id: 'forex', label: 'Forex', soon: true },
-  { id: 'indices', label: 'Indices', soon: true },
-  { id: 'funds', label: 'Funds', soon: true },
-  { id: 'bonds', label: 'Bonds', soon: true },
-  { id: 'economy', label: 'Economy', soon: true },
-  { id: 'options', label: 'Options', soon: true },
+  { id: 'stocks', label: 'Stocks' },
+  { id: 'forex', label: 'Forex' },
+  { id: 'indices', label: 'Indices' },
+  { id: 'funds', label: 'Funds' },
+  { id: 'bonds', label: 'Bonds' },
+  { id: 'economy', label: 'Economy' },
+  { id: 'options', label: 'Options' },
 ];
 
 // ─── Exchange logo component ───
@@ -119,8 +118,6 @@ interface Props {
   onSelectSymbol?: (symbol: string) => void;
 }
 
-const PAGE_SIZE = 50;
-
 export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const { setSymbol, addToWatchlist } = useChart();
   const [query, setQuery] = useState('');
@@ -129,12 +126,7 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const [activeCategory, setActiveCategory] = useState<AssetCategory | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Reset visible count when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [activeCategory, sourceFilter, typeFilter, query]);
 
   // Fetch all symbols from all exchanges on mount
   useEffect(() => {
@@ -150,15 +142,6 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       setLoading(false);
     };
     fetchAll();
-  }, []);
-
-  // Infinite scroll handler
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
-      setVisibleCount(prev => prev + PAGE_SIZE);
-    }
   }, []);
 
   // Available exchanges for source filter
@@ -183,15 +166,22 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const filtered = useMemo(() => {
     let items = results;
 
+    // Category filter
     if (activeCategory !== 'all') {
       items = items.filter(s => s.category === activeCategory);
     }
+
+    // Source filter
     if (sourceFilter !== 'all') {
       items = items.filter(s => s.exchangeId === sourceFilter);
     }
+
+    // Type filter
     if (typeFilter !== 'all') {
       items = items.filter(s => s.marketType === typeFilter);
     }
+
+    // Text search
     if (query.trim()) {
       const q = query.toLowerCase();
       items = items.filter(s =>
@@ -201,16 +191,11 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       );
     }
 
-    return items;
+    return items.slice(0, 60);
   }, [results, activeCategory, sourceFilter, typeFilter, query]);
 
-  const visibleResults = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const hasMore = visibleCount < filtered.length;
-
   const selectSymbol = useCallback((result: SearchResult) => {
-    const sym = result.symbol.replace('.P', '');
-    // Register which exchange this symbol belongs to
-    registerSymbolExchange(sym, result.exchangeId);
+    const sym = result.symbol.replace('.P', ''); // Clean for watchlist
     if (onSelectSymbol) {
       onSelectSymbol(sym);
     } else {
@@ -257,18 +242,14 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}
-            onClick={() => !cat.soon && setActiveCategory(cat.id)}
-            disabled={cat.soon}
-            className={`px-3 py-1 rounded text-[12px] whitespace-nowrap transition-colors flex items-center gap-1 ${
-              cat.soon
-                ? 'text-muted-foreground/40 border border-transparent cursor-not-allowed'
-                : activeCategory === cat.id
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover border border-transparent'
+            onClick={() => setActiveCategory(cat.id)}
+            className={`px-3 py-1 rounded text-[12px] whitespace-nowrap transition-colors ${
+              activeCategory === cat.id
+                ? 'bg-primary/20 text-primary border border-primary/30'
+                : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover border border-transparent'
             }`}
           >
             {cat.label}
-            {cat.soon && <span className="text-[9px] text-muted-foreground/50">Soon</span>}
           </button>
         ))}
       </div>
@@ -290,48 +271,69 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       </div>
 
       {/* Results */}
-      <div ref={scrollRef} onScroll={handleScroll} className="overflow-y-auto flex-1 max-h-[60vh]">
+      <div className="overflow-y-auto flex-1 max-h-[400px]">
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm">Loading symbols...</div>
-        ) : visibleResults.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-6 text-center text-muted-foreground text-sm">No results</div>
         ) : (
-          <>
-            {visibleResults.map((result, idx) => {
-              const color = getSymbolColor(result.baseAsset);
-              return (
-                <button
-                  key={`${result.exchangeId}-${result.symbol}-${idx}`}
-                  onClick={() => selectSymbol(result)}
-                  className="flex items-center w-full px-4 py-2 text-[13px] hover:bg-toolbar-hover transition-colors group"
+          filtered.map((result, idx) => {
+            const color = getSymbolColor(result.baseAsset);
+            return (
+              <button
+                key={`${result.exchangeId}-${result.symbol}-${idx}`}
+                onClick={() => selectSymbol(result)}
+                className="flex items-center w-full px-4 py-2 text-[13px] hover:bg-toolbar-hover transition-colors group"
+              >
+                {/* Symbol icon */}
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mr-3 shrink-0"
+                  style={{ backgroundColor: `${color}22`, color }}
                 >
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mr-3 shrink-0" style={{ backgroundColor: `${color}22`, color }}>
-                    {result.baseAsset[0]}
-                  </div>
-                  <div className="w-[100px] text-left shrink-0">
-                    <span className="font-semibold text-foreground">{result.displaySymbol.replace('.P', '')}</span>
-                    {result.symbol.endsWith('.P') && <span className="text-[10px] text-muted-foreground ml-0.5">.P</span>}
-                  </div>
-                  <span className="flex-1 text-left text-muted-foreground truncate mr-3">{result.fullName}</span>
-                  <div className="flex items-center gap-1.5 mr-3">
-                    {result.tags.map(tag => <span key={tag} className="text-[10px] text-muted-foreground">{tag}</span>)}
-                  </div>
-                  <div className="flex items-center gap-1.5 w-[90px] justify-end mr-2">
-                    <span className="text-[11px] text-foreground font-medium">{result.exchangeName}</span>
-                    <ExchangeLogo exchangeId={result.exchangeId} size={14} />
-                  </div>
-                  <button onClick={(e) => addToList(e, result)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity shrink-0">
-                    <Plus size={14} />
-                  </button>
+                  {result.baseAsset[0]}
+                </div>
+
+                {/* Symbol name */}
+                <div className="w-[100px] text-left shrink-0">
+                  <span className="font-semibold text-foreground">{result.displaySymbol.replace('.P', '')}</span>
+                  {result.symbol.endsWith('.P') && (
+                    <span className="text-[10px] text-muted-foreground ml-0.5">.P</span>
+                  )}
+                </div>
+
+                {/* Full name */}
+                <span className="flex-1 text-left text-muted-foreground truncate mr-3">
+                  {result.fullName}
+                </span>
+
+                {/* Tags */}
+                <div className="flex items-center gap-1.5 mr-3">
+                  {result.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="text-[10px] text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Exchange */}
+                <div className="flex items-center gap-1.5 w-[90px] justify-end mr-2">
+                  <span className="text-[11px] text-foreground font-medium">{result.exchangeName}</span>
+                  <ExchangeLogo exchangeId={result.exchangeId} size={14} />
+                </div>
+
+                {/* Add to watchlist button */}
+                <button
+                  onClick={(e) => addToList(e, result)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity shrink-0"
+                >
+                  <Plus size={14} />
                 </button>
-              );
-            })}
-            {hasMore && (
-              <div className="p-3 text-center text-muted-foreground text-[11px]">
-                Showing {visibleResults.length} of {filtered.length} — scroll for more
-              </div>
-            )}
-          </>
+              </button>
+            );
+          })
         )}
       </div>
 

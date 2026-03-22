@@ -6,7 +6,6 @@ import {
   getBinanceSourceInterval,
   getEstimatedSourceBarsPerTargetBar,
 } from '@/lib/chartIntervals';
-// Exchange routing removed — currently crypto-only (Binance)
 
 export interface RawKline {
   time: number; // unix seconds
@@ -577,7 +576,6 @@ export async function getKlines(
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return [];
 
-  // ─── Binance path ───
   const replayEndTimeSec = options.replayEndTimeSec;
   if (replayEndTimeSec !== null && replayEndTimeSec !== undefined && Number.isFinite(replayEndTimeSec)) {
     const normalizedReplayEnd = Math.floor(replayEndTimeSec);
@@ -656,8 +654,6 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
-  // Currently crypto-only via Binance
-
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
@@ -685,7 +681,6 @@ export async function getOlderKlinesFromCache(
 export async function prefetchSymbolHistory(symbol: string): Promise<void> {
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return;
-  
   if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
 
   symbolPrefetchInProgress.add(normalizedSymbol);
