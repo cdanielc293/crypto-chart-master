@@ -513,6 +513,38 @@ export default function Watchlist() {
 
   const selectedPrice = selectedSymbol ? watchlistPrices.get(selectedSymbol) || null : null;
 
+  const toggleSort = useCallback((field: SortField) => {
+    setSortField(prev => {
+      if (prev === field) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        return field;
+      }
+      setSortDir('asc');
+      return field;
+    });
+  }, []);
+
+  const sortSymbols = useCallback((syms: string[]): string[] => {
+    if (!sortField) return syms;
+    return [...syms].sort((a, b) => {
+      const pa = watchlistPrices.get(a);
+      const pb = watchlistPrices.get(b);
+      let va = 0, vb = 0;
+      switch (sortField) {
+        case 'symbol': return sortDir === 'asc' ? a.localeCompare(b) : b.localeCompare(a);
+        case 'last': va = pa?.lastPrice ?? 0; vb = pb?.lastPrice ?? 0; break;
+        case 'chg': va = pa?.priceChange ?? 0; vb = pb?.priceChange ?? 0; break;
+        case 'chgp': va = pa?.priceChangePercent ?? 0; vb = pb?.priceChangePercent ?? 0; break;
+      }
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
+  }, [sortField, sortDir, watchlistPrices]);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />;
+  };
+
   return (
     <>
       <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
