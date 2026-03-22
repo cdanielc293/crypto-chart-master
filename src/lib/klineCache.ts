@@ -6,8 +6,7 @@ import {
   getBinanceSourceInterval,
   getEstimatedSourceBarsPerTargetBar,
 } from '@/lib/chartIntervals';
-import { getSymbolExchange, isBinanceSymbol } from '@/lib/exchanges/symbolRegistry';
-import { getExchange } from '@/lib/exchanges/types';
+// Exchange routing removed — currently crypto-only (Binance)
 
 export interface RawKline {
   time: number; // unix seconds
