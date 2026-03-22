@@ -1,8 +1,6 @@
 import type { ExchangeAdapter, SearchResult, OHLCV, Ticker, AssetCategory } from './types';
 import { registerExchange } from './types';
-
-// Uses Yahoo Finance public chart/quote endpoints (no API key needed)
-// Popular stocks pre-seeded for search
+import { yahooFetch, getYahooChartUrl, getYahooSearchUrl, YAHOO_INTERVAL_MAP, parseYahooChart, parseYahooTicker } from './yahoo-utils';
 
 const POPULAR_STOCKS: { symbol: string; name: string; sector?: string }[] = [
   { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology' },
@@ -61,8 +59,8 @@ const POPULAR_STOCKS: { symbol: string; name: string; sector?: string }[] = [
   { symbol: 'LLY', name: 'Eli Lilly and Co.', sector: 'Healthcare' },
   { symbol: 'COST', name: 'Costco Wholesale', sector: 'Retail' },
   { symbol: 'TGT', name: 'Target Corporation', sector: 'Retail' },
-  { symbol: 'LOW', name: 'Lowe\'s Companies', sector: 'Retail' },
-  { symbol: 'MCD', name: 'McDonald\'s Corporation', sector: 'Consumer' },
+  { symbol: 'LOW', name: "Lowe's Companies", sector: 'Retail' },
+  { symbol: 'MCD', name: "McDonald's Corporation", sector: 'Consumer' },
   { symbol: 'SBUX', name: 'Starbucks Corporation', sector: 'Consumer' },
   { symbol: 'NKE', name: 'Nike Inc.', sector: 'Consumer' },
 ];
@@ -83,13 +81,8 @@ const yahooStocksAdapter: ExchangeAdapter = {
     if (!query.trim()) {
       return this.fetchAllSymbols().then(all => all.slice(0, 50));
     }
-
-    // Use Yahoo search API for dynamic results
     try {
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=20&newsCount=0&enableFuzzyQuery=false&quotesQueryId=tss_match_phrase_query`
-      );
-      const data = await res.json();
+      const data = await yahooFetch(getYahooSearchUrl(query));
       const results: SearchResult[] = [];
       for (const q of data.quotes || []) {
         if (!q.symbol || q.quoteType === 'CRYPTOCURRENCY') continue;
@@ -109,7 +102,6 @@ const yahooStocksAdapter: ExchangeAdapter = {
       }
       return results;
     } catch {
-      // Fallback to local search
       const all = await this.fetchAllSymbols();
       const q = query.toLowerCase();
       return all.filter(s =>
@@ -136,63 +128,17 @@ const yahooStocksAdapter: ExchangeAdapter = {
   },
 
   async fetchKlines(symbol: string, interval: string, limit = 200): Promise<OHLCV[]> {
-    const intMap: Record<string, { i: string; range: string }> = {
-      '1m': { i: '1m', range: '1d' },
-      '5m': { i: '5m', range: '5d' },
-      '15m': { i: '15m', range: '5d' },
-      '30m': { i: '30m', range: '1mo' },
-      '1h': { i: '1h', range: '1mo' },
-      '4h': { i: '1h', range: '6mo' },
-      '1d': { i: '1d', range: '1y' },
-      '1w': { i: '1wk', range: '5y' },
-      '1M': { i: '1mo', range: '10y' },
-    };
-    const { i, range } = intMap[interval] || { i: '1d', range: '1y' };
-
+    const { i, range } = YAHOO_INTERVAL_MAP[interval] || { i: '1d', range: '1y' };
     try {
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${i}&range=${range}`
-      );
-      const data = await res.json();
-      const result = data.chart?.result?.[0];
-      if (!result) return [];
-      const ts = result.timestamp || [];
-      const q = result.indicators?.quote?.[0] || {};
-      const ohlcv: OHLCV[] = [];
-      for (let j = 0; j < ts.length; j++) {
-        if (q.open?.[j] == null) continue;
-        ohlcv.push({
-          time: ts[j] * 1000,
-          open: q.open[j],
-          high: q.high[j],
-          low: q.low[j],
-          close: q.close[j],
-          volume: q.volume?.[j] || 0,
-        });
-      }
-      return ohlcv;
+      const data = await yahooFetch(getYahooChartUrl(symbol, i, range));
+      return parseYahooChart(data);
     } catch { return []; }
   },
 
   async fetchTicker(symbol: string): Promise<Ticker | null> {
     try {
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`
-      );
-      const data = await res.json();
-      const meta = data.chart?.result?.[0]?.meta;
-      if (!meta) return null;
-      const last = meta.regularMarketPrice;
-      const prevClose = meta.previousClose || meta.chartPreviousClose;
-      return {
-        symbol,
-        lastPrice: last,
-        change24h: last - prevClose,
-        changePct24h: prevClose > 0 ? ((last - prevClose) / prevClose) * 100 : 0,
-        volume24h: meta.regularMarketVolume || 0,
-        high24h: meta.regularMarketDayHigh || last,
-        low24h: meta.regularMarketDayLow || last,
-      };
+      const data = await yahooFetch(getYahooChartUrl(symbol, '1d', '2d'));
+      return parseYahooTicker(data, symbol);
     } catch { return null; }
   },
 };
