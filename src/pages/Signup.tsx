@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import vizionLogo from '@/assets/vizion-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
@@ -16,13 +16,31 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, signInWithGoogle, signInWithApple, signingIn } = useAuth();
+  const oauthAutoTriggeredRef = useRef(false);
   const tier = searchParams.get('tier') || 'zenith';
+  const oauthProvider = searchParams.get('oauth');
   const tierLabel = tierNames[tier] || 'Vizion Zenith';
 
   // If already logged in, redirect to chart
   useEffect(() => {
     if (user) navigate('/chart', { replace: true });
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (oauthAutoTriggeredRef.current || user || signingIn) return;
+    if (oauthProvider !== 'google' && oauthProvider !== 'apple') return;
+
+    oauthAutoTriggeredRef.current = true;
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('oauth');
+    window.history.replaceState({}, document.title, `${cleanUrl.pathname}${cleanUrl.search}`);
+
+    if (oauthProvider === 'google') {
+      void signInWithGoogle();
+    } else {
+      void signInWithApple();
+    }
+  }, [oauthProvider, user, signingIn, signInWithGoogle, signInWithApple]);
 
   return (
     <div className="min-h-screen h-screen flex bg-[#050508] text-white overflow-hidden">
