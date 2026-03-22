@@ -62,6 +62,75 @@ export default function Settings() {
   });
   const [formLoaded, setFormLoaded] = useState(false);
 
+  // Sessions state
+  interface SessionInfo {
+    id: string;
+    created_at: string;
+    updated_at: string;
+    refreshed_at: string | null;
+    ip: string;
+    device: string;
+    os: string;
+    browser: string;
+  }
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const fetchSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await supabase.functions.invoke('list-sessions', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.data?.sessions) setSessions(res.data.sessions);
+    } catch (e) {
+      console.error('Failed to fetch sessions', e);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === 'sessions') fetchSessions();
+  }, [activeSection, fetchSessions]);
+
+  const revokeSession = async (sessionId: string) => {
+    setRevokingId(sessionId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.functions.invoke('revoke-session', {
+        body: { session_id: sessionId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      setSessions(s => s.filter(x => x.id !== sessionId));
+      toast.success('Session revoked');
+    } catch {
+      toast.error('Failed to revoke session');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const getDeviceIcon = (device: string) => {
+    if (['iPhone', 'Mobile'].includes(device)) return Smartphone;
+    if (['iPad', 'Tablet'].includes(device)) return Tablet;
+    if (device === 'Mac') return Laptop;
+    return Monitor;
+  };
+
+  const formatSessionTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Today, ${time}`;
+    return d.toLocaleDateString([], { day: 'numeric', month: 'long' }) + `, ${time}`;
+  };
+
   if (profile && !formLoaded) {
     setForm({
       username: profile.username || '',
