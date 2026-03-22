@@ -208,7 +208,9 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const hasMore = visibleCount < filtered.length;
 
   const selectSymbol = useCallback((result: SearchResult) => {
-    const sym = result.symbol.replace('.P', ''); // Clean for watchlist
+    const sym = result.symbol.replace('.P', '');
+    // Register which exchange this symbol belongs to
+    registerSymbolExchange(sym, result.exchangeId);
     if (onSelectSymbol) {
       onSelectSymbol(sym);
     } else {
