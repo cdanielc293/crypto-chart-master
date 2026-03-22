@@ -186,6 +186,25 @@ export default function Signup() {
             </button>
           </form>
 
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-white/20">או</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Guest */}
+          <button
+            type="button"
+            onClick={() => {
+              enterAsGuest();
+              navigate('/chart');
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm text-white/60 hover:text-white/90"
+          >
+            כניסה כאורח
+          </button>
+
           <p className="text-center text-sm text-white/30 mt-6">
             {mode === 'signup' ? 'כבר יש לך חשבון?' : 'אין לך חשבון עדיין?'}{' '}
             <button
