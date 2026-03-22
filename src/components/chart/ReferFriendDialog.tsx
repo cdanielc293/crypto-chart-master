@@ -152,7 +152,6 @@ export default function ReferFriendDialog({ open, onClose }: Props) {
             </div>
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+    </DraggableDialog>
   );
 }
