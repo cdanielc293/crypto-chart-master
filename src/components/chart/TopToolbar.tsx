@@ -1,3 +1,4 @@
+import vizionLogo from '@/assets/vizion-logo.png';
 import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
