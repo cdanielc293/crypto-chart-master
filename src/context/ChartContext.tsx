@@ -109,6 +109,12 @@ interface ChartContextType {
   setPanelSymbol: (index: number, symbol: string) => void;
   activePanelIndex: number | null;
   setActivePanelIndex: (index: number | null) => void;
+  // Per-panel indicators for multi-chart
+  panelIndicatorStates: Map<number, PanelIndicatorState>;
+  addPanelIndicator: (panelIndex: number, definitionId: string) => void;
+  removePanelIndicator: (panelIndex: number, instanceId: string) => void;
+  togglePanelHiddenIndicator: (panelIndex: number, instanceId: string) => void;
+  updatePanelIndicatorConfig: (panelIndex: number, instanceId: string, config: IndicatorInstance) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
