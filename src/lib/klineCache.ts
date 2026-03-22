@@ -6,8 +6,7 @@ import {
   getBinanceSourceInterval,
   getEstimatedSourceBarsPerTargetBar,
 } from '@/lib/chartIntervals';
-import { getSymbolExchange, isBinanceSymbol } from '@/lib/exchanges/symbolRegistry';
-import { getExchange } from '@/lib/exchanges/types';
+// Exchange routing removed — currently crypto-only (Binance)
 
 export interface RawKline {
   time: number; // unix seconds
@@ -561,30 +560,6 @@ async function loadKlinesFromSource(symbol: string, interval: Interval): Promise
 }
 
 /**
- * Load klines from a non-Binance exchange adapter (Yahoo, Bybit, OKX, etc.)
- * These don't use supabase caching - they fetch directly from the adapter.
- */
-async function loadKlinesFromAdapter(symbol: string, exchangeId: string, interval: Interval): Promise<RawKline[]> {
-  const adapter = getExchange(exchangeId);
-  if (!adapter) return [];
-
-  try {
-    const ohlcv = await adapter.fetchKlines(symbol, interval);
-    return ohlcv.map(k => ({
-      time: Math.floor(k.time / 1000),
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-    }));
-  } catch (e) {
-    console.error(`Failed to fetch klines from ${exchangeId} for ${symbol}:`, e);
-    return [];
-  }
-}
-
-/**
  * Fast load for chart rendering:
  * - returns latest cached window quickly (avoids freezes on timeframe switch)
  * - syncs newest candles incrementally
@@ -602,40 +577,7 @@ export async function getKlines(
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return [];
 
-  // Check if this symbol uses a non-Binance exchange
-  const exchangeId = getSymbolExchange(normalizedSymbol);
-  if (exchangeId && !isBinanceSymbol(normalizedSymbol)) {
-    const renderKey = getRenderCacheKey(normalizedSymbol, interval);
-    const cachedRender = renderCache.get(renderKey);
-
-    if (cachedRender?.rows.length) {
-      const isStale = Date.now() - cachedRender.updatedAt > RENDER_CACHE_TTL_MS;
-      if (isStale && !renderRefreshInProgress.has(renderKey)) {
-        renderRefreshInProgress.add(renderKey);
-        void loadKlinesFromAdapter(normalizedSymbol, exchangeId, interval)
-          .then(rows => {
-            if (rows.length > 0) setRenderCache(renderKey, rows);
-          })
-          .finally(() => renderRefreshInProgress.delete(renderKey));
-      }
-      return cachedRender.rows;
-    }
-
-    const inFlight = renderFetchInProgress.get(renderKey);
-    if (inFlight) return inFlight;
-
-    const fetchPromise = loadKlinesFromAdapter(normalizedSymbol, exchangeId, interval)
-      .then(rows => {
-        if (rows.length > 0) setRenderCache(renderKey, rows);
-        return rows;
-      })
-      .finally(() => renderFetchInProgress.delete(renderKey));
-
-    renderFetchInProgress.set(renderKey, fetchPromise);
-    return fetchPromise;
-  }
-
-  // ─── Binance path (original logic) ───
+  // ─── Binance path ───
   const replayEndTimeSec = options.replayEndTimeSec;
   if (replayEndTimeSec !== null && replayEndTimeSec !== undefined && Number.isFinite(replayEndTimeSec)) {
     const normalizedReplayEnd = Math.floor(replayEndTimeSec);
@@ -714,8 +656,7 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
-  // Non-Binance symbols don't use supabase cache for older data
-  if (!isBinanceSymbol(symbol)) return [];
+  // Currently crypto-only via Binance
 
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
@@ -744,9 +685,6 @@ export async function getOlderKlinesFromCache(
 export async function prefetchSymbolHistory(symbol: string): Promise<void> {
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return;
-  
-  // Skip heavy prefetch for non-Binance symbols - they fetch on demand
-  if (!isBinanceSymbol(normalizedSymbol)) return;
   
   if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
 

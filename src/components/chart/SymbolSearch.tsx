@@ -12,17 +12,17 @@ import {
 import { registerSymbolExchange } from '@/lib/exchanges/symbolRegistry';
 
 // ─── Category tabs ───
-const CATEGORIES: { id: AssetCategory | 'all'; label: string }[] = [
+const CATEGORIES: { id: AssetCategory | 'all'; label: string; soon?: boolean }[] = [
   { id: 'all', label: 'All' },
   { id: 'crypto', label: 'Crypto' },
   { id: 'futures', label: 'Futures' },
-  { id: 'stocks', label: 'Stocks' },
-  { id: 'forex', label: 'Forex' },
-  { id: 'indices', label: 'Indices' },
-  { id: 'funds', label: 'Funds' },
-  { id: 'bonds', label: 'Bonds' },
-  { id: 'economy', label: 'Economy' },
-  { id: 'options', label: 'Options' },
+  { id: 'stocks', label: 'Stocks', soon: true },
+  { id: 'forex', label: 'Forex', soon: true },
+  { id: 'indices', label: 'Indices', soon: true },
+  { id: 'funds', label: 'Funds', soon: true },
+  { id: 'bonds', label: 'Bonds', soon: true },
+  { id: 'economy', label: 'Economy', soon: true },
+  { id: 'options', label: 'Options', soon: true },
 ];
 
 // ─── Exchange logo component ───
@@ -257,14 +257,18 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-3 py-1 rounded text-[12px] whitespace-nowrap transition-colors ${
-              activeCategory === cat.id
-                ? 'bg-primary/20 text-primary border border-primary/30'
-                : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover border border-transparent'
+            onClick={() => !cat.soon && setActiveCategory(cat.id)}
+            disabled={cat.soon}
+            className={`px-3 py-1 rounded text-[12px] whitespace-nowrap transition-colors flex items-center gap-1 ${
+              cat.soon
+                ? 'text-muted-foreground/40 border border-transparent cursor-not-allowed'
+                : activeCategory === cat.id
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-toolbar-hover border border-transparent'
             }`}
           >
             {cat.label}
+            {cat.soon && <span className="text-[9px] text-muted-foreground/50">Soon</span>}
           </button>
         ))}
       </div>
