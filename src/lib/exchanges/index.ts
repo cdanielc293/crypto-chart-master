@@ -11,10 +11,10 @@ import './mexc';
 import './htx';
 import './bitget';
 import './bitstamp';
-// Stocks & Forex & Indices
-import './yahoo-stocks';
-import './yahoo-forex';
-import './yahoo-indices';
+// Stocks & Forex & Indices — coming soon
+// import './yahoo-stocks';
+// import './yahoo-forex';
+// import './yahoo-indices';
 
 // Re-export types and registry
 export {
