@@ -5,6 +5,7 @@ import ReplayControls from '@/components/chart/ReplayControls';
 import LeftToolbar from '@/components/chart/LeftToolbar';
 import TradingChart from '@/components/chart/TradingChart';
 import RightSidebar from '@/components/chart/RightSidebar';
+import FeedbackWidgets from '@/components/chart/FeedbackWidgets';
 import { getCellStyle } from '@/types/layout';
 
 function ChartArea() {
@@ -56,6 +57,7 @@ export default function ChartPage() {
             <ChartArea />
             <RightSidebar />
           </div>
+          <FeedbackWidgets />
         </div>
       </ChartProvider>
     </ThemeProvider>
