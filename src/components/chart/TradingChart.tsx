@@ -1202,8 +1202,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           replayBarRef.current = replayIndex;
           setReplayStartIndex(nextReplayStartIndex);
           setReplayBarIndex(replayIndex);
-          replayAnchorTimeRef.current = Number(finalCandles[replayIndex]?.time ?? replayAnchorTimeRef.current ?? 0);
-          replayStartTimeRef.current = Number(finalCandles[nextReplayStartIndex]?.time ?? replayStartTimeRef.current ?? 0);
+          const replayCandle = finalCandles[replayIndex];
+          const replayStartCandle = finalCandles[nextReplayStartIndex];
+          if (replayCandle) replayAnchorTimeRef.current = Number(replayCandle.time);
+          if (replayStartCandle) replayStartTimeRef.current = Number(replayStartCandle.time);
         }
 
         setChartData(series, renderCandles, renderVolumes, volSeries);
