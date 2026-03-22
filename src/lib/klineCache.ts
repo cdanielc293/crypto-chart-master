@@ -34,6 +34,15 @@ const SOURCE_SYNC_COOLDOWN_MS = 12_000;
 const REPLAY_HISTORY_TARGET_BARS = 12_000;
 const REPLAY_FUTURE_TARGET_BARS = 3_500;
 
+// Fast initial fetch: just 1000 bars from Binance for instant render
+const FAST_INITIAL_BINANCE_LIMIT = 1000;
+// Supabase timeout reduced — if DB is slow, skip it fast
+const SUPABASE_QUERY_TIMEOUT_MS = 3000;
+// Track if Supabase is responsive
+let supabaseHealthy = true;
+let supabaseLastFailAt = 0;
+const SUPABASE_HEALTH_COOLDOWN_MS = 30_000;
+
 const backfillInProgress = new Set<string>();
 const backfillComplete = new Set<string>();
 const backfillContinuationScheduled = new Set<string>();
@@ -124,43 +133,34 @@ function getReplayFutureSourceLimit(interval: Interval): number {
 
 function findNearestIndexAtOrBefore(rows: RawKline[], targetTimeSec: number): number {
   if (rows.length === 0) return -1;
-
   let low = 0;
   let high = rows.length - 1;
   let best = -1;
-
   while (low <= high) {
     const mid = (low + high) >> 1;
-    const midTime = rows[mid].time;
-
-    if (midTime <= targetTimeSec) {
+    if (rows[mid].time <= targetTimeSec) {
       best = mid;
       low = mid + 1;
     } else {
       high = mid - 1;
     }
   }
-
   return best;
 }
 
 function sliceReplayWindow(rows: RawKline[], replayAnchorTimeSec: number): RawKline[] {
   if (rows.length === 0) return [];
-
   const deduped = dedupeByTime(rows);
   const anchorIndex = findNearestIndexAtOrBefore(deduped, replayAnchorTimeSec);
   const normalizedAnchorIndex = anchorIndex >= 0 ? anchorIndex : 0;
-
   const from = Math.max(0, normalizedAnchorIndex - REPLAY_HISTORY_TARGET_BARS);
   const to = Math.min(deduped.length, normalizedAnchorIndex + REPLAY_FUTURE_TARGET_BARS + 1);
-
   return deduped.slice(from, to);
 }
 
 function scheduleBackfillContinuation(symbol: string, cacheInterval: string) {
   const key = getBackfillKey(symbol, cacheInterval);
   if (backfillComplete.has(key) || backfillContinuationScheduled.has(key)) return;
-
   backfillContinuationScheduled.add(key);
   setTimeout(() => {
     backfillContinuationScheduled.delete(key);
@@ -210,7 +210,19 @@ async function fetchFromBinance(
   throw lastError || new Error('Failed to fetch klines from Binance');
 }
 
-const SUPABASE_QUERY_TIMEOUT_MS = 5000;
+function isSupabaseAvailable(): boolean {
+  if (supabaseHealthy) return true;
+  if (Date.now() - supabaseLastFailAt > SUPABASE_HEALTH_COOLDOWN_MS) {
+    supabaseHealthy = true;
+    return true;
+  }
+  return false;
+}
+
+function markSupabaseFailed() {
+  supabaseHealthy = false;
+  supabaseLastFailAt = Date.now();
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
@@ -224,6 +236,8 @@ async function getCacheBound(
   cacheInterval: string,
   ascending: boolean,
 ): Promise<number | null> {
+  if (!isSupabaseAvailable()) return null;
+
   const query = supabase
     .from('klines')
     .select('time')
@@ -233,18 +247,17 @@ async function getCacheBound(
     .limit(1);
 
   const p = query.then(({ data, error }) => {
-    if (error || !data || data.length === 0) return null;
+    if (error) { markSupabaseFailed(); return null; }
+    if (!data || data.length === 0) return null;
     return data[0].time as number;
   });
 
-  return withTimeout(
-    Promise.resolve(p),
-    SUPABASE_QUERY_TIMEOUT_MS,
-    null,
-  );
+  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, null);
 }
 
 async function getLatestCachedKlines(symbol: string, cacheInterval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
+  if (!isSupabaseAvailable()) return [];
+
   const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
@@ -253,7 +266,8 @@ async function getLatestCachedKlines(symbol: string, cacheInterval: string, limi
     .order('time', { ascending: false })
     .limit(limit)
     .then(({ data, error }) => {
-      if (error || !data || data.length === 0) return [];
+      if (error) { markSupabaseFailed(); return []; }
+      if (!data || data.length === 0) return [];
       return (data as RawKline[]).reverse();
     });
 
@@ -266,6 +280,8 @@ async function getCachedKlinesEndingAt(
   endTimeSec: number,
   limit: number,
 ): Promise<RawKline[]> {
+  if (!isSupabaseAvailable()) return [];
+
   const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
@@ -275,7 +291,8 @@ async function getCachedKlinesEndingAt(
     .order('time', { ascending: false })
     .limit(limit)
     .then(({ data, error }) => {
-      if (error || !data || data.length === 0) return [];
+      if (error) { markSupabaseFailed(); return []; }
+      if (!data || data.length === 0) return [];
       return (data as RawKline[]).reverse();
     });
 
@@ -288,6 +305,8 @@ async function getCachedKlinesStartingAt(
   startTimeSec: number,
   limit: number,
 ): Promise<RawKline[]> {
+  if (!isSupabaseAvailable()) return [];
+
   const p = supabase
     .from('klines')
     .select('time, open, high, low, close, volume')
@@ -297,7 +316,8 @@ async function getCachedKlinesStartingAt(
     .order('time', { ascending: true })
     .limit(limit)
     .then(({ data, error }) => {
-      if (error || !data || data.length === 0) return [];
+      if (error) { markSupabaseFailed(); return []; }
+      if (!data || data.length === 0) return [];
       return data as RawKline[];
     });
 
@@ -305,7 +325,7 @@ async function getCachedKlinesStartingAt(
 }
 
 async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKline[]) {
-  if (klines.length === 0) return;
+  if (klines.length === 0 || !isSupabaseAvailable()) return;
 
   const rows = klines.map(k => ({
     symbol,
@@ -321,7 +341,8 @@ async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKl
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
-    await supabase.from('klines').upsert(chunk, { onConflict: 'symbol,interval,time' });
+    const { error } = await supabase.from('klines').upsert(chunk, { onConflict: 'symbol,interval,time' });
+    if (error) { markSupabaseFailed(); return; }
   }
 }
 
@@ -362,7 +383,6 @@ async function backfillHistory(symbol: string, interval: string, oldestKnownTime
 
     needsContinuation = !backfillComplete.has(key);
   } catch {
-    // Silent fail: chart continues with existing cached data + live Binance updates.
     needsContinuation = true;
   } finally {
     backfillInProgress.delete(key);
@@ -373,6 +393,9 @@ async function backfillHistory(symbol: string, interval: string, oldestKnownTime
   }
 }
 
+/**
+ * Fetch source candles from Binance using parallel requests for speed.
+ */
 async function fetchSourceWindow(
   symbol: string,
   sourceInterval: string,
@@ -380,23 +403,56 @@ async function fetchSourceWindow(
   endTimeMs?: number,
 ): Promise<RawKline[]> {
   const requestsToMake = Math.max(1, Math.min(20, Math.ceil(targetBars / 1000)));
-  let endTime = endTimeMs;
-  const collected: RawKline[] = [];
 
-  for (let i = 0; i < requestsToMake; i += 1) {
-    const batch = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTime);
-    if (batch.length === 0) break;
+  // For fast initial render: make first request immediately, then continue in background
+  const firstBatch = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTimeMs);
+  if (firstBatch.length === 0) return [];
+  if (requestsToMake <= 1 || firstBatch.length < 1000) return dedupeByTime(firstBatch);
 
-    collected.push(...batch);
+  // Continue fetching remaining batches in parallel (up to 4 concurrent)
+  const collected: RawKline[] = [...firstBatch];
+  let endTime = firstBatch[0].time * 1000 - 1;
 
-    const oldestBatchMs = batch[0].time * 1000;
-    endTime = oldestBatchMs - 1;
+  const PARALLEL_BATCH_SIZE = 4;
+  let remaining = requestsToMake - 1;
 
-    if (batch.length < 1000) break;
-    await wait(120);
+  while (remaining > 0) {
+    const batchCount = Math.min(remaining, PARALLEL_BATCH_SIZE);
+    const promises: Promise<RawKline[]>[] = [];
+
+    for (let i = 0; i < batchCount; i++) {
+      const et = endTime - i * 1000 * getIntervalSeconds(sourceInterval) * 1000;
+      promises.push(fetchFromBinance(symbol, sourceInterval, 1000, undefined, et).catch(() => []));
+    }
+
+    const results = await Promise.all(promises);
+    let gotData = false;
+
+    for (const batch of results) {
+      if (batch.length > 0) {
+        collected.push(...batch);
+        gotData = true;
+      }
+    }
+
+    if (!gotData) break;
+
+    // Update endTime to oldest received
+    const allTimes = collected.map(k => k.time);
+    endTime = Math.min(...allTimes) * 1000 - 1;
+    remaining -= batchCount;
   }
 
   return dedupeByTime(collected);
+}
+
+function getIntervalSeconds(interval: string): number {
+  const map: Record<string, number> = {
+    '1s': 1, '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+    '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '8h': 28800, '12h': 43200,
+    '1d': 86400, '3d': 259200, '1w': 604800, '1M': 2592000,
+  };
+  return map[interval] || 60;
 }
 
 async function fetchSourceForwardWindow(
@@ -419,7 +475,7 @@ async function fetchSourceForwardWindow(
     startTime = newestBatchMs + 1;
 
     if (batch.length < 1000) break;
-    await wait(120);
+    await wait(80);
   }
 
   return dedupeByTime(collected);
@@ -432,18 +488,8 @@ async function loadKlinesForReplay(symbol: string, interval: Interval, replayEnd
   const replayFutureSourceLimit = getReplayFutureSourceLimit(interval);
 
   const [cachedHistory, cachedFuture] = await Promise.all([
-    getCachedKlinesEndingAt(
-      symbol,
-      sourceInterval,
-      safeReplayEndTime,
-      replayHistorySourceLimit,
-    ),
-    getCachedKlinesStartingAt(
-      symbol,
-      sourceInterval,
-      safeReplayEndTime,
-      replayFutureSourceLimit,
-    ),
+    getCachedKlinesEndingAt(symbol, sourceInterval, safeReplayEndTime, replayHistorySourceLimit),
+    getCachedKlinesStartingAt(symbol, sourceInterval, safeReplayEndTime, replayFutureSourceLimit),
   ]);
 
   const cachedSourceWindow = dedupeByTime([...cachedHistory, ...cachedFuture]);
@@ -456,51 +502,28 @@ async function loadKlinesForReplay(symbol: string, interval: Interval, replayEnd
 
     if (cachedAggregated.length > 0) {
       void backfillHistory(symbol, sourceInterval, cachedHistory[0]?.time ?? null);
-
       if (cachedFuture.length < Math.min(1500, Math.floor(replayFutureSourceLimit / 2))) {
-        void fetchSourceForwardWindow(
-          symbol,
-          sourceInterval,
-          replayFutureSourceLimit,
-          (safeReplayEndTime + 1) * 1000,
-        ).then(rows => {
-          if (rows.length > 0) {
-            void upsertKlines(symbol, sourceInterval, rows);
-          }
-        }).catch(() => undefined);
+        void fetchSourceForwardWindow(symbol, sourceInterval, replayFutureSourceLimit, (safeReplayEndTime + 1) * 1000)
+          .then(rows => { if (rows.length > 0) void upsertKlines(symbol, sourceInterval, rows); })
+          .catch(() => undefined);
       }
-
       return cachedAggregated;
     }
   }
 
   try {
     const [fetchedHistory, fetchedFuture] = await Promise.all([
-      fetchSourceWindow(
-        symbol,
-        sourceInterval,
-        replayHistorySourceLimit,
-        safeReplayEndTime * 1000,
-      ),
-      fetchSourceForwardWindow(
-        symbol,
-        sourceInterval,
-        replayFutureSourceLimit,
-        (safeReplayEndTime + 1) * 1000,
-      ),
+      fetchSourceWindow(symbol, sourceInterval, replayHistorySourceLimit, safeReplayEndTime * 1000),
+      fetchSourceForwardWindow(symbol, sourceInterval, replayFutureSourceLimit, (safeReplayEndTime + 1) * 1000),
     ]);
 
     const fetchedSourceWindow = dedupeByTime([...fetchedHistory, ...fetchedFuture]);
-
     if (fetchedSourceWindow.length > 0) {
       void upsertKlines(symbol, sourceInterval, fetchedSourceWindow);
       void backfillHistory(symbol, sourceInterval, fetchedHistory[0]?.time ?? fetchedSourceWindow[0].time);
     }
 
-    return sliceReplayWindow(
-      aggregateForInterval(fetchedSourceWindow, interval),
-      safeReplayEndTime,
-    );
+    return sliceReplayWindow(aggregateForInterval(fetchedSourceWindow, interval), safeReplayEndTime);
   } catch {
     return [];
   }
@@ -544,49 +567,140 @@ async function syncLatestAndBackfill(
   }
 }
 
+/**
+ * FAST-PATH: Race Supabase cache vs Binance direct fetch.
+ * Whichever resolves first with data wins. The other result
+ * is used to enrich/backfill in background.
+ */
 async function loadKlinesFromSource(symbol: string, interval: Interval): Promise<RawKline[]> {
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceWindowLimit = getSourceWindowLimit(interval);
 
-  const [oldestCachedTime, newestCachedTime] = await Promise.all([
-    getCacheBound(symbol, sourceInterval, true),
-    getCacheBound(symbol, sourceInterval, false),
-  ]);
+  // Race: Supabase cache vs Binance fast fetch
+  const supabasePromise = (async (): Promise<{ source: 'cache'; rows: RawKline[]; oldest: number | null; newest: number | null }> => {
+    if (!isSupabaseAvailable()) return { source: 'cache', rows: [], oldest: null, newest: null };
+    const [oldest, newest] = await Promise.all([
+      getCacheBound(symbol, sourceInterval, true),
+      getCacheBound(symbol, sourceInterval, false),
+    ]);
+    if (newest === null) return { source: 'cache', rows: [], oldest: null, newest: null };
+    const cachedRows = await getLatestCachedKlines(symbol, sourceInterval, sourceWindowLimit);
+    return { source: 'cache', rows: cachedRows, oldest, newest };
+  })();
 
-  if (newestCachedTime !== null) {
-    const cachedSourceWindow = await getLatestCachedKlines(symbol, sourceInterval, sourceWindowLimit);
-    if (cachedSourceWindow.length > 0) {
-      const aggregated = aggregateForInterval(cachedSourceWindow, interval).slice(-INITIAL_RENDER_LIMIT);
-      setRenderCache(getRenderCacheKey(symbol, interval), aggregated);
-      void syncLatestAndBackfill(
-        symbol,
-        sourceInterval,
-        interval,
-        newestCachedTime,
-        oldestCachedTime,
-        cachedSourceWindow,
-      );
-      return aggregated;
+  const binancePromise = (async (): Promise<{ source: 'binance'; rows: RawKline[] }> => {
+    // Fast initial: just 1 request (1000 bars) for instant render
+    const rows = await fetchFromBinance(symbol, sourceInterval, FAST_INITIAL_BINANCE_LIMIT);
+    return { source: 'binance', rows };
+  })();
+
+  // Use Promise.allSettled to get both results, but render from whichever is faster
+  type CacheResult = Awaited<typeof supabasePromise>;
+  type BinanceResult = Awaited<typeof binancePromise>;
+
+  let fastResult: RawKline[] = [];
+  let cacheResult: CacheResult | null = null;
+
+  try {
+    // Race for fastest data
+    const winner = await Promise.race([
+      supabasePromise.then(r => ({ type: 'cache' as const, data: r })),
+      binancePromise.then(r => ({ type: 'binance' as const, data: r })),
+    ]);
+
+    if (winner.type === 'cache' && winner.data.rows.length > 0) {
+      cacheResult = winner.data;
+      fastResult = aggregateForInterval(winner.data.rows, interval).slice(-INITIAL_RENDER_LIMIT);
+
+      // Also await Binance result in background to sync latest
+      void binancePromise.then(br => {
+        if (br.rows.length > 0 && cacheResult) {
+          void upsertKlines(symbol, sourceInterval, br.rows);
+          void syncLatestAndBackfill(symbol, sourceInterval, interval, cacheResult.newest!, cacheResult.oldest, cacheResult.rows);
+        }
+      }).catch(() => {});
+    } else if (winner.type === 'binance' && winner.data.rows.length > 0) {
+      fastResult = aggregateForInterval(winner.data.rows, interval).slice(-INITIAL_RENDER_LIMIT);
+
+      // Cache the Binance result and start backfill
+      void upsertKlines(symbol, sourceInterval, winner.data.rows);
+      void backfillHistory(symbol, sourceInterval, winner.data.rows[0].time);
+
+      // Also check if Supabase has more historical data
+      void supabasePromise.then(cr => {
+        if (cr.rows.length > 0) {
+          const merged = dedupeByTime([...cr.rows, ...winner.data.rows]);
+          const aggregated = aggregateForInterval(merged, interval).slice(-INITIAL_RENDER_LIMIT);
+          setRenderCache(getRenderCacheKey(symbol, interval), aggregated);
+        }
+      }).catch(() => {});
+    } else {
+      // Winner had no data, try the other
+      const results = await Promise.allSettled([supabasePromise, binancePromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          const data = r.value;
+          if (data.rows.length > 0) {
+            fastResult = aggregateForInterval(data.rows, interval).slice(-INITIAL_RENDER_LIMIT);
+            if (data.source === 'binance') {
+              void upsertKlines(symbol, sourceInterval, data.rows);
+              void backfillHistory(symbol, sourceInterval, data.rows[0].time);
+            }
+            break;
+          }
+        }
+      }
+    }
+  } catch {
+    // If race fails, try Binance directly
+    try {
+      const rows = await fetchFromBinance(symbol, sourceInterval, FAST_INITIAL_BINANCE_LIMIT);
+      if (rows.length > 0) {
+        fastResult = aggregateForInterval(rows, interval).slice(-INITIAL_RENDER_LIMIT);
+        void upsertKlines(symbol, sourceInterval, rows);
+        void backfillHistory(symbol, sourceInterval, rows[0].time);
+      }
+    } catch {
+      return [];
     }
   }
 
+  if (fastResult.length > 0) {
+    setRenderCache(getRenderCacheKey(symbol, interval), fastResult);
+
+    // Background: fetch more history for depth
+    void fetchMoreHistoryInBackground(symbol, sourceInterval, interval, sourceWindowLimit);
+  }
+
+  return fastResult;
+}
+
+/**
+ * After fast render, fetch more candles in background to fill the chart with deeper history.
+ */
+async function fetchMoreHistoryInBackground(
+  symbol: string,
+  sourceInterval: string,
+  targetInterval: Interval,
+  targetBars: number,
+) {
   try {
-    const latestSource = await fetchSourceWindow(symbol, sourceInterval, sourceWindowLimit);
-    if (latestSource.length > 0) {
-      void upsertKlines(symbol, sourceInterval, latestSource);
-      void backfillHistory(symbol, sourceInterval, latestSource[0].time);
+    await wait(500); // Let UI render first
+    const fullData = await fetchSourceWindow(symbol, sourceInterval, targetBars);
+    if (fullData.length > 0) {
+      void upsertKlines(symbol, sourceInterval, fullData);
+      const aggregated = aggregateForInterval(fullData, targetInterval).slice(-INITIAL_RENDER_LIMIT);
+      setRenderCache(getRenderCacheKey(symbol, targetInterval), aggregated);
+      void backfillHistory(symbol, sourceInterval, fullData[0].time);
     }
-    const aggregated = aggregateForInterval(latestSource, interval).slice(-INITIAL_RENDER_LIMIT);
-    setRenderCache(getRenderCacheKey(symbol, interval), aggregated);
-    return aggregated;
   } catch {
-    return [];
+    // Silent
   }
 }
 
 /**
  * Fast load for chart rendering:
- * - returns latest cached window quickly (avoids freezes on timeframe switch)
+ * - races Supabase cache vs Binance for fastest first paint
  * - syncs newest candles incrementally
  * - continues full-history backfill in background
  */
@@ -613,20 +727,14 @@ export async function getKlines(
     }
 
     const replayInFlight = replayFetchInProgress.get(replayCacheKey);
-    if (replayInFlight) {
-      return replayInFlight;
-    }
+    if (replayInFlight) return replayInFlight;
 
     const replayPromise = loadKlinesForReplay(normalizedSymbol, interval, normalizedReplayEnd)
       .then(rows => {
-        if (rows.length > 0) {
-          setReplayRenderCache(replayCacheKey, rows);
-        }
+        if (rows.length > 0) setReplayRenderCache(replayCacheKey, rows);
         return rows;
       })
-      .finally(() => {
-        replayFetchInProgress.delete(replayCacheKey);
-      });
+      .finally(() => { replayFetchInProgress.delete(replayCacheKey); });
 
     replayFetchInProgress.set(replayCacheKey, replayPromise);
     return replayPromise;
@@ -640,34 +748,21 @@ export async function getKlines(
     if (isStale && !renderRefreshInProgress.has(renderKey)) {
       renderRefreshInProgress.add(renderKey);
       void loadKlinesFromSource(normalizedSymbol, interval)
-        .then(rows => {
-          if (rows.length > 0) {
-            setRenderCache(renderKey, rows);
-          }
-        })
-        .finally(() => {
-          renderRefreshInProgress.delete(renderKey);
-        });
+        .then(rows => { if (rows.length > 0) setRenderCache(renderKey, rows); })
+        .finally(() => { renderRefreshInProgress.delete(renderKey); });
     }
-
     return cachedRender.rows;
   }
 
   const inFlight = renderFetchInProgress.get(renderKey);
-  if (inFlight) {
-    return inFlight;
-  }
+  if (inFlight) return inFlight;
 
   const fetchPromise = loadKlinesFromSource(normalizedSymbol, interval)
     .then(rows => {
-      if (rows.length > 0) {
-        setRenderCache(renderKey, rows);
-      }
+      if (rows.length > 0) setRenderCache(renderKey, rows);
       return rows;
     })
-    .finally(() => {
-      renderFetchInProgress.delete(renderKey);
-    });
+    .finally(() => { renderFetchInProgress.delete(renderKey); });
 
   renderFetchInProgress.set(renderKey, fetchPromise);
   return fetchPromise;
@@ -684,23 +779,44 @@ export async function getOlderKlinesFromCache(
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
 
-  const p = supabase
-    .from('klines')
-    .select('time, open, high, low, close, volume')
-    .eq('symbol', symbol)
-    .eq('interval', sourceInterval)
-    .lt('time', beforeTime)
-    .order('time', { ascending: false })
-    .limit(sourceLimit)
-    .then(({ data, error }) => {
-      if (error || !data || data.length === 0) return [];
-      const sourceRows = (data as RawKline[]).reverse();
-      return aggregateForInterval(sourceRows, interval)
+  // Try cache first, fallback to Binance
+  const cachePromise = (async () => {
+    if (!isSupabaseAvailable()) return [];
+    const p = supabase
+      .from('klines')
+      .select('time, open, high, low, close, volume')
+      .eq('symbol', symbol)
+      .eq('interval', sourceInterval)
+      .lt('time', beforeTime)
+      .order('time', { ascending: false })
+      .limit(sourceLimit)
+      .then(({ data, error }) => {
+        if (error) { markSupabaseFailed(); return []; }
+        if (!data || data.length === 0) return [];
+        const sourceRows = (data as RawKline[]).reverse();
+        return aggregateForInterval(sourceRows, interval)
+          .filter(k => k.time < beforeTime)
+          .slice(-limit);
+      });
+    return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
+  })();
+
+  const cached = await cachePromise;
+  if (cached.length > 0) return cached;
+
+  // Fallback: fetch from Binance
+  try {
+    const endTimeMs = beforeTime * 1000 - 1;
+    const rows = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTimeMs);
+    if (rows.length > 0) {
+      void upsertKlines(symbol, sourceInterval, rows);
+      return aggregateForInterval(rows, interval)
         .filter(k => k.time < beforeTime)
         .slice(-limit);
-    });
+    }
+  } catch {}
 
-  return withTimeout(Promise.resolve(p), SUPABASE_QUERY_TIMEOUT_MS, []);
+  return [];
 }
 
 /** Warm cache for all source intervals used across timeframe options for a symbol. */
@@ -720,23 +836,24 @@ export async function prefetchSymbolHistory(symbol: string): Promise<void> {
       }
     }
 
-    for (const [sourceInterval, targetInterval] of sourceTargets.entries()) {
-      const sourceKey = getSourcePrefetchKey(normalizedSymbol, sourceInterval);
-      if (sourcePrefetchComplete.has(sourceKey) || sourcePrefetchInProgress.has(sourceKey)) {
-        continue;
-      }
-
-      sourcePrefetchInProgress.add(sourceKey);
-      try {
-        await getKlines(normalizedSymbol, targetInterval);
-        sourcePrefetchComplete.add(sourceKey);
-      } catch {
-        // Keep UI responsive; we'll retry on next relevant symbol interaction.
-      } finally {
-        sourcePrefetchInProgress.delete(sourceKey);
-      }
-
-      await wait(120);
+    // Prefetch in parallel batches of 3 instead of serial
+    const entries = Array.from(sourceTargets.entries());
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(
+        batch.map(async ([sourceInterval, targetInterval]) => {
+          const sourceKey = getSourcePrefetchKey(normalizedSymbol, sourceInterval);
+          if (sourcePrefetchComplete.has(sourceKey) || sourcePrefetchInProgress.has(sourceKey)) return;
+          sourcePrefetchInProgress.add(sourceKey);
+          try {
+            await getKlines(normalizedSymbol, targetInterval);
+            sourcePrefetchComplete.add(sourceKey);
+          } finally {
+            sourcePrefetchInProgress.delete(sourceKey);
+          }
+        })
+      );
     }
   } finally {
     symbolPrefetchInProgress.delete(normalizedSymbol);
