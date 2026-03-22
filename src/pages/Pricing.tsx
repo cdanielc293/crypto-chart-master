@@ -264,7 +264,7 @@ export default function Pricing() {
               </div>
 
               <motion.button
-                onClick={() => navigate('/chart')}
+                onClick={() => navigate(`/signup?tier=${tier.name.split(' ')[1].toLowerCase()}`)}
                 className={`w-full py-3 text-sm font-semibold rounded-xl transition-all ${
                   tier.popular
                     ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 shadow-lg shadow-cyan-500/20'
