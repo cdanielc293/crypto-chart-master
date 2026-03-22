@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useProfile, planLabels } from '@/hooks/useProfile';
-import { Copy, Mail, Share2, X } from 'lucide-react';
+import { Copy, Mail, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
+import DraggableDialog from './DraggableDialog';
 
 interface Props {
   open: boolean;
