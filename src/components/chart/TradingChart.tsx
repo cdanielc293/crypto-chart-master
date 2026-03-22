@@ -576,6 +576,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const replayBarRef = useRef(replayBarIndex);
   const replayAnchorTimeRef = useRef<number | null>(null);
   const replayStartTimeRef = useRef<number | null>(null);
+  const replayWasActiveRef = useRef(false);
   replayBarRef.current = replayBarIndex;
 
   useEffect(() => {
@@ -691,7 +692,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const topMargin = clamp(cs.marginTop / 100, 0, 0.8);
     const bottomMargin = clamp(cs.marginBottom / 100, 0, 0.8);
-    const rightOffset = clamp(cs.marginRight, 0, 100);
+    const replayRightPadding = replayState !== 'off' && replayState !== 'selecting' ? 30 : 0;
+    const rightOffset = clamp(cs.marginRight + replayRightPadding, 0, 100);
 
     chart.applyOptions({
       layout: {
@@ -722,7 +724,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       leftPriceScale: { borderColor: linesColor, scaleMargins: { top: topMargin, bottom: bottomMargin } },
       timeScale: { borderColor: linesColor, rightOffset },
     });
-  }, [chartSettings.canvas]);
+  }, [chartSettings.canvas, replayState]);
 
   const drawExtendedGrid = useCallback(() => {
     const canvas = gridExtendCanvasRef.current;
@@ -1013,6 +1015,18 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   }, []);
 
   useEffect(() => {
+    const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
+
+    if (!isReplayActive && replayWasActiveRef.current) {
+      intervalDataCacheRef.current.clear();
+      intervalRangeCacheRef.current.clear();
+      intervalLastSyncRef.current.clear();
+    }
+
+    replayWasActiveRef.current = isReplayActive;
+  }, [replayState]);
+
+  useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
 
@@ -1138,7 +1152,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
 
           const lastSync = intervalLastSyncRef.current.get(cacheKey) ?? 0;
-          if (Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
+          if (!isReplayActive && Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
             return;
           }
         }
@@ -1214,7 +1228,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }
 
         setChartData(series, renderCandles, renderVolumes, volSeries);
-        persistSeriesCache(cacheKey, finalCandles, hasMoreOlderRef.current);
+        if (!isReplayActive) {
+          persistSeriesCache(cacheKey, finalCandles, hasMoreOlderRef.current);
+        }
         intervalLastSyncRef.current.set(cacheKey, Date.now());
 
         if (chartType === 'point_figure') {
@@ -1785,11 +1801,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const handler = (param: any) => {
       if (!param.time) return;
       const allCandles = allCandlesRef.current;
-      const idx = allCandles.findIndex(c => c.time === param.time);
-      if (idx < 0) return;
+      const clickedTime = toUnixSeconds(param.time as Time);
+      if (clickedTime === null) return;
+
+      const idx = findNearestCandleIndexByTime(allCandles, clickedTime);
+      if (idx < 0 || idx >= allCandles.length) return;
 
       replayAnchorTimeRef.current = Number(allCandles[idx].time);
       replayStartTimeRef.current = Number(allCandles[idx].time);
+      replayBarRef.current = idx;
 
       setReplayStartIndex(idx);
       setReplayBarIndex(idx);
@@ -1809,7 +1829,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
         }));
         setChartData(series, sliced, volumes, volSeries);
-        chart.timeScale().fitContent();
+        chart.timeScale().setVisibleLogicalRange({
+          from: Math.max(0, idx - 140),
+          to: idx + 40,
+        });
       }
     };
 
@@ -1826,6 +1849,31 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     if (!chart || !series || !volSeries) return;
 
     const allCandles = allCandlesRef.current;
+    if (allCandles.length === 0) return;
+
+    const lastAvailableIndex = allCandles.length - 1;
+    if (replayBarIndex > lastAvailableIndex) {
+      replayBarRef.current = lastAvailableIndex;
+      if (replayBarIndex !== lastAvailableIndex) {
+        setReplayBarIndex(lastAvailableIndex);
+      }
+      if (replayState === 'playing') {
+        setReplayState('paused');
+      }
+      return;
+    }
+
+    if (replayBarIndex < 0) {
+      replayBarRef.current = 0;
+      if (replayBarIndex !== 0) {
+        setReplayBarIndex(0);
+      }
+      if (replayState === 'playing') {
+        setReplayState('paused');
+      }
+      return;
+    }
+
     const clampedReplayIndex = Math.max(0, Math.min(replayBarIndex, allCandles.length - 1));
     const clampedStartIndex = Math.max(0, Math.min(replayStartIndex, allCandles.length - 1));
 
@@ -1836,18 +1884,25 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       replayStartTimeRef.current = Number(allCandles[clampedStartIndex].time);
     }
 
-    if (replayBarIndex >= allCandles.length) {
-      setReplayState('off');
-      return;
-    }
-
-    const sliced = allCandles.slice(0, replayBarIndex + 1);
+    const sliced = allCandles.slice(0, clampedReplayIndex + 1);
     const volumes = sliced.map(c => ({
       time: c.time,
       value: c.volume,
       color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
     }));
     setChartData(series, sliced, volumes, volSeries);
+
+    const currentVisibleRange = chart.timeScale().getVisibleLogicalRange();
+    if (
+      !currentVisibleRange ||
+      clampedReplayIndex > currentVisibleRange.to - 10 ||
+      clampedReplayIndex < currentVisibleRange.from + 5
+    ) {
+      chart.timeScale().setVisibleLogicalRange({
+        from: Math.max(0, clampedReplayIndex - 120),
+        to: clampedReplayIndex + 40,
+      });
+    }
 
     const last = sliced[sliced.length - 1];
     if (last) {
@@ -1906,6 +1961,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   // ─── Replay: restore full data when turning off ───
   useEffect(() => {
     if (replayState === 'off' && allCandlesRef.current.length > 0) {
+      replayAnchorTimeRef.current = null;
+      replayStartTimeRef.current = null;
+      replayBarRef.current = 0;
+
       const chart = chartRef.current;
       const series = mainSeriesRef.current;
       const volSeries = volumeSeriesRef.current;
