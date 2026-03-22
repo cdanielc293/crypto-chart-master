@@ -707,17 +707,30 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     chart.timeScale().fitContent();
     chartRef.current = chart;
 
+    const updatePriceScaleWidth = () => {
+      try {
+        const w = chart.priceScale('right').width?.() ?? 55;
+        setPriceScaleWidth(prev => prev !== w ? w : prev);
+      } catch {}
+    };
+
     const observer = new ResizeObserver(() => {
       if (containerRef.current && !disposedRef.current) {
         try {
           chart.applyOptions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
-          setPriceScaleWidth(chart.priceScale('right').width?.() ?? 55);
+          updatePriceScaleWidth();
         } catch {}
       }
     });
     observer.observe(containerRef.current);
+
+    // Keep price scale width in sync (it changes after data loads, zoom, etc.)
+    const psInterval = setInterval(updatePriceScaleWidth, 500);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(updatePriceScaleWidth);
     return () => {
       disposedRef.current = true;
+      clearInterval(psInterval);
+      try { chart.timeScale().unsubscribeVisibleLogicalRangeChange(updatePriceScaleWidth); } catch {}
       observer.disconnect();
       try { chart.remove(); } catch {}
       chartRef.current = null;
