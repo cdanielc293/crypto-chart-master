@@ -100,6 +100,69 @@ function normalizeVisibleRange(
   return { from: clampedFrom, to: clampedTo };
 }
 
+function toUnixSeconds(time: Time | null | undefined): number | null {
+  if (typeof time === 'number') {
+    return Number.isFinite(time) ? time : null;
+  }
+
+  if (time && typeof time === 'object' && 'year' in time && 'month' in time && 'day' in time) {
+    const t = time as { year: number; month: number; day: number };
+    return Math.floor(Date.UTC(t.year, t.month - 1, t.day) / 1000);
+  }
+
+  return null;
+}
+
+function normalizeVisibleTimeRange(
+  range: { from: Time; to: Time } | null | undefined,
+  candles: RawCandle[],
+): { from: Time; to: Time } | null {
+  if (!range || candles.length === 0) return null;
+
+  const from = toUnixSeconds(range.from);
+  const to = toUnixSeconds(range.to);
+  if (from === null || to === null || to <= from) return null;
+
+  const first = Number(candles[0].time);
+  const last = Number(candles[candles.length - 1].time);
+  const step = candles.length > 1 ? Math.max(1, Number(candles[1].time) - Number(candles[0].time)) : 60;
+  const minBound = first - step * 2;
+  const maxBound = last + step * 2;
+
+  if (to < minBound || from > maxBound) return null;
+
+  const clampedFrom = Math.max(from, minBound);
+  const clampedTo = Math.min(to, maxBound);
+  if (clampedTo - clampedFrom < 1) return null;
+
+  return {
+    from: clampedFrom as Time,
+    to: clampedTo as Time,
+  };
+}
+
+function findNearestCandleIndexByTime(candles: RawCandle[], targetTimeSec: number | null): number {
+  if (candles.length === 0) return 0;
+  if (targetTimeSec === null || !Number.isFinite(targetTimeSec)) return candles.length - 1;
+
+  let low = 0;
+  let high = candles.length - 1;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const midTime = Number(candles[mid].time);
+    if (midTime === targetTimeSec) return mid;
+    if (midTime < targetTimeSec) low = mid + 1;
+    else high = mid - 1;
+  }
+
+  const left = Math.max(0, Math.min(candles.length - 1, high));
+  const right = Math.max(0, Math.min(candles.length - 1, low));
+  const leftDiff = Math.abs(Number(candles[left].time) - targetTimeSec);
+  const rightDiff = Math.abs(Number(candles[right].time) - targetTimeSec);
+  return rightDiff < leftDiff ? right : left;
+}
+
 function toHeikinAshi(candles: RawCandle[]): RawCandle[] {
   const ha: RawCandle[] = [];
   for (let i = 0; i < candles.length; i++) {
@@ -511,7 +574,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const replaySelectCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const replayTimerRef = useRef<number | null>(null);
   const replayBarRef = useRef(replayBarIndex);
+  const replayAnchorTimeRef = useRef<number | null>(null);
+  const replayStartTimeRef = useRef<number | null>(null);
   replayBarRef.current = replayBarIndex;
+
+  useEffect(() => {
+    if (replayState === 'off' || replayState === 'selecting') return;
+    const candles = allCandlesRef.current;
+    if (candles.length === 0) return;
+
+    const clampedReplayIndex = Math.max(0, Math.min(replayBarIndex, candles.length - 1));
+    const clampedStartIndex = Math.max(0, Math.min(replayStartIndex, candles.length - 1));
+    replayAnchorTimeRef.current = Number(candles[clampedReplayIndex].time);
+    replayStartTimeRef.current = Number(candles[clampedStartIndex].time);
+  }, [replayState, replayBarIndex, replayStartIndex, symbol, interval]);
 
   const resetChartView = useCallback(() => {
     const chart = chartRef.current;
@@ -971,6 +1047,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const cacheKey = getDataCacheKey();
         const cachedState = intervalDataCacheRef.current.get(cacheKey);
         const cachedRange = intervalRangeCacheRef.current.get(cacheKey);
+        const previousVisibleTimeRange = chart.timeScale().getVisibleRange();
+        const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
 
         if (cachedState?.candles.length) {
           rawCandlesRef.current = [...cachedState.candles];
@@ -979,30 +1057,76 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           hasMoreOlderRef.current = cachedState.hasMoreOlder;
           activeDataKeyRef.current = cacheKey;
 
-          const cachedVolumes = cachedState.candles.map(c => ({
-            time: c.time,
-            value: c.volume,
-            color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
-          }));
+          if (isReplayActive) {
+            const replayIndex = findNearestCandleIndexByTime(cachedState.candles, replayAnchorTimeRef.current);
+            const replayStartIndexByTime = findNearestCandleIndexByTime(
+              cachedState.candles,
+              replayStartTimeRef.current ?? replayAnchorTimeRef.current,
+            );
+            const nextReplayStartIndex = Math.min(replayStartIndexByTime, replayIndex);
+            const replayCandles = cachedState.candles.slice(0, replayIndex + 1);
+            const replayVolumes = replayCandles.map(c => ({
+              time: c.time,
+              value: c.volume,
+              color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+            }));
 
-          setChartData(series, cachedState.candles, cachedVolumes, volSeries);
+            replayBarRef.current = replayIndex;
+            setReplayStartIndex(nextReplayStartIndex);
+            setReplayBarIndex(replayIndex);
+            replayAnchorTimeRef.current = Number(cachedState.candles[replayIndex]?.time ?? replayAnchorTimeRef.current ?? 0);
+            replayStartTimeRef.current = Number(cachedState.candles[nextReplayStartIndex]?.time ?? replayStartTimeRef.current ?? 0);
 
-          const safeCachedRange = normalizeVisibleRange(cachedRange, cachedState.candles.length);
-          if (safeCachedRange) {
-            chart.timeScale().setVisibleLogicalRange(safeCachedRange);
-          }
+            setChartData(series, replayCandles, replayVolumes, volSeries);
 
-          const lastCached = cachedState.candles[cachedState.candles.length - 1];
-          if (lastCached) {
-            const prevCached = cachedState.candles[cachedState.candles.length - 2];
-            setOhlc({
-              o: lastCached.open,
-              h: lastCached.high,
-              l: lastCached.low,
-              c: lastCached.close,
-              v: lastCached.volume,
-              change: prevCached ? ((lastCached.close - prevCached.close) / prevCached.close) * 100 : 0,
-            });
+            const safeReplayTimeRange = normalizeVisibleTimeRange(previousVisibleTimeRange, replayCandles);
+            if (safeReplayTimeRange) {
+              chart.timeScale().setVisibleRange(safeReplayTimeRange);
+            } else {
+              chart.timeScale().setVisibleLogicalRange({
+                from: Math.max(0, replayIndex - 120),
+                to: replayIndex + 20,
+              });
+            }
+
+            const replayLast = replayCandles[replayCandles.length - 1];
+            const replayPrev = replayCandles[replayCandles.length - 2];
+            if (replayLast) {
+              setOhlc({
+                o: replayLast.open,
+                h: replayLast.high,
+                l: replayLast.low,
+                c: replayLast.close,
+                v: replayLast.volume,
+                change: replayPrev ? ((replayLast.close - replayPrev.close) / replayPrev.close) * 100 : 0,
+              });
+            }
+          } else {
+            const cachedVolumes = cachedState.candles.map(c => ({
+              time: c.time,
+              value: c.volume,
+              color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+            }));
+
+            setChartData(series, cachedState.candles, cachedVolumes, volSeries);
+
+            const safeCachedRange = normalizeVisibleRange(cachedRange, cachedState.candles.length);
+            if (safeCachedRange) {
+              chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+            }
+
+            const lastCached = cachedState.candles[cachedState.candles.length - 1];
+            if (lastCached) {
+              const prevCached = cachedState.candles[cachedState.candles.length - 2];
+              setOhlc({
+                o: lastCached.open,
+                h: lastCached.high,
+                l: lastCached.low,
+                c: lastCached.close,
+                v: lastCached.volume,
+                change: prevCached ? ((lastCached.close - prevCached.close) / prevCached.close) * 100 : 0,
+              });
+            }
           }
 
           const lastSync = intervalLastSyncRef.current.get(cacheKey) ?? 0;
@@ -1012,8 +1136,6 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }
 
         const isSameDataset = activeDataKeyRef.current === cacheKey;
-        const previousCount = isSameDataset ? rawCandlesRef.current.length : 0;
-        const previousRange = isSameDataset ? chart.timeScale().getVisibleLogicalRange() : null;
 
         // Use cache-first strategy: Supabase cache → Binance fallback
         const klineData = await getKlines(symbol, interval);
@@ -1051,7 +1173,32 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         hasMoreOlderRef.current = cachedState?.hasMoreOlder ?? true;
         activeDataKeyRef.current = cacheKey;
 
-        setChartData(series, finalCandles, finalVolumes, volSeries);
+        let renderCandles = finalCandles;
+        let renderVolumes = finalVolumes;
+
+        if (isReplayActive) {
+          const replayIndex = findNearestCandleIndexByTime(finalCandles, replayAnchorTimeRef.current);
+          const replayStartIndexByTime = findNearestCandleIndexByTime(
+            finalCandles,
+            replayStartTimeRef.current ?? replayAnchorTimeRef.current,
+          );
+          const nextReplayStartIndex = Math.min(replayStartIndexByTime, replayIndex);
+
+          renderCandles = finalCandles.slice(0, replayIndex + 1);
+          renderVolumes = renderCandles.map(c => ({
+            time: c.time,
+            value: c.volume,
+            color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+          }));
+
+          replayBarRef.current = replayIndex;
+          setReplayStartIndex(nextReplayStartIndex);
+          setReplayBarIndex(replayIndex);
+          replayAnchorTimeRef.current = Number(finalCandles[replayIndex]?.time ?? replayAnchorTimeRef.current ?? 0);
+          replayStartTimeRef.current = Number(finalCandles[nextReplayStartIndex]?.time ?? replayStartTimeRef.current ?? 0);
+        }
+
+        setChartData(series, renderCandles, renderVolumes, volSeries);
         persistSeriesCache(cacheKey, finalCandles, hasMoreOlderRef.current);
         intervalLastSyncRef.current.set(cacheKey, Date.now());
 
@@ -1059,9 +1206,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           requestAnimationFrame(() => { if (!cancelled) drawPFOverlay(); });
         }
 
-        const last = finalCandles[finalCandles.length - 1];
+        const last = renderCandles[renderCandles.length - 1];
         if (last) {
-          const prev = finalCandles[finalCandles.length - 2];
+          const prev = renderCandles[renderCandles.length - 2];
           setOhlc({
             o: last.open, h: last.high, l: last.low, c: last.close,
             v: last.volume,
@@ -1071,6 +1218,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
         if (cancelled) return;
 
+        if (isReplayActive) {
+          const replayRangeByTime = normalizeVisibleTimeRange(previousVisibleTimeRange, renderCandles);
+          if (replayRangeByTime) {
+            chart.timeScale().setVisibleRange(replayRangeByTime);
+          } else {
+            const replayIndex = Math.max(0, renderCandles.length - 1);
+            chart.timeScale().setVisibleLogicalRange({
+              from: Math.max(0, replayIndex - 120),
+              to: replayIndex + 20,
+            });
+          }
+          return;
+        }
+
         if (chartType === 'point_figure') {
           const pointCount = pfDataRef.current?.lineData.length ?? 0;
           if (pointCount > 0) {
@@ -1079,18 +1240,17 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               to: pointCount + 8,
             });
           }
-        } else if (previousRange && previousCount > 0 && finalCandles.length >= previousCount) {
-          const addedBars = finalCandles.length - previousCount;
-          chart.timeScale().setVisibleLogicalRange({
-            from: previousRange.from + addedBars,
-            to: previousRange.to + addedBars,
-          });
         } else {
-          const safeCachedRange = normalizeVisibleRange(cachedRange, finalCandles.length);
-          if (safeCachedRange) {
-            chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+          const safePreviousTimeRange = normalizeVisibleTimeRange(previousVisibleTimeRange, finalCandles);
+          if (safePreviousTimeRange) {
+            chart.timeScale().setVisibleRange(safePreviousTimeRange);
           } else {
-            chart.timeScale().fitContent();
+            const safeCachedRange = normalizeVisibleRange(cachedRange, finalCandles.length);
+            if (safeCachedRange) {
+              chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+            } else {
+              chart.timeScale().fitContent();
+            }
           }
         }
       } catch (err) {
@@ -1101,7 +1261,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     fetchData();
 
     return () => { cancelled = true; };
-  }, [symbol, interval, chartType, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache, setReplayBarIndex, setReplayStartIndex]);
 
   // ─── Lazy-load older cached bars when user scrolls left ───
   useEffect(() => {
