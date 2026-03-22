@@ -183,8 +183,8 @@ export default function Landing() {
             Join thousands of traders who chose signal over noise.
           </p>
           <motion.button
-            onClick={() => navigate('/chart')}
-            className="px-10 py-4 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-400/40"
+          onClick={() => navigate('/pricing')}
+          className="px-10 py-4 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-400/40"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
           >
