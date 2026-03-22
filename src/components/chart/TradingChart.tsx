@@ -569,11 +569,31 @@ interface TradingChartProps {
 export default function TradingChart({ panelIndex, overrideSymbol, compact }: TradingChartProps = {}) {
   const ctx = useChart();
   const symbol = overrideSymbol || ctx.symbol;
+  const isMultiPanel = panelIndex !== undefined && ctx.gridLayout.count > 1;
+
+  // Per-panel indicator state for multi-chart, global for single chart
+  const panelState = isMultiPanel ? ctx.panelIndicatorStates.get(panelIndex!) : undefined;
+  const indicators = isMultiPanel ? (panelState?.indicators || []) : ctx.indicators;
+  const hiddenIndicators = isMultiPanel ? (panelState?.hiddenIndicators || new Set<string>()) : ctx.hiddenIndicators;
+  const indicatorConfigs = isMultiPanel ? (panelState?.indicatorConfigs || new Map()) : ctx.indicatorConfigs;
+
+  const localAddIndicator = isMultiPanel
+    ? (defId: string) => ctx.addPanelIndicator(panelIndex!, defId)
+    : ctx.addIndicator;
+  const localRemoveIndicator = isMultiPanel
+    ? (instId: string) => ctx.removePanelIndicator(panelIndex!, instId)
+    : ctx.removeIndicator;
+  const localToggleHidden = isMultiPanel
+    ? (instId: string) => ctx.togglePanelHiddenIndicator(panelIndex!, instId)
+    : ctx.toggleHiddenIndicator;
+  const localUpdateConfig = isMultiPanel
+    ? (instId: string, cfg: any) => ctx.updatePanelIndicatorConfig(panelIndex!, instId, cfg)
+    : ctx.updateIndicatorConfig;
+
   const {
-    interval, chartType, drawingTool, indicators, hiddenIndicators, drawings,
+    interval, chartType, drawingTool, drawings,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
-    indicatorConfigs,
   } = ctx;
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
