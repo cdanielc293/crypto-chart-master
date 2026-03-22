@@ -622,10 +622,18 @@ export default function Watchlist() {
         {/* Column headers */}
         {viewMode === 'table' && (
           <div className="flex items-center px-3 py-1.5 text-[11px] text-muted-foreground border-b border-chart-border">
-            <span className="flex-1">Symbol</span>
-            <span className="w-[72px] text-right">Last</span>
-            <span className="w-14 text-right">Chg</span>
-            <span className="w-14 text-right">Chg%</span>
+            <button onClick={() => toggleSort('symbol')} className="flex items-center gap-0.5 flex-1 hover:text-foreground">
+              Symbol <SortIcon field="symbol" />
+            </button>
+            <button onClick={() => toggleSort('last')} className="flex items-center justify-end gap-0.5 w-[72px] hover:text-foreground">
+              Last <SortIcon field="last" />
+            </button>
+            <button onClick={() => toggleSort('chg')} className="flex items-center justify-end gap-0.5 w-14 hover:text-foreground">
+              Chg <SortIcon field="chg" />
+            </button>
+            <button onClick={() => toggleSort('chgp')} className="flex items-center justify-end gap-0.5 w-14 hover:text-foreground">
+              Chg% <SortIcon field="chgp" />
+            </button>
           </div>
         )}
 
@@ -673,11 +681,13 @@ export default function Watchlist() {
               </div>
 
               {/* Symbols in section */}
-              {!section.collapsed && section.symbols.map(sym => {
+              {!section.collapsed && sortSymbols(section.symbols).map(sym => {
                 const price = watchlistPrices.get(sym);
                 const isPositive = (price?.priceChangePercent ?? 0) >= 0;
                 const isSelected = sym === activeSymbol;
                 const isDetailSelected = sym === selectedSymbol;
+                const ticker = sym.replace('USDT', '');
+                const symColor = getSymbolColor(sym);
 
                 return (
                   <div
@@ -688,28 +698,34 @@ export default function Watchlist() {
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
                     }`}
                   >
-                    {/* Logo placeholder */}
-                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary mr-2 shrink-0">
-                      {sym[0]}
+                    {/* Colored symbol icon */}
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold mr-2 shrink-0"
+                      style={{ backgroundColor: `${symColor}22`, color: symColor }}
+                    >
+                      {ticker[0]}
                     </div>
-                    <span className="flex-1 font-medium text-foreground truncate">
-                      {sym.replace('USDT', '')}
-                    </span>
+                    <div className="flex-1 min-w-0 mr-1">
+                      <span className="font-medium text-foreground truncate block leading-tight">
+                        {ticker}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground leading-tight">SPOT</span>
+                    </div>
                     {viewMode === 'table' ? (
                       <>
-                        <span className="w-[76px] text-right font-mono text-foreground text-[12px]">
+                        <span className="w-[72px] text-right font-mono text-foreground text-[12px]">
                           {price && price.lastPrice > 0
                             ? price.lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                             : '—'}
                         </span>
-                        <span className={`w-16 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                        <span className={`w-14 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                           {price && price.lastPrice > 0
-                            ? `${isPositive ? '' : ''}${price.priceChange.toFixed(1)}`
+                            ? `${isPositive ? '+' : ''}${price.priceChange.toFixed(1)}`
                             : '—'}
                         </span>
-                        <span className={`w-16 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
+                        <span className={`w-14 text-right font-mono text-[12px] ${isPositive ? 'text-chart-bull' : 'text-chart-bear'}`}>
                           {price && price.lastPrice > 0
-                            ? `${isPositive ? '' : ''}${price.priceChangePercent.toFixed(2)}%`
+                            ? `${isPositive ? '+' : ''}${price.priceChangePercent.toFixed(2)}%`
                             : '—'}
                         </span>
                       </>
