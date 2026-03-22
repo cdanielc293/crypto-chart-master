@@ -65,6 +65,13 @@ interface RawCandle {
   time: Time; open: number; high: number; low: number; close: number; volume: number;
 }
 
+interface CachedSeriesState {
+  candles: RawCandle[];
+  hasMoreOlder: boolean;
+}
+
+const LIVE_CACHE_SYNC_COOLDOWN_MS = 15_000;
+
 function toHeikinAshi(candles: RawCandle[]): RawCandle[] {
   const ha: RawCandle[] = [];
   for (let i = 0; i < candles.length; i++) {
@@ -457,6 +464,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
+  const intervalDataCacheRef = useRef<Map<string, CachedSeriesState>>(new Map());
+  const intervalRangeCacheRef = useRef<Map<string, { from: number; to: number }>>(new Map());
+  const intervalLastSyncRef = useRef<Map<string, number>>(new Map());
+  const activeDataKeyRef = useRef('');
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
@@ -885,10 +896,45 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   // To show a specific timezone, simply shift by the desired offset
   const tzShiftSeconds = tzOffsetHours * 3600;
 
+  const getDataCacheKey = useCallback(
+    () => `${symbol}:${interval}:${tzShiftSeconds}`,
+    [symbol, interval, tzShiftSeconds],
+  );
+
+  const persistSeriesCache = useCallback((cacheKey: string, candles: RawCandle[], hasMoreOlder: boolean) => {
+    intervalDataCacheRef.current.set(cacheKey, {
+      candles: [...candles],
+      hasMoreOlder,
+    });
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const cacheKey = getDataCacheKey();
+    const onRangeChange = (range: { from: number; to: number } | null) => {
+      if (!range) return;
+      intervalRangeCacheRef.current.set(cacheKey, {
+        from: range.from,
+        to: range.to,
+      });
+    };
+
+    const current = chart.timeScale().getVisibleLogicalRange();
+    onRangeChange(current);
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onRangeChange);
+    return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRangeChange);
+    };
+  }, [getDataCacheKey]);
+
   useEffect(() => {
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
-    if (!series || !volSeries) return;
+    const chart = chartRef.current;
+    if (!series || !volSeries || !chart) return;
 
     let cancelled = false;
 
@@ -896,6 +942,52 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const fetchData = async () => {
       try {
+        const cacheKey = getDataCacheKey();
+        const cachedState = intervalDataCacheRef.current.get(cacheKey);
+        const cachedRange = intervalRangeCacheRef.current.get(cacheKey);
+
+        if (cachedState?.candles.length) {
+          rawCandlesRef.current = [...cachedState.candles];
+          allCandlesRef.current = [...cachedState.candles];
+          rawDataRef.current = cachedState.candles.map(c => ({ close: c.close, time: c.time }));
+          hasMoreOlderRef.current = cachedState.hasMoreOlder;
+          activeDataKeyRef.current = cacheKey;
+
+          const cachedVolumes = cachedState.candles.map(c => ({
+            time: c.time,
+            value: c.volume,
+            color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+          }));
+
+          setChartData(series, cachedState.candles, cachedVolumes, volSeries);
+
+          if (cachedRange) {
+            chart.timeScale().setVisibleLogicalRange(cachedRange);
+          }
+
+          const lastCached = cachedState.candles[cachedState.candles.length - 1];
+          if (lastCached) {
+            const prevCached = cachedState.candles[cachedState.candles.length - 2];
+            setOhlc({
+              o: lastCached.open,
+              h: lastCached.high,
+              l: lastCached.low,
+              c: lastCached.close,
+              v: lastCached.volume,
+              change: prevCached ? ((lastCached.close - prevCached.close) / prevCached.close) * 100 : 0,
+            });
+          }
+
+          const lastSync = intervalLastSyncRef.current.get(cacheKey) ?? 0;
+          if (Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
+            return;
+          }
+        }
+
+        const isSameDataset = activeDataKeyRef.current === cacheKey;
+        const previousCount = isSameDataset ? rawCandlesRef.current.length : 0;
+        const previousRange = isSameDataset ? chart.timeScale().getVisibleLogicalRange() : null;
+
         // Use cache-first strategy: Supabase cache → Binance fallback
         const klineData = await getKlines(symbol, interval);
 
@@ -918,8 +1010,11 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawCandlesRef.current = candles;
         allCandlesRef.current = candles;
         hasMoreOlderRef.current = true;
+        activeDataKeyRef.current = cacheKey;
 
         setChartData(series, candles, volumes, volSeries);
+        persistSeriesCache(cacheKey, candles, true);
+        intervalLastSyncRef.current.set(cacheKey, Date.now());
 
         if (chartType === 'point_figure') {
           requestAnimationFrame(() => { if (!cancelled) drawPFOverlay(); });
@@ -945,8 +1040,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               to: pointCount + 8,
             });
           }
+        } else if (previousRange && previousCount > 0 && candles.length >= previousCount) {
+          const addedBars = candles.length - previousCount;
+          chart.timeScale().setVisibleLogicalRange({
+            from: previousRange.from + addedBars,
+            to: previousRange.to + addedBars,
+          });
+        } else if (cachedRange) {
+          chart.timeScale().setVisibleLogicalRange(cachedRange);
         } else {
-          chartRef.current?.timeScale().fitContent();
+          chart.timeScale().fitContent();
         }
       } catch (err) {
         if (!cancelled) console.error('Failed to fetch klines:', err);
@@ -956,7 +1059,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     fetchData();
 
     return () => { cancelled = true; };
-  }, [symbol, interval, chartType, tzShiftSeconds]);
+  }, [symbol, interval, chartType, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
 
   // ─── Lazy-load older cached bars when user scrolls left ───
   useEffect(() => {
@@ -966,12 +1069,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     if (!chart || !series || !volSeries) return;
     if (replayState !== 'off' && replayState !== 'selecting') return;
 
+    const cacheKey = getDataCacheKey();
+
     let cancelled = false;
 
     const loadOlderBars = async (range: { from: number; to: number } | null) => {
       if (!range || cancelled) return;
       if (range.from > 50) return;
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
+      if (activeDataKeyRef.current !== cacheKey) return;
 
       const oldestLoaded = rawCandlesRef.current[0];
       if (!oldestLoaded) return;
@@ -980,9 +1086,11 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       try {
         const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, 2500);
         if (cancelled) return;
+        if (activeDataKeyRef.current !== cacheKey) return;
 
         if (older.length === 0) {
           hasMoreOlderRef.current = false;
+          persistSeriesCache(cacheKey, rawCandlesRef.current, false);
           return;
         }
 
@@ -1006,17 +1114,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
         }));
 
+        const addedBars = Math.max(0, merged.length - existing.length);
+
         rawCandlesRef.current = merged;
         allCandlesRef.current = merged;
         rawDataRef.current = merged.map(c => ({ time: c.time, close: c.close }));
+        persistSeriesCache(cacheKey, merged, true);
 
         setChartData(series, merged, volumes, volSeries);
 
         const currentRange = chart.timeScale().getVisibleLogicalRange();
-        if (currentRange) {
+        if (currentRange && addedBars > 0) {
           chart.timeScale().setVisibleLogicalRange({
-            from: currentRange.from + olderCandles.length,
-            to: currentRange.to + olderCandles.length,
+            from: currentRange.from + addedBars,
+            to: currentRange.to + addedBars,
           });
         }
       } catch {
@@ -1031,7 +1142,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       cancelled = true;
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(loadOlderBars);
     };
-  }, [symbol, interval, chartType, replayState, tzShiftSeconds]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
@@ -1046,6 +1157,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const sourceInterval = getBinanceSourceInterval(interval);
     const aggregateLive = shouldAggregateInterval(interval);
+    const cacheKey = getDataCacheKey();
 
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${sourceInterval}`);
     wsRef.current = ws;
@@ -1091,6 +1203,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawCandlesRef.current = nextCandles;
         allCandlesRef.current = nextCandles;
         rawDataRef.current = nextCandles.map(candle => ({ time: candle.time, close: candle.close }));
+        activeDataKeyRef.current = cacheKey;
+        persistSeriesCache(cacheKey, nextCandles, hasMoreOlderRef.current);
 
         const nextVolumes = nextCandles.map(candle => ({
           time: candle.time,
@@ -1115,6 +1229,25 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       }
 
       if (!isTransformType) {
+        const existing = rawCandlesRef.current;
+        const lastExisting = existing[existing.length - 1];
+        let nextCandles = existing;
+
+        if (!lastExisting || Number(time) > Number(lastExisting.time)) {
+          nextCandles = [...existing, { time, open: o, high: h, low: l, close: c, volume: v }];
+        } else if (Number(time) === Number(lastExisting.time)) {
+          nextCandles = [
+            ...existing.slice(0, -1),
+            { time, open: o, high: h, low: l, close: c, volume: v },
+          ];
+        }
+
+        rawCandlesRef.current = nextCandles;
+        allCandlesRef.current = nextCandles;
+        rawDataRef.current = nextCandles.map(candle => ({ time: candle.time, close: candle.close }));
+        activeDataKeyRef.current = cacheKey;
+        persistSeriesCache(cacheKey, nextCandles, hasMoreOlderRef.current);
+
         if (isLineType || isAreaType || isBaselineType || isColumnsType) {
           series.update({ time, value: c });
         } else if (isBarType || isCandleType) {
@@ -1129,7 +1262,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     };
 
     return () => { ws.close(); wsRef.current = null; };
-  }, [symbol, interval, chartType, replayState, tzShiftSeconds, chartSettings.symbol.pointFigure]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, chartSettings.symbol.pointFigure, getDataCacheKey, persistSeriesCache]);
 
   function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
     let displayCandles: RawCandle[] = candles;
