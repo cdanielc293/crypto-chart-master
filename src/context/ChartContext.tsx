@@ -301,7 +301,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addToWatchlist, removeFromWatchlist,
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
-      indicators, toggleIndicator,
+      indicators, toggleIndicator, hiddenIndicators, toggleHiddenIndicator,
       favoriteIntervals, toggleFavoriteInterval,
       replayState, setReplayState,
       replayBarIndex, setReplayBarIndex,
