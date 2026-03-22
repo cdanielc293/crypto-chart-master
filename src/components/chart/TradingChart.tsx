@@ -2289,11 +2289,30 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               priceScaleWidth={priceScaleWidth || 55}
             />
 
-            {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}
+            {/* Price scale right-click zone — passes through drag events to chart underneath */}
             <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={resetChartView}>
               <div
                 className="absolute top-0 right-0 bottom-0 z-[15]"
                 style={{ width: priceScaleWidth || 55 }}
+                onMouseDown={(e) => {
+                  if (e.button !== 2) {
+                    // For left/middle click (drag), disable pointer events and
+                    // re-dispatch so the chart library handles price scale drag
+                    const el = e.currentTarget;
+                    el.style.pointerEvents = 'none';
+                    const underlying = document.elementFromPoint(e.clientX, e.clientY);
+                    if (underlying && underlying !== el) {
+                      underlying.dispatchEvent(new MouseEvent('mousedown', {
+                        bubbles: true, clientX: e.clientX, clientY: e.clientY, button: e.button,
+                      }));
+                    }
+                    const restore = () => {
+                      el.style.pointerEvents = 'auto';
+                      window.removeEventListener('mouseup', restore);
+                    };
+                    window.addEventListener('mouseup', restore);
+                  }
+                }}
               />
             </PriceScaleContextMenu>
 
