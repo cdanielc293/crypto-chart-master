@@ -7,7 +7,8 @@ import { getAllIndicators, getCategories, getIndicatorsByCategory } from '@/lib/
 interface Props { open: boolean; onClose: () => void; }
 
 export default function IndicatorsDialog({ open, onClose }: Props) {
-  const { addIndicator } = useChart();
+  const ctx = useChart();
+  const { activePanelIndex, gridLayout, addIndicator, addPanelIndicator } = ctx;
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [favorites, setFavorites] = useState<Set<string>>(() => {
@@ -42,7 +43,11 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
   }, [activeCategory, search, favorites, allIndicators, byCategory]);
 
   const handleAdd = (defId: string) => {
-    addIndicator(defId);
+    if (gridLayout.count > 1 && activePanelIndex !== null) {
+      addPanelIndicator(activePanelIndex, defId);
+    } else {
+      addIndicator(defId);
+    }
     onClose();
   };
 
