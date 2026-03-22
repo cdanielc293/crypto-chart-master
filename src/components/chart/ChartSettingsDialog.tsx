@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import DraggableDialog from './DraggableDialog';
 import { useChart } from '@/context/ChartContext';
 import type { ChartSettings } from '@/types/chartSettings';
 import {
