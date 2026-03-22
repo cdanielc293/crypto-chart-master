@@ -1221,9 +1221,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           value: c.volume,
           color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
         }));
-        const finalRawForIndicators = finalCandles.map(c => ({ close: c.close, time: c.time }));
-
-        rawDataRef.current = finalRawForIndicators.length > 0 ? finalRawForIndicators : rawForIndicators;
+        rawDataRef.current = finalCandles.length > 0 ? finalCandles : rawCandlesRef.current;
         rawCandlesRef.current = finalCandles;
         allCandlesRef.current = finalCandles;
         hasMoreOlderRef.current = cachedState?.hasMoreOlder ?? true;
