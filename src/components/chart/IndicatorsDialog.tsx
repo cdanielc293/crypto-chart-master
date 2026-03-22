@@ -126,38 +126,31 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Dialog */}
-      <div className="relative w-[720px] max-w-[90vw] max-h-[80vh] bg-card border border-chart-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <h2 className="text-lg font-bold text-foreground">Indicators, metrics, and strategies</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-toolbar-hover transition-colors">
-            <X size={18} className="text-muted-foreground" />
-          </button>
+    <DraggableDialog
+      id="indicators"
+      open={open}
+      onClose={onClose}
+      title="Indicators, metrics, and strategies"
+      className="w-[720px] max-w-[90vw]"
+    >
+      {/* Search */}
+      <div className="px-5 py-3">
+        <div className="flex items-center gap-2 bg-muted/30 border border-chart-border rounded-lg px-3 py-2.5">
+          <Search size={16} className="text-muted-foreground shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search"
+            className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none flex-1"
+            autoFocus
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
+              <X size={14} />
+            </button>
+          )}
         </div>
-
-        {/* Search */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-2 bg-muted/30 border border-chart-border rounded-lg px-3 py-2.5">
-            <Search size={16} className="text-muted-foreground shrink-0" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search"
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none flex-1"
-              autoFocus
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
+      </div>
 
         {/* Body */}
         <div className="flex flex-1 min-h-0 border-t border-chart-border">
