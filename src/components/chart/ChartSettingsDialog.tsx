@@ -255,15 +255,14 @@ export default function ChartSettingsDialog({ open, onClose, defaultTab }: Props
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={handleCancel} />
-      <div className="relative z-10 flex max-h-[85vh] w-[860px] flex-col overflow-hidden rounded-lg border border-chart-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-chart-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-foreground">Settings</h2>
-          <button type="button" onClick={handleCancel} className="rounded p-1 text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
+    <DraggableDialog
+      id="chart-settings"
+      open={open}
+      onClose={handleCancel}
+      title="Settings"
+      className="w-[860px]"
+      zClass="z-50"
+    >
 
         <div className="flex flex-1 overflow-hidden">
           <div className="w-[210px] shrink-0 border-r border-chart-border py-2">
