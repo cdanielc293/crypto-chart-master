@@ -2,6 +2,14 @@
 import './binance';
 import './bybit';
 import './coinbase';
+import './okx';
+import './kraken';
+import './kucoin';
+import './gateio';
+import './mexc';
+import './htx';
+import './bitget';
+import './bitstamp';
 
 // Re-export types and registry
 export {
