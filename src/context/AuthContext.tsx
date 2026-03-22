@@ -24,6 +24,39 @@ export function useAuth() {
   return ctx;
 }
 
+const AUTH_URL_KEYS = new Set([
+  'access_token',
+  'refresh_token',
+  'expires_at',
+  'expires_in',
+  'token_type',
+  'type',
+]);
+
+function getTokensFromUrl() {
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+  const hashParams = new URLSearchParams(hash);
+  const searchParams = new URLSearchParams(window.location.search);
+
+  const accessToken = hashParams.get('access_token') ?? searchParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token') ?? searchParams.get('refresh_token');
+
+  if (!accessToken || !refreshToken) return null;
+  return { accessToken, refreshToken };
+}
+
+function cleanAuthParamsFromUrl() {
+  const currentUrl = new URL(window.location.href);
+  currentUrl.hash = '';
+
+  AUTH_URL_KEYS.forEach((key) => {
+    currentUrl.searchParams.delete(key);
+  });
+
+  const next = `${currentUrl.pathname}${currentUrl.search}`;
+  window.history.replaceState({}, document.title, next);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -45,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const scheduleDeviceRegistration = (accessToken: string) => {
-      // IMPORTANT: avoid Supabase calls directly inside onAuthStateChange callback
       window.setTimeout(() => {
         void registerDevice(accessToken);
       }, 800);
@@ -61,7 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+    const bootstrapAuth = async () => {
+      const tokens = getTokensFromUrl();
+      if (tokens) {
+        const { error } = await supabase.auth.setSession({
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+        });
+
+        if (!error) {
+          cleanAuthParamsFromUrl();
+        }
+      }
+
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       setLoading(false);
@@ -69,7 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (existingSession?.access_token) {
         scheduleDeviceRegistration(existingSession.access_token);
       }
-    });
+    };
+
+    void bootstrapAuth();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -79,17 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSigningIn(true);
 
     try {
-      // Preview/iframe environments often block OAuth popups.
-      if (window.self !== window.top) {
-        const standaloneUrl = window.location.href;
-        window.open(standaloneUrl, '_blank', 'noopener,noreferrer');
-        toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם את ההתחברות.');
-        return;
-      }
-
       const result = await Promise.race([
         lovable.auth.signInWithOAuth(provider, {
-          redirect_uri: window.location.origin,
+          redirect_uri: `${window.location.origin}/chart`,
+          ...(provider === 'google' ? { extraParams: { prompt: 'select_account' } } : {}),
         }),
         new Promise<never>((_, reject) => {
           window.setTimeout(() => reject(new Error('OAuth timeout')), OAUTH_TIMEOUT_MS);
@@ -102,9 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (msg.includes('Popup was blocked') || msg.includes('Preview mode') || msg.includes('legacy_flow')) {
         window.open(window.location.href, '_blank', 'noopener,noreferrer');
-        toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם את ההתחברות.');
+        toast.info('התחברות נפתחה בטאב חדש. המשך שם.');
       } else if (msg.includes('timeout') || msg.includes('deadline')) {
-        toast.error('ההתחברות נתקעה זמנית. סגור חלונות התחברות פתוחים ונסה שוב.');
+        toast.error('ההתחברות נתקעה זמנית. נסה שוב.');
       } else if (!msg.includes('closed') && !msg.includes('cancelled')) {
         toast.error('ההתחברות נכשלה. נסה שוב.');
       }
