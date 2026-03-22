@@ -581,7 +581,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const volumeSeriesRef = useRef<any>(null);
   const indicatorSeriesRef = useRef<Map<string, any>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
-  const rawDataRef = useRef<{ close: number; time: Time }[]>([]);
+  const rawDataRef = useRef<RawCandle[]>([]);
   const rawCandlesRef = useRef<RawCandle[]>([]);
   const allCandlesRef = useRef<RawCandle[]>([]); // Full dataset for replay
   const intervalDataCacheRef = useRef<Map<string, CachedSeriesState>>(new Map());
