@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile, planLabels } from '@/hooks/useProfile';
@@ -11,8 +11,9 @@ import { toast } from 'sonner';
 import vizionLogo from '@/assets/vizion-logo.png';
 import {
   ArrowLeft, User, Shield, CreditCard, Receipt, Bell, Globe, Youtube, Instagram, Twitter,
-  Facebook, Link2, Save,
+  Facebook, Link2, Save, Monitor, Smartphone, Tablet, Laptop, LogOut, Loader2,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const sidebarSections = [
   {
@@ -25,6 +26,7 @@ const sidebarSections = [
     label: 'ACCOUNT AND SECURITY',
     items: [
       { id: 'account', label: 'Account settings', icon: Shield },
+      { id: 'sessions', label: 'Active sessions', icon: Monitor },
     ],
   },
   {
@@ -59,6 +61,75 @@ export default function Settings() {
     signature: '',
   });
   const [formLoaded, setFormLoaded] = useState(false);
+
+  // Sessions state
+  interface SessionInfo {
+    id: string;
+    created_at: string;
+    updated_at: string;
+    refreshed_at: string | null;
+    ip: string;
+    device: string;
+    os: string;
+    browser: string;
+  }
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const fetchSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await supabase.functions.invoke('list-sessions', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.data?.sessions) setSessions(res.data.sessions);
+    } catch (e) {
+      console.error('Failed to fetch sessions', e);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === 'sessions') fetchSessions();
+  }, [activeSection, fetchSessions]);
+
+  const revokeSession = async (sessionId: string) => {
+    setRevokingId(sessionId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.functions.invoke('revoke-session', {
+        body: { session_id: sessionId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      setSessions(s => s.filter(x => x.id !== sessionId));
+      toast.success('Session revoked');
+    } catch {
+      toast.error('Failed to revoke session');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const getDeviceIcon = (device: string) => {
+    if (['iPhone', 'Mobile'].includes(device)) return Smartphone;
+    if (['iPad', 'Tablet'].includes(device)) return Tablet;
+    if (device === 'Mac') return Laptop;
+    return Monitor;
+  };
+
+  const formatSessionTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Today, ${time}`;
+    return d.toLocaleDateString([], { day: 'numeric', month: 'long' }) + `, ${time}`;
+  };
 
   if (profile && !formLoaded) {
     setForm({
@@ -262,6 +333,65 @@ export default function Settings() {
                 <p className="text-sm text-white/50 mb-3">Email</p>
                 <p className="text-sm font-medium">{user?.email}</p>
               </div>
+            </div>
+          )}
+
+          {activeSection === 'sessions' && (
+            <div>
+              <h2 className="text-xl font-bold mb-6">Active sessions</h2>
+
+              {sessionsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
+                  <p className="text-white/30 text-sm">No active sessions found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.map((s, i) => {
+                    const DeviceIcon = getDeviceIcon(s.device);
+                    const isFirst = i === 0;
+                    return (
+                      <div
+                        key={s.id}
+                        className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] px-5 py-4 hover:bg-white/[0.04] transition-colors"
+                      >
+                        <div className="shrink-0 p-2 rounded-lg bg-white/[0.03]">
+                          <DeviceIcon size={22} className="text-white/40" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white/90">
+                            {s.device}, {s.os}
+                          </p>
+                          <p className="text-xs text-white/40 mt-0.5">
+                            {formatSessionTime(s.updated_at)} · {s.ip} · {s.browser}
+                          </p>
+                        </div>
+                        {isFirst ? (
+                          <span className="text-xs font-semibold text-cyan-400 shrink-0">Active now</span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => revokeSession(s.id)}
+                            disabled={revokingId === s.id}
+                            className="border-white/10 text-white/70 hover:text-white shrink-0"
+                          >
+                            {revokingId === s.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <LogOut size={14} />
+                            )}
+                            Log out
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
