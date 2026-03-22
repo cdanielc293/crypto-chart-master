@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useProfile, planLabels } from '@/hooks/useProfile';
 import { Copy, Mail, Share2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import DraggableDialog from './DraggableDialog';
 
 interface Props {
   open: boolean;
@@ -35,10 +35,13 @@ export default function ReferFriendDialog({ open, onClose }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-[#0a0a0f] border-white/10 text-white max-w-lg p-0 overflow-hidden">
-        <DialogTitle className="sr-only">Refer a Friend</DialogTitle>
-
+    <DraggableDialog
+      id="refer-friend"
+      open={open}
+      onClose={onClose}
+      title="Refer a Friend"
+      className="w-[480px] max-w-[90vw]"
+    >
         {/* Balance header */}
         <div className="px-8 pt-8 pb-4">
           <p className="text-4xl font-extrabold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
@@ -149,7 +152,6 @@ export default function ReferFriendDialog({ open, onClose }: Props) {
             </div>
           </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+    </DraggableDialog>
   );
 }

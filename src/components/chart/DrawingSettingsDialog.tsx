@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Pencil } from 'lucide-react';
+import DraggableDialog from './DraggableDialog';
 import type { Drawing } from '@/types/chart';
 
 const LINE_STYLES = [
@@ -83,18 +84,14 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50">
-      <div className="bg-card border border-border rounded-lg shadow-2xl w-[380px] max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">{toolLabel}</span>
-            <Pencil size={14} className="text-muted-foreground" />
-          </div>
-          <button onClick={handleCancel} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+    <DraggableDialog
+      id="drawing-settings"
+      open={open}
+      onClose={handleCancel}
+      title={toolLabel}
+      className="w-[380px]"
+      zClass="z-[200]"
+    >
 
         {/* Tabs */}
         <div className="flex gap-4 px-4 pt-3 border-b border-border">
@@ -305,7 +302,6 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             <button onClick={handleOk} className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">Ok</button>
           </div>
         </div>
-      </div>
-    </div>
+    </DraggableDialog>
   );
 }
