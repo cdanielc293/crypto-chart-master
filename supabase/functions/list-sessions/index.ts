@@ -41,13 +41,17 @@ serve(async (req) => {
     }
 
     const enriched = (sessions || []).map((s: any) => {
-      const parsed = parseUserAgent(s.user_agent || "");
+      // Prefer real_user_agent from session_devices, fallback to auth.sessions user_agent
+      const ua = s.real_user_agent || s.user_agent || "";
+      const parsed = parseUserAgent(ua);
+      // Prefer real_ip from session_devices, fallback to auth.sessions ip
+      const ip = s.real_ip || (s.ip ? String(s.ip) : "Unknown");
       return {
         id: s.session_id,
         created_at: s.created_at,
         updated_at: s.updated_at,
         refreshed_at: s.refreshed_at,
-        ip: s.ip || "Unknown",
+        ip,
         ...parsed,
       };
     });
