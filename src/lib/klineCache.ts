@@ -210,21 +210,35 @@ async function fetchFromBinance(
   throw lastError || new Error('Failed to fetch klines from Binance');
 }
 
+const SUPABASE_QUERY_TIMEOUT_MS = 5000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 async function getCacheBound(
   symbol: string,
   cacheInterval: string,
   ascending: boolean,
 ): Promise<number | null> {
-  const { data, error } = await supabase
-    .from('klines')
-    .select('time')
-    .eq('symbol', symbol)
-    .eq('interval', cacheInterval)
-    .order('time', { ascending })
-    .limit(1);
-
-  if (error || !data || data.length === 0) return null;
-  return data[0].time as number;
+  return withTimeout(
+    supabase
+      .from('klines')
+      .select('time')
+      .eq('symbol', symbol)
+      .eq('interval', cacheInterval)
+      .order('time', { ascending })
+      .limit(1)
+      .then(({ data, error }) => {
+        if (error || !data || data.length === 0) return null;
+        return data[0].time as number;
+      }),
+    SUPABASE_QUERY_TIMEOUT_MS,
+    null,
+  );
 }
 
 async function getLatestCachedKlines(symbol: string, cacheInterval: string, limit = INITIAL_RENDER_LIMIT): Promise<RawKline[]> {
