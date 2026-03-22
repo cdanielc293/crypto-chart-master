@@ -117,7 +117,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     if (!canvas || !container || !coord) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const w = container.clientWidth;
+    const w = container.clientWidth - priceScaleWidth;
     const h = container.clientHeight;
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
       canvas.width = w * dpr;
