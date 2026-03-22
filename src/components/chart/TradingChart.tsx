@@ -1098,7 +1098,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         if (cachedState?.candles.length) {
           rawCandlesRef.current = [...cachedState.candles];
           allCandlesRef.current = [...cachedState.candles];
-          rawDataRef.current = cachedState.candles.map(c => ({ close: c.close, time: c.time }));
+          rawDataRef.current = [...cachedState.candles];
           hasMoreOlderRef.current = cachedState.hasMoreOlder;
           activeDataKeyRef.current = cacheKey;
 
