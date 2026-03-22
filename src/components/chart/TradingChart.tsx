@@ -22,8 +22,9 @@ import type { CandleData, ChartDrawing, CoordHelper } from '@/lib/drawing/types'
 
 // ─── Indicator calculations ───
 
-import type { MASource, IndicatorConfig, EMAConfig, SMAConfig, BollingerConfig, LineStyleType } from '@/types/indicators';
-import { getDefaultConfig } from '@/types/indicators';
+import type { LineStyleType } from '@/types/indicators';
+import { getIndicator } from '@/lib/indicators/registry';
+type MASource = 'open' | 'high' | 'low' | 'close' | 'hl2' | 'hlc3' | 'ohlc4';
 
 function getSourceValue(candle: { open?: number; high?: number; low?: number; close: number }, source: MASource): number {
   const o = candle.open ?? candle.close;
