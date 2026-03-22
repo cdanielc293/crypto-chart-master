@@ -31,6 +31,8 @@ const BACKFILL_CONTINUE_DELAY_MS = 300;
 const RENDER_CACHE_TTL_MS = 45_000;
 const REPLAY_RENDER_CACHE_TTL_MS = 20_000;
 const SOURCE_SYNC_COOLDOWN_MS = 12_000;
+const REPLAY_HISTORY_TARGET_BARS = 12_000;
+const REPLAY_FUTURE_TARGET_BARS = 3_500;
 
 const backfillInProgress = new Set<string>();
 const backfillComplete = new Set<string>();
@@ -106,6 +108,53 @@ function getSourceWindowLimit(interval: Interval): number {
   const barsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const preferred = INITIAL_RENDER_LIMIT * barsPerTarget + barsPerTarget;
   return Math.min(Math.max(preferred, INITIAL_RENDER_LIMIT), MAX_SOURCE_QUERY_LIMIT);
+}
+
+function getReplayHistorySourceLimit(interval: Interval): number {
+  const barsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
+  const preferred = REPLAY_HISTORY_TARGET_BARS * barsPerTarget + barsPerTarget;
+  return Math.min(Math.max(preferred, INITIAL_RENDER_LIMIT), MAX_SOURCE_QUERY_LIMIT);
+}
+
+function getReplayFutureSourceLimit(interval: Interval): number {
+  const barsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
+  const preferred = REPLAY_FUTURE_TARGET_BARS * barsPerTarget + barsPerTarget;
+  return Math.min(Math.max(preferred, INITIAL_RENDER_LIMIT), MAX_SOURCE_QUERY_LIMIT);
+}
+
+function findNearestIndexAtOrBefore(rows: RawKline[], targetTimeSec: number): number {
+  if (rows.length === 0) return -1;
+
+  let low = 0;
+  let high = rows.length - 1;
+  let best = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    const midTime = rows[mid].time;
+
+    if (midTime <= targetTimeSec) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return best;
+}
+
+function sliceReplayWindow(rows: RawKline[], replayAnchorTimeSec: number): RawKline[] {
+  if (rows.length === 0) return [];
+
+  const deduped = dedupeByTime(rows);
+  const anchorIndex = findNearestIndexAtOrBefore(deduped, replayAnchorTimeSec);
+  const normalizedAnchorIndex = anchorIndex >= 0 ? anchorIndex : 0;
+
+  const from = Math.max(0, normalizedAnchorIndex - REPLAY_HISTORY_TARGET_BARS);
+  const to = Math.min(deduped.length, normalizedAnchorIndex + REPLAY_FUTURE_TARGET_BARS + 1);
+
+  return deduped.slice(from, to);
 }
 
 function scheduleBackfillContinuation(symbol: string, cacheInterval: string) {
@@ -210,6 +259,25 @@ async function getCachedKlinesEndingAt(
   return (data as RawKline[]).reverse();
 }
 
+async function getCachedKlinesStartingAt(
+  symbol: string,
+  cacheInterval: string,
+  startTimeSec: number,
+  limit: number,
+): Promise<RawKline[]> {
+  const { data, error } = await supabase
+    .from('klines')
+    .select('time, open, high, low, close, volume')
+    .eq('symbol', symbol)
+    .eq('interval', cacheInterval)
+    .gt('time', startTimeSec)
+    .order('time', { ascending: true })
+    .limit(limit);
+
+  if (error || !data || data.length === 0) return [];
+  return data as RawKline[];
+}
+
 async function upsertKlines(symbol: string, cacheInterval: string, klines: RawKline[]) {
   if (klines.length === 0) return;
 
@@ -305,44 +373,108 @@ async function fetchSourceWindow(
   return dedupeByTime(collected);
 }
 
+async function fetchSourceForwardWindow(
+  symbol: string,
+  sourceInterval: string,
+  targetBars: number,
+  startTimeMs?: number,
+): Promise<RawKline[]> {
+  const requestsToMake = Math.max(1, Math.min(20, Math.ceil(targetBars / 1000)));
+  let startTime = startTimeMs;
+  const collected: RawKline[] = [];
+
+  for (let i = 0; i < requestsToMake; i += 1) {
+    const batch = await fetchFromBinance(symbol, sourceInterval, 1000, startTime, undefined);
+    if (batch.length === 0) break;
+
+    collected.push(...batch);
+
+    const newestBatchMs = batch[batch.length - 1].time * 1000;
+    startTime = newestBatchMs + 1;
+
+    if (batch.length < 1000) break;
+    await wait(120);
+  }
+
+  return dedupeByTime(collected);
+}
+
 async function loadKlinesForReplay(symbol: string, interval: Interval, replayEndTimeSec: number): Promise<RawKline[]> {
   const sourceInterval = getBinanceSourceInterval(interval);
-  const sourceWindowLimit = getSourceWindowLimit(interval);
   const safeReplayEndTime = Math.floor(replayEndTimeSec);
+  const replayHistorySourceLimit = getReplayHistorySourceLimit(interval);
+  const replayFutureSourceLimit = getReplayFutureSourceLimit(interval);
 
-  const cachedSourceWindow = await getCachedKlinesEndingAt(
-    symbol,
-    sourceInterval,
-    safeReplayEndTime,
-    sourceWindowLimit,
-  );
+  const [cachedHistory, cachedFuture] = await Promise.all([
+    getCachedKlinesEndingAt(
+      symbol,
+      sourceInterval,
+      safeReplayEndTime,
+      replayHistorySourceLimit,
+    ),
+    getCachedKlinesStartingAt(
+      symbol,
+      sourceInterval,
+      safeReplayEndTime,
+      replayFutureSourceLimit,
+    ),
+  ]);
+
+  const cachedSourceWindow = dedupeByTime([...cachedHistory, ...cachedFuture]);
 
   if (cachedSourceWindow.length > 0) {
-    const cachedAggregated = aggregateForInterval(cachedSourceWindow, interval)
-      .filter(k => k.time <= safeReplayEndTime)
-      .slice(-INITIAL_RENDER_LIMIT);
+    const cachedAggregated = sliceReplayWindow(
+      aggregateForInterval(cachedSourceWindow, interval),
+      safeReplayEndTime,
+    );
+
     if (cachedAggregated.length > 0) {
-      void backfillHistory(symbol, sourceInterval, cachedSourceWindow[0]?.time ?? null);
+      void backfillHistory(symbol, sourceInterval, cachedHistory[0]?.time ?? null);
+
+      if (cachedFuture.length < Math.min(1500, Math.floor(replayFutureSourceLimit / 2))) {
+        void fetchSourceForwardWindow(
+          symbol,
+          sourceInterval,
+          replayFutureSourceLimit,
+          (safeReplayEndTime + 1) * 1000,
+        ).then(rows => {
+          if (rows.length > 0) {
+            void upsertKlines(symbol, sourceInterval, rows);
+          }
+        }).catch(() => undefined);
+      }
+
       return cachedAggregated;
     }
   }
 
   try {
-    const fetchedSourceWindow = await fetchSourceWindow(
-      symbol,
-      sourceInterval,
-      sourceWindowLimit,
-      safeReplayEndTime * 1000,
-    );
+    const [fetchedHistory, fetchedFuture] = await Promise.all([
+      fetchSourceWindow(
+        symbol,
+        sourceInterval,
+        replayHistorySourceLimit,
+        safeReplayEndTime * 1000,
+      ),
+      fetchSourceForwardWindow(
+        symbol,
+        sourceInterval,
+        replayFutureSourceLimit,
+        (safeReplayEndTime + 1) * 1000,
+      ),
+    ]);
+
+    const fetchedSourceWindow = dedupeByTime([...fetchedHistory, ...fetchedFuture]);
 
     if (fetchedSourceWindow.length > 0) {
       void upsertKlines(symbol, sourceInterval, fetchedSourceWindow);
-      void backfillHistory(symbol, sourceInterval, fetchedSourceWindow[0].time);
+      void backfillHistory(symbol, sourceInterval, fetchedHistory[0]?.time ?? fetchedSourceWindow[0].time);
     }
 
-    return aggregateForInterval(fetchedSourceWindow, interval)
-      .filter(k => k.time <= safeReplayEndTime)
-      .slice(-INITIAL_RENDER_LIMIT);
+    return sliceReplayWindow(
+      aggregateForInterval(fetchedSourceWindow, interval),
+      safeReplayEndTime,
+    );
   } catch {
     return [];
   }
