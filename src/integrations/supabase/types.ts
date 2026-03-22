@@ -179,6 +179,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_exchange_keys: {
+        Row: {
+          api_key: string
+          api_secret: string
+          created_at: string
+          exchange_id: string
+          id: string
+          is_testnet: boolean
+          label: string
+          passphrase: string | null
+          permissions: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          api_secret: string
+          created_at?: string
+          exchange_id: string
+          id?: string
+          is_testnet?: boolean
+          label?: string
+          passphrase?: string | null
+          permissions?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          api_secret?: string
+          created_at?: string
+          exchange_id?: string
+          id?: string
+          is_testnet?: boolean
+          label?: string
+          passphrase?: string | null
+          permissions?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
