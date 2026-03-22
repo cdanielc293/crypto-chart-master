@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable/index';
 import type { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -9,46 +8,13 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signingIn: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SIGNOUT_TIMEOUT_MS = 8000;
-
-const AUTH_URL_KEYS = new Set([
-  'access_token',
-  'refresh_token',
-  'expires_at',
-  'expires_in',
-  'token_type',
-  'type',
-]);
-
-function getTokensFromUrl() {
-  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-  const hashParams = new URLSearchParams(hash);
-  const searchParams = new URLSearchParams(window.location.search);
-
-  const accessToken = hashParams.get('access_token') ?? searchParams.get('access_token');
-  const refreshToken = hashParams.get('refresh_token') ?? searchParams.get('refresh_token');
-
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken };
-}
-
-function cleanAuthParamsFromUrl() {
-  const currentUrl = new URL(window.location.href);
-  currentUrl.hash = '';
-
-  AUTH_URL_KEYS.forEach((key) => {
-    currentUrl.searchParams.delete(key);
-  });
-
-  const next = `${currentUrl.pathname}${currentUrl.search}`;
-  window.history.replaceState({}, document.title, next);
-}
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -93,18 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const bootstrapAuth = async () => {
-      const tokens = getTokensFromUrl();
-      if (tokens) {
-        const { error } = await supabase.auth.setSession({
-          access_token: tokens.accessToken,
-          refresh_token: tokens.refreshToken,
-        });
-
-        if (!error) {
-          cleanAuthParamsFromUrl();
-        }
-      }
-
       const { data: { session: existingSession } } = await supabase.auth.getSession();
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
@@ -120,50 +74,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const openStandaloneOAuthTab = (provider: 'google' | 'apple') => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('oauth', provider);
-    window.open(url.toString(), '_blank');
-  };
-
-  const signInWithProvider = async (provider: 'google' | 'apple') => {
+  const signInWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
-
-    if (window.self !== window.top) {
-      openStandaloneOAuthTab(provider);
-      toast.info('פתחנו טאב חדש להתחברות מאובטחת. המשך שם.');
-      return;
-    }
 
     setSigningIn(true);
 
     try {
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: `${window.location.origin}/chart`,
-        ...(provider === 'google' ? { extraParams: { prompt: 'select_account' } } : {}),
-      });
-
-      if (result.error) throw result.error;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success('התחברת בהצלחה');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-
-      if (msg.includes('Popup was blocked') || msg.includes('Preview mode') || msg.includes('legacy_flow')) {
-        openStandaloneOAuthTab(provider);
-        toast.info('התחברות נפתחה בטאב חדש. המשך שם.');
-      } else if (!msg.includes('closed') && !msg.includes('cancelled')) {
-        toast.error('ההתחברות נכשלה. נסה שוב.');
-      }
+      toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
     } finally {
       setSigningIn(false);
     }
   };
 
-  const signInWithGoogle = async () => {
-    await signInWithProvider('google');
-  };
+  const signUpWithEmail = async (email: string, password: string) => {
+    if (signingIn) return;
 
-  const signInWithApple = async () => {
-    await signInWithProvider('apple');
+    setSigningIn(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/chart`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user && !data.session) {
+        toast.success('נשלח אליך מייל אימות. אשר את האימייל ואז התחבר.');
+      } else {
+        toast.success('ההרשמה הושלמה בהצלחה.');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      if (msg.includes('already registered')) {
+        toast.error('האימייל כבר קיים במערכת. נסה להתחבר.');
+      } else {
+        toast.error('ההרשמה נכשלה. נסה שוב.');
+      }
+    } finally {
+      setSigningIn(false);
+    }
   };
 
   const signOut = async () => {
@@ -187,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signingIn, signInWithGoogle, signInWithApple, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signingIn, signInWithEmail, signUpWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
