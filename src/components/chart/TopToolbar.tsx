@@ -320,7 +320,7 @@ export default function TopToolbar() {
       </div>
 
       {/* Close dropdowns on outside click */}
-      {(chartTypeOpen || indicatorOpen || intervalDropdownOpen || themeOpen) && (
+      {(chartTypeOpen || intervalDropdownOpen || themeOpen) && (
         <div className="fixed inset-0 z-40" onClick={closeAll} />
       )}
 
