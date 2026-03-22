@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useChart } from '@/context/ChartContext';
 import { Search, X } from 'lucide-react';
+import DraggableDialog from './DraggableDialog';
 
 interface ExchangeSymbol {
   symbol: string;
