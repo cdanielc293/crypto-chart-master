@@ -77,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
 
+    if (!navigator.onLine) {
+      toast.error('אין חיבור אינטרנט כרגע.');
+      return;
+    }
+
     setSigningIn(true);
 
     try {
@@ -84,8 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       toast.success('התחברת בהצלחה');
     } catch (error) {
+      console.error('Auth sign-in failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
+      if (msg.includes('Failed to fetch') || msg.includes('ERR_FAILED') || msg.includes('Load failed')) {
+        toast.error('שירות ההתחברות לא זמין כרגע (522/CORS מהשרת). נסה שוב בעוד כמה דקות.');
+      } else {
+        toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
+      }
     } finally {
       setSigningIn(false);
     }
@@ -93,6 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
+
+    if (!navigator.onLine) {
+      toast.error('אין חיבור אינטרנט כרגע.');
+      return;
+    }
 
     setSigningIn(true);
 
@@ -113,8 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.success('ההרשמה הושלמה בהצלחה.');
       }
     } catch (error) {
+      console.error('Auth sign-up failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (msg.includes('already registered')) {
+      if (msg.includes('Failed to fetch') || msg.includes('ERR_FAILED') || msg.includes('Load failed')) {
+        toast.error('שירות ההרשמה לא זמין כרגע (522/CORS מהשרת). נסה שוב בעוד כמה דקות.');
+      } else if (msg.includes('already registered')) {
         toast.error('האימייל כבר קיים במערכת. נסה להתחבר.');
       } else {
         toast.error('ההרשמה נכשלה. נסה שוב.');
