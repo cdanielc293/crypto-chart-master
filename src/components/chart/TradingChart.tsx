@@ -14,7 +14,7 @@ import { getBinanceSourceInterval, getIntervalDurationMs, shouldAggregateInterva
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
 import ChartCanvasContextMenu, { type CanvasMenuOpenMode } from './ChartCanvasContextMenu';
-import PriceScaleContextMenu from './PriceScaleContextMenu';
+
 import TimezoneSelector, { getTimezoneOffsetHours } from './TimezoneSelector';
 import ChartSettingsDialog from './ChartSettingsDialog';
 import SymbolSearch from './SymbolSearch';
