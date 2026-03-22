@@ -264,24 +264,29 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSelectedDrawingId(prev => prev === id ? null : prev);
   }, []);
 
-  const toggleIndicator = useCallback((name: string) => {
-    setIndicators(prev => {
-      if (prev.includes(name)) {
-        // Removing: clean up config and hidden
-        setIndicatorConfigs(c => { const next = new Map(c); next.delete(name); return next; });
-        setHiddenIndicators(h => { const next = new Set(h); next.delete(name); return next; });
-        return prev.filter(i => i !== name);
-      }
-      // Adding: initialize config if not present
-      setIndicatorConfigs(c => {
-        if (c.has(name)) return c;
-        const next = new Map(c);
-        next.set(name, getDefaultConfig(name));
-        return next;
-      });
-      return [...prev, name];
+  const addIndicator = useCallback((definitionId: string) => {
+    const def = getIndicator(definitionId);
+    if (!def) return;
+    const instanceId = `${definitionId}_${Date.now()}`;
+    const instance = createInstance(def);
+    setIndicators(prev => [...prev, instanceId]);
+    setIndicatorConfigs(prev => {
+      const next = new Map(prev);
+      next.set(instanceId, instance);
+      return next;
     });
   }, []);
+
+  const removeIndicator = useCallback((instanceId: string) => {
+    setIndicators(prev => prev.filter(i => i !== instanceId));
+    setIndicatorConfigs(prev => { const next = new Map(prev); next.delete(instanceId); return next; });
+    setHiddenIndicators(prev => { const next = new Set(prev); next.delete(instanceId); return next; });
+  }, []);
+
+  const toggleIndicator = useCallback((name: string) => {
+    // Legacy compat - works as addIndicator for new system
+    addIndicator(name);
+  }, [addIndicator]);
 
   const updateIndicatorConfig = useCallback((name: string, config: IndicatorConfig) => {
     setIndicatorConfigs(prev => {
