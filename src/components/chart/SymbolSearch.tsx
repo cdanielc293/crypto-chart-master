@@ -283,69 +283,48 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       </div>
 
       {/* Results */}
-      <div className="overflow-y-auto flex-1 max-h-[60vh]">
+      <div ref={scrollRef} onScroll={handleScroll} className="overflow-y-auto flex-1 max-h-[60vh]">
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm">Loading symbols...</div>
-        ) : filtered.length === 0 ? (
+        ) : visibleResults.length === 0 ? (
           <div className="p-6 text-center text-muted-foreground text-sm">No results</div>
         ) : (
-          filtered.map((result, idx) => {
-            const color = getSymbolColor(result.baseAsset);
-            return (
-              <button
-                key={`${result.exchangeId}-${result.symbol}-${idx}`}
-                onClick={() => selectSymbol(result)}
-                className="flex items-center w-full px-4 py-2 text-[13px] hover:bg-toolbar-hover transition-colors group"
-              >
-                {/* Symbol icon */}
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mr-3 shrink-0"
-                  style={{ backgroundColor: `${color}22`, color }}
-                >
-                  {result.baseAsset[0]}
-                </div>
-
-                {/* Symbol name */}
-                <div className="w-[100px] text-left shrink-0">
-                  <span className="font-semibold text-foreground">{result.displaySymbol.replace('.P', '')}</span>
-                  {result.symbol.endsWith('.P') && (
-                    <span className="text-[10px] text-muted-foreground ml-0.5">.P</span>
-                  )}
-                </div>
-
-                {/* Full name */}
-                <span className="flex-1 text-left text-muted-foreground truncate mr-3">
-                  {result.fullName}
-                </span>
-
-                {/* Tags */}
-                <div className="flex items-center gap-1.5 mr-3">
-                  {result.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="text-[10px] text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Exchange */}
-                <div className="flex items-center gap-1.5 w-[90px] justify-end mr-2">
-                  <span className="text-[11px] text-foreground font-medium">{result.exchangeName}</span>
-                  <ExchangeLogo exchangeId={result.exchangeId} size={14} />
-                </div>
-
-                {/* Add to watchlist button */}
+          <>
+            {visibleResults.map((result, idx) => {
+              const color = getSymbolColor(result.baseAsset);
+              return (
                 <button
-                  onClick={(e) => addToList(e, result)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity shrink-0"
+                  key={`${result.exchangeId}-${result.symbol}-${idx}`}
+                  onClick={() => selectSymbol(result)}
+                  className="flex items-center w-full px-4 py-2 text-[13px] hover:bg-toolbar-hover transition-colors group"
                 >
-                  <Plus size={14} />
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mr-3 shrink-0" style={{ backgroundColor: `${color}22`, color }}>
+                    {result.baseAsset[0]}
+                  </div>
+                  <div className="w-[100px] text-left shrink-0">
+                    <span className="font-semibold text-foreground">{result.displaySymbol.replace('.P', '')}</span>
+                    {result.symbol.endsWith('.P') && <span className="text-[10px] text-muted-foreground ml-0.5">.P</span>}
+                  </div>
+                  <span className="flex-1 text-left text-muted-foreground truncate mr-3">{result.fullName}</span>
+                  <div className="flex items-center gap-1.5 mr-3">
+                    {result.tags.map(tag => <span key={tag} className="text-[10px] text-muted-foreground">{tag}</span>)}
+                  </div>
+                  <div className="flex items-center gap-1.5 w-[90px] justify-end mr-2">
+                    <span className="text-[11px] text-foreground font-medium">{result.exchangeName}</span>
+                    <ExchangeLogo exchangeId={result.exchangeId} size={14} />
+                  </div>
+                  <button onClick={(e) => addToList(e, result)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity shrink-0">
+                    <Plus size={14} />
+                  </button>
                 </button>
-              </button>
-            );
-          })
+              );
+            })}
+            {hasMore && (
+              <div className="p-3 text-center text-muted-foreground text-[11px]">
+                Showing {visibleResults.length} of {filtered.length} — scroll for more
+              </div>
+            )}
+          </>
         )}
       </div>
 
