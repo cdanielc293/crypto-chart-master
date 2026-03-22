@@ -943,13 +943,12 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     }
   }, [chartSettings.scalesAndLines, chartSettings.priceScale, interval]);
 
-  // Create series based on chart type
+  // Create main price series based on chart type
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
 
     if (mainSeriesRef.current) { try { chart.removeSeries(mainSeriesRef.current); } catch {} }
-    if (volumeSeriesRef.current) { try { chart.removeSeries(volumeSeriesRef.current); } catch {} }
 
     if (isPnFType) {
       const series = chart.addSeries(LineSeries, {
@@ -1014,12 +1013,19 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       mainSeriesRef.current = series;
     }
 
-    // Volume series is now only created when volume indicator is added
+  }, [chartType]);
+
+  // Create/remove volume series only when Volume indicator visibility changes
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
     const hasVolumeIndicator = indicators.some(id => {
       const inst = indicatorConfigs.get(id);
       return inst?.definitionId === 'volume' && !hiddenIndicators.has(id);
     });
-    if (hasVolumeIndicator) {
+
+    if (hasVolumeIndicator && !volumeSeriesRef.current) {
       const volSeries = chart.addSeries(HistogramSeries, {
         color: '#26a69a',
         priceFormat: { type: 'volume' },
@@ -1027,10 +1033,23 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       });
       volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
       volumeSeriesRef.current = volSeries;
-    } else {
+
+      const candles = rawCandlesRef.current;
+      if (candles.length > 0) {
+        volSeries.setData(candles.map(c => ({
+          time: c.time,
+          value: c.volume,
+          color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+        })));
+      }
+      return;
+    }
+
+    if (!hasVolumeIndicator && volumeSeriesRef.current) {
+      try { chart.removeSeries(volumeSeriesRef.current); } catch {}
       volumeSeriesRef.current = null;
     }
-  }, [chartType, indicators, indicatorConfigs, hiddenIndicators]);
+  }, [indicators, indicatorConfigs, hiddenIndicators]);
 
   // Fetch data and connect WebSocket
   // Compute timezone offset in seconds for shifting candle timestamps
@@ -1088,7 +1107,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
     const chart = chartRef.current;
-    if (!series || !volSeries || !chart) return;
+    if (!series || !chart) return;
 
     let cancelled = false;
 
@@ -1340,7 +1359,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const chart = chartRef.current;
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
-    if (!chart || !series || !volSeries) return;
+    if (!chart || !series) return;
     if (replayState !== 'off' && replayState !== 'selecting') return;
 
     const cacheKey = getDataCacheKey();
@@ -1424,7 +1443,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
-    if (!series || !volSeries) return;
+    if (!series) return;
 
     const sourceInterval = getBinanceSourceInterval(interval);
     const aggregateLive = shouldAggregateInterval(interval);
@@ -1526,7 +1545,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
             series.update({ time, open: o, high: h, low: l, close: c });
           }
         }
-        volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+        if (volSeries) {
+          volSeries.update({ time, value: v, color: c >= o ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)' });
+        }
       }
 
       setOhlc(prev => ({ ...prev, o, h, l, c, v }));
@@ -1535,7 +1556,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     return () => { ws.close(); wsRef.current = null; };
   }, [symbol, interval, chartType, replayState, tzShiftSeconds, chartSettings.symbol.pointFigure, getDataCacheKey, persistSeriesCache]);
 
-  function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries: any) {
+  function setChartData(series: any, candles: RawCandle[], volumes: any[], volSeries?: any | null) {
     let displayCandles: RawCandle[] = candles;
 
     if (chartType === 'heikin_ashi') {
@@ -1552,7 +1573,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const pfResult = computePointAndFigure(candles, pfBoxSize, pf.reversalAmount, pf.atrLength, pf.boxMethod);
       pfDataRef.current = pfResult;
       series.setData(pfResult.lineData);
-      volSeries.setData(pfResult.volumes);
+      if (volSeries) volSeries.setData(pfResult.volumes);
       return;
     }
 
@@ -1561,33 +1582,33 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     if (isLineType || isAreaType || isBaselineType) {
       series.setData(candles.map((c: RawCandle) => ({ time: c.time, value: c.close })));
-      volSeries.setData(volumes);
+      if (volSeries) volSeries.setData(volumes);
     } else if (isColumnsType) {
       series.setData(candles.map((c: RawCandle) => ({
         time: c.time,
         value: c.close,
         color: c.close >= c.open ? '#26a69a' : '#ef5350',
       })));
-      volSeries.setData(volumes);
+      if (volSeries) volSeries.setData(volumes);
     } else if (chartType === 'volume_candles') {
       series.setData(candles.map((c: RawCandle) => ({
         time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
       })));
-      volSeries.setData(volumes);
+      if (volSeries) volSeries.setData(volumes);
     } else {
       const transformed = displayCandles !== candles;
       series.setData(displayCandles.map((c: RawCandle) => ({
         time: c.time, open: c.open, high: c.high, low: c.low, close: c.close,
       })));
 
-      if (transformed) {
+      if (transformed && volSeries) {
         const transformedVols = displayCandles.map((c: RawCandle) => ({
           time: c.time,
           value: c.volume,
           color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
         }));
         volSeries.setData(transformedVols);
-      } else {
+      } else if (volSeries) {
         volSeries.setData(volumes);
       }
     }
@@ -1893,7 +1914,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const sliced = allCandles.slice(0, idx + 1);
       const series = mainSeriesRef.current;
       const volSeries = volumeSeriesRef.current;
-      if (series && volSeries) {
+      if (series) {
         const volumes = sliced.map(c => ({
           time: c.time,
           value: c.volume,
@@ -1917,7 +1938,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const chart = chartRef.current;
     const series = mainSeriesRef.current;
     const volSeries = volumeSeriesRef.current;
-    if (!chart || !series || !volSeries) return;
+    if (!chart || !series) return;
 
     const allCandles = allCandlesRef.current;
     if (allCandles.length === 0) return;
@@ -2039,7 +2060,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const chart = chartRef.current;
       const series = mainSeriesRef.current;
       const volSeries = volumeSeriesRef.current;
-      if (chart && series && volSeries) {
+      if (chart && series) {
         const candles = allCandlesRef.current;
         const volumes = candles.map(c => ({
           time: c.time,
