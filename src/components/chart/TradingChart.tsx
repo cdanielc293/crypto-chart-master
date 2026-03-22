@@ -1702,7 +1702,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     };
   }, [chartType, drawPFOverlay, symbol, interval]);
 
-  // Apply indicators
+  // Apply indicators using registry
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
@@ -1713,47 +1713,70 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const data = rawDataRef.current;
     if (data.length === 0) return;
 
-    for (const ind of indicators) {
-      if (hiddenIndicators.has(ind)) continue;
+    // Convert raw candles to OHLCV format for registry calculations
+    const ohlcvData = data.map(c => ({
+      time: typeof c.time === 'number' ? c.time : new Date(c.time as string).getTime() / 1000,
+      open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
+    }));
 
-      const cfg = indicatorConfigs.get(ind) || getDefaultConfig(ind);
+    for (const instanceId of indicators) {
+      if (hiddenIndicators.has(instanceId)) continue;
 
-      if (cfg.type === 'EMA') {
-        const emaCfg = cfg as import('@/types/indicators').EMAConfig;
-        if (!emaCfg.style.visible) continue;
-        const s = chart.addSeries(LineSeries, {
-          color: emaCfg.style.color, lineWidth: emaCfg.style.lineWidth as any,
-          lineStyle: mapLineStyleType(emaCfg.style.lineStyle),
-          priceLineVisible: false, lastValueVisible: false,
-        });
-        s.setData(calculateEMA(data, emaCfg.period, emaCfg.source));
-        indicatorSeriesRef.current.set(ind, s);
-      } else if (cfg.type === 'SMA') {
-        const smaCfg = cfg as import('@/types/indicators').SMAConfig;
-        if (!smaCfg.style.visible) continue;
-        const s = chart.addSeries(LineSeries, {
-          color: smaCfg.style.color, lineWidth: smaCfg.style.lineWidth as any,
-          lineStyle: mapLineStyleType(smaCfg.style.lineStyle),
-          priceLineVisible: false, lastValueVisible: false,
-        });
-        s.setData(calculateSMA(data, smaCfg.period, smaCfg.source));
-        indicatorSeriesRef.current.set(ind, s);
-      } else if (cfg.type === 'Bollinger Bands') {
-        const bbCfg = cfg as import('@/types/indicators').BollingerConfig;
-        const bb = calculateBollinger(data, bbCfg.length, bbCfg.stdDev, bbCfg.source, bbCfg.basisMAType);
-        const styles = [bbCfg.upperStyle, bbCfg.basisStyle, bbCfg.lowerStyle];
-        const datasets = [bb.upper, bb.middle, bb.lower];
-        const names = ['BB Upper', 'BB Middle', 'BB Lower'];
-        datasets.forEach((d, i) => {
-          if (!styles[i].visible) return;
+      const instance = indicatorConfigs.get(instanceId);
+      if (!instance) continue;
+
+      const def = getIndicator(instance.definitionId);
+      if (!def) continue;
+
+      // Handle volume indicator: show/hide the existing volume series
+      if (instance.definitionId === 'volume') {
+        if (volumeSeriesRef.current) {
+          // Volume is managed separately, just ensure visibility
+        }
+        continue;
+      }
+
+      const result = def.calculate(ohlcvData, instance.params);
+
+      for (const lineDef of def.lines) {
+        const lineStyle = instance.lineStyles[lineDef.key];
+        if (lineStyle && !lineStyle.visible) continue;
+
+        const points = result[lineDef.key];
+        if (!points || points.length === 0) continue;
+
+        const color = lineStyle?.color || lineDef.color;
+        const width = lineStyle?.width || lineDef.width;
+        const style = lineStyle?.style || lineDef.style;
+
+        if (lineDef.isHistogram) {
+          const s = chart.addSeries(HistogramSeries, {
+            color,
+            priceFormat: { type: 'volume' },
+            priceScaleId: `ind_${instanceId}_${lineDef.key}`,
+          });
+          s.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+          s.setData(points.map(p => ({ time: data[0]?.time ? p.time as any : p.time, value: p.value })));
+          indicatorSeriesRef.current.set(`${instanceId}_${lineDef.key}`, s);
+        } else if (def.overlay) {
           const s = chart.addSeries(LineSeries, {
-            color: styles[i].color, lineWidth: styles[i].lineWidth as any,
-            lineStyle: mapLineStyleType(styles[i].lineStyle),
+            color, lineWidth: width as any,
+            lineStyle: style === 'dashed' ? LineStyle.Dashed : style === 'dotted' ? LineStyle.Dotted : LineStyle.Solid,
             priceLineVisible: false, lastValueVisible: false,
           });
-          s.setData(d);
-          indicatorSeriesRef.current.set(names[i], s);
-        });
+          s.setData(points.map(p => ({ time: p.time as unknown as Time, value: p.value })));
+          indicatorSeriesRef.current.set(`${instanceId}_${lineDef.key}`, s);
+        } else {
+          // Separate pane indicator
+          const s = chart.addSeries(LineSeries, {
+            color, lineWidth: width as any,
+            lineStyle: style === 'dashed' ? LineStyle.Dashed : style === 'dotted' ? LineStyle.Dotted : LineStyle.Solid,
+            priceLineVisible: false, lastValueVisible: false,
+            priceScaleId: `ind_${instanceId}`,
+          });
+          s.setData(points.map(p => ({ time: p.time as unknown as Time, value: p.value })));
+          indicatorSeriesRef.current.set(`${instanceId}_${lineDef.key}`, s);
+        }
       }
     }
   }, [indicators, hiddenIndicators, indicatorConfigs, rawDataRef.current.length]);
