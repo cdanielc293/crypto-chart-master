@@ -288,7 +288,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addIndicator(name);
   }, [addIndicator]);
 
-  const updateIndicatorConfig = useCallback((name: string, config: IndicatorConfig) => {
+  const updateIndicatorConfig = useCallback((name: string, config: IndicatorInstance) => {
     setIndicatorConfigs(prev => {
       const next = new Map(prev);
       next.set(name, config);
