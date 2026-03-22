@@ -656,8 +656,7 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
-  // Non-Binance symbols don't use supabase cache for older data
-  if (!isBinanceSymbol(symbol)) return [];
+  // Currently crypto-only via Binance
 
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
