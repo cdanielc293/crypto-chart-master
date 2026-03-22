@@ -1014,13 +1014,22 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       mainSeriesRef.current = series;
     }
 
-    const volSeries = chart.addSeries(HistogramSeries, {
-      color: '#26a69a',
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
+    // Volume series is now only created when volume indicator is added
+    const hasVolumeIndicator = indicators.some(id => {
+      const inst = indicatorConfigs.get(id);
+      return inst?.definitionId === 'volume' && !hiddenIndicators.has(id);
     });
-    volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
-    volumeSeriesRef.current = volSeries;
+    if (hasVolumeIndicator) {
+      const volSeries = chart.addSeries(HistogramSeries, {
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+      });
+      volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+      volumeSeriesRef.current = volSeries;
+    } else {
+      volumeSeriesRef.current = null;
+    }
   }, [chartType]);
 
   // Fetch data and connect WebSocket
