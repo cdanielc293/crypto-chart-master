@@ -271,7 +271,7 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       </div>
 
       {/* Results */}
-      <div className="overflow-y-auto flex-1 max-h-[400px]">
+      <div className="overflow-y-auto flex-1 max-h-[60vh]">
         {loading ? (
           <div className="p-6 text-center text-muted-foreground text-sm">Loading symbols...</div>
         ) : filtered.length === 0 ? (
