@@ -114,7 +114,11 @@ export const useChart = () => {
 };
 
 export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [symbol, setSymbol] = useState('BTCUSDT');
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const [symbol, setSymbolRaw] = useState(() => {
+    return localStorage.getItem('lastSymbol') || 'BTCUSDT';
+  });
   const [interval, setInterval] = useState<Interval>('1d');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [drawingTool, setDrawingTool] = useState<DrawingTool>('cursor');
