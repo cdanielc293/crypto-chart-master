@@ -70,6 +70,8 @@ interface ChartContextType {
   setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
   toggleIndicator: (name: string) => void;
+  hiddenIndicators: Set<string>;
+  toggleHiddenIndicator: (name: string) => void;
   favoriteIntervals: Interval[];
   toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
