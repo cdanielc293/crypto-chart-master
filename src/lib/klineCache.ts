@@ -26,8 +26,8 @@ const BINANCE_ENDPOINTS = [
 const INITIAL_RENDER_LIMIT = 3000;
 const OLDER_PAGE_LIMIT = 2500;
 const MAX_SOURCE_QUERY_LIMIT = 20000;
-const BACKFILL_REQUESTS_PER_PASS = 40;
-const BACKFILL_CONTINUE_DELAY_MS = 900;
+const BACKFILL_REQUESTS_PER_PASS = 80;
+const BACKFILL_CONTINUE_DELAY_MS = 300;
 const RENDER_CACHE_TTL_MS = 45_000;
 const SOURCE_SYNC_COOLDOWN_MS = 12_000;
 
@@ -230,7 +230,7 @@ async function backfillHistory(symbol: string, interval: string, oldestKnownTime
         break;
       }
 
-      await wait(280);
+      await wait(150);
     }
 
     needsContinuation = !backfillComplete.has(key);
@@ -247,7 +247,7 @@ async function backfillHistory(symbol: string, interval: string, oldestKnownTime
 }
 
 async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, targetBars: number): Promise<RawKline[]> {
-  const requestsToMake = Math.max(1, Math.min(8, Math.ceil(targetBars / 1000)));
+  const requestsToMake = Math.max(1, Math.min(20, Math.ceil(targetBars / 1000)));
   let endTime: number | undefined;
   const collected: RawKline[] = [];
 
@@ -261,7 +261,7 @@ async function fetchLatestSourceWindow(symbol: string, sourceInterval: string, t
     endTime = oldestBatchMs - 1;
 
     if (batch.length < 1000) break;
-    await wait(180);
+    await wait(120);
   }
 
   return dedupeByTime(collected);
