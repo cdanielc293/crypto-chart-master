@@ -251,6 +251,6 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </DraggableDialog>
   );
 }
