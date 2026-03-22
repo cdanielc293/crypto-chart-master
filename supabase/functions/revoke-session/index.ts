@@ -15,16 +15,14 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { session_id } = await req.json();
     if (!session_id) {
       return new Response(JSON.stringify({ error: "session_id required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -34,61 +32,27 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
-
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Verify session belongs to user via REST API
-    const verifyUrl = `${supabaseUrl}/rest/v1/sessions?id=eq.${session_id}&user_id=eq.${user.id}&select=id`;
-    const verifyRes = await fetch(verifyUrl, {
-      headers: {
-        "apikey": serviceKey,
-        "Authorization": `Bearer ${serviceKey}`,
-        "Accept": "application/json",
-        "Accept-Profile": "auth",
-      },
+    const { data: result, error } = await adminClient.rpc("revoke_user_session", {
+      p_user_id: user.id,
+      p_session_id: session_id,
     });
 
-    const sessions = await verifyRes.json();
-    if (!Array.isArray(sessions) || sessions.length === 0) {
-      return new Response(JSON.stringify({ error: "Session not found or not yours" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Delete refresh tokens
-    await fetch(`${supabaseUrl}/rest/v1/refresh_tokens?session_id=eq.${session_id}`, {
-      method: "DELETE",
-      headers: {
-        "apikey": serviceKey,
-        "Authorization": `Bearer ${serviceKey}`,
-        "Content-Profile": "auth",
-        "Accept-Profile": "auth",
-      },
-    });
-
-    // Delete session
-    const deleteRes = await fetch(`${supabaseUrl}/rest/v1/sessions?id=eq.${session_id}`, {
-      method: "DELETE",
-      headers: {
-        "apikey": serviceKey,
-        "Authorization": `Bearer ${serviceKey}`,
-        "Content-Profile": "auth",
-        "Accept-Profile": "auth",
-      },
-    });
-
-    if (!deleteRes.ok) {
-      const errText = await deleteRes.text();
-      console.error("Delete error:", errText);
+    if (error) {
+      console.error("RPC error:", error);
       return new Response(JSON.stringify({ error: "Failed to revoke session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!result) {
+      return new Response(JSON.stringify({ error: "Session not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -98,8 +62,7 @@ serve(async (req) => {
   } catch (err) {
     console.error("Error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
