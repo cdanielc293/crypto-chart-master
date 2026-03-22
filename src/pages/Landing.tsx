@@ -38,8 +38,12 @@ export default function Landing() {
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
-          {['Tools', 'Insights', 'Markets', 'Analytics', 'More'].map((item) => (
-            <span key={item} className="hover:text-white transition-colors cursor-pointer">{item}</span>
+          {[
+            { label: 'Tools', path: '/chart' },
+            { label: 'Pricing', path: '/pricing' },
+            { label: 'Markets', path: '/chart' },
+          ].map((item) => (
+            <span key={item.label} onClick={() => navigate(item.path)} className="hover:text-white transition-colors cursor-pointer">{item.label}</span>
           ))}
         </div>
         <button
