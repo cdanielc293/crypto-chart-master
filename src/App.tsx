@@ -10,6 +10,7 @@ import Pricing from "./pages/Pricing.tsx";
 import Signup from "./pages/Signup.tsx";
 import ChartPage from "./pages/ChartPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Settings from "./pages/Settings.tsx";
 
 const queryClient = new QueryClient();
 
