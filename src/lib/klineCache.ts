@@ -560,30 +560,6 @@ async function loadKlinesFromSource(symbol: string, interval: Interval): Promise
 }
 
 /**
- * Load klines from a non-Binance exchange adapter (Yahoo, Bybit, OKX, etc.)
- * These don't use supabase caching - they fetch directly from the adapter.
- */
-async function loadKlinesFromAdapter(symbol: string, exchangeId: string, interval: Interval): Promise<RawKline[]> {
-  const adapter = getExchange(exchangeId);
-  if (!adapter) return [];
-
-  try {
-    const ohlcv = await adapter.fetchKlines(symbol, interval);
-    return ohlcv.map(k => ({
-      time: Math.floor(k.time / 1000),
-      open: k.open,
-      high: k.high,
-      low: k.low,
-      close: k.close,
-      volume: k.volume,
-    }));
-  } catch (e) {
-    console.error(`Failed to fetch klines from ${exchangeId} for ${symbol}:`, e);
-    return [];
-  }
-}
-
-/**
  * Fast load for chart rendering:
  * - returns latest cached window quickly (avoids freezes on timeframe switch)
  * - syncs newest candles incrementally
@@ -601,40 +577,7 @@ export async function getKlines(
   const normalizedSymbol = symbol.trim().toUpperCase();
   if (!normalizedSymbol) return [];
 
-  // Check if this symbol uses a non-Binance exchange
-  const exchangeId = getSymbolExchange(normalizedSymbol);
-  if (exchangeId && !isBinanceSymbol(normalizedSymbol)) {
-    const renderKey = getRenderCacheKey(normalizedSymbol, interval);
-    const cachedRender = renderCache.get(renderKey);
-
-    if (cachedRender?.rows.length) {
-      const isStale = Date.now() - cachedRender.updatedAt > RENDER_CACHE_TTL_MS;
-      if (isStale && !renderRefreshInProgress.has(renderKey)) {
-        renderRefreshInProgress.add(renderKey);
-        void loadKlinesFromAdapter(normalizedSymbol, exchangeId, interval)
-          .then(rows => {
-            if (rows.length > 0) setRenderCache(renderKey, rows);
-          })
-          .finally(() => renderRefreshInProgress.delete(renderKey));
-      }
-      return cachedRender.rows;
-    }
-
-    const inFlight = renderFetchInProgress.get(renderKey);
-    if (inFlight) return inFlight;
-
-    const fetchPromise = loadKlinesFromAdapter(normalizedSymbol, exchangeId, interval)
-      .then(rows => {
-        if (rows.length > 0) setRenderCache(renderKey, rows);
-        return rows;
-      })
-      .finally(() => renderFetchInProgress.delete(renderKey));
-
-    renderFetchInProgress.set(renderKey, fetchPromise);
-    return fetchPromise;
-  }
-
-  // ─── Binance path (original logic) ───
+  // ─── Binance path ───
   const replayEndTimeSec = options.replayEndTimeSec;
   if (replayEndTimeSec !== null && replayEndTimeSec !== undefined && Number.isFinite(replayEndTimeSec)) {
     const normalizedReplayEnd = Math.floor(replayEndTimeSec);
