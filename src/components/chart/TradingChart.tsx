@@ -1144,9 +1144,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }
 
         const isSameDataset = activeDataKeyRef.current === cacheKey;
+        const replayEndTimeSec = isReplayActive && replayAnchorTimeRef.current !== null
+          ? Math.floor(replayAnchorTimeRef.current - tzShiftSeconds)
+          : null;
 
         // Use cache-first strategy: Supabase cache → Binance fallback
-        const klineData = await getKlines(symbol, interval);
+        const klineData = await getKlines(symbol, interval, {
+          replayEndTimeSec,
+        });
 
         if (cancelled) return; // chart may have been disposed
 
