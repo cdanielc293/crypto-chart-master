@@ -2289,22 +2289,23 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               priceScaleWidth={priceScaleWidth || 55}
             />
 
-            {/* Price scale right-click zone — only intercepts contextmenu, not drag */}
+            {/* Price scale right-click zone — passes through drag events to chart underneath */}
             <PriceScaleContextMenu onOpenSettings={() => setSettingsOpen(true)} onResetScale={resetChartView}>
               <div
-                className="absolute top-0 right-0 bottom-0 z-[15] [pointer-events:none]"
+                className="absolute top-0 right-0 bottom-0 z-[15]"
                 style={{ width: priceScaleWidth || 55 }}
-                ref={(el) => {
-                  if (!el) return;
-                  // Re-enable pointer events just for context menu
-                  const handler = (e: Event) => {
-                    el.style.pointerEvents = 'auto';
-                    requestAnimationFrame(() => {
-                      el.style.pointerEvents = 'none';
-                    });
-                  };
-                  el.addEventListener('contextmenu', handler, true);
-                  (el as any).__psCleanup = handler;
+                onMouseDown={(e) => {
+                  if (e.button !== 2) {
+                    // For left/middle click (drag), temporarily disable pointer events
+                    // so the chart library underneath handles the price scale drag
+                    const el = e.currentTarget;
+                    el.style.pointerEvents = 'none';
+                    const restore = () => {
+                      el.style.pointerEvents = 'auto';
+                      window.removeEventListener('mouseup', restore);
+                    };
+                    window.addEventListener('mouseup', restore);
+                  }
                 }}
               />
             </PriceScaleContextMenu>
