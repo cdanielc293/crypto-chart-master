@@ -1,4 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import vizionLogo from '@/assets/vizion-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
@@ -13,8 +15,14 @@ const tierNames: Record<string, string> = {
 export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, signInWithGoogle, signInWithApple } = useAuth();
   const tier = searchParams.get('tier') || 'zenith';
   const tierLabel = tierNames[tier] || 'Vizion Zenith';
+
+  // If already logged in, redirect to chart
+  useEffect(() => {
+    if (user) navigate('/chart', { replace: true });
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen h-screen flex bg-[#050508] text-white overflow-hidden">
@@ -94,7 +102,7 @@ export default function Signup() {
 
           {/* Google */}
           <button
-            onClick={() => {/* TODO: Google OAuth */}}
+            onClick={signInWithGoogle}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors mb-3 text-sm font-medium"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -120,7 +128,7 @@ export default function Signup() {
 
           {/* Apple */}
           <button
-            onClick={() => {/* TODO: Apple OAuth */}}
+            onClick={signInWithApple}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm font-medium"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="white">
@@ -140,7 +148,7 @@ export default function Signup() {
           <p className="text-center text-sm text-white/30">
             Already have an account?{' '}
             <button
-              onClick={() => navigate('/signin')}
+              onClick={signInWithGoogle}
               className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
             >
               Sign in

@@ -324,6 +324,12 @@ export default function TopToolbar() {
         >
           <Settings size={16} />
         </button>
+
+        {/* Spacer to push profile to the right */}
+        <div className="flex-1" />
+
+        {/* User Profile */}
+        <UserProfileMenu />
       </div>
 
       {/* Close dropdowns on outside click */}
