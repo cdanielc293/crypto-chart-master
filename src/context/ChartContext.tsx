@@ -72,11 +72,13 @@ interface ChartContextType {
   selectedDrawingId: string | null;
   setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
+  addIndicator: (definitionId: string) => void;
+  removeIndicator: (instanceId: string) => void;
   toggleIndicator: (name: string) => void;
   hiddenIndicators: Set<string>;
   toggleHiddenIndicator: (name: string) => void;
-  indicatorConfigs: Map<string, IndicatorConfig>;
-  updateIndicatorConfig: (name: string, config: IndicatorConfig) => void;
+  indicatorConfigs: Map<string, IndicatorInstance>;
+  updateIndicatorConfig: (name: string, config: IndicatorInstance) => void;
   favoriteIntervals: Interval[];
   toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
