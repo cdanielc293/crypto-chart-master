@@ -2273,6 +2273,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               candles={candleDataForDrawing}
               containerRef={containerRef as React.RefObject<HTMLDivElement>}
               magnetMode={magnetMode}
+              priceScaleWidth={priceScaleWidth || 55}
             />
 
             {/* Price scale right-click zone (overlay on top of the lightweight-charts price scale) */}

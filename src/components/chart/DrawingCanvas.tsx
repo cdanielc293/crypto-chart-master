@@ -544,8 +544,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     <>
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 z-20"
-        style={{ pointerEvents: shouldCapturePointer ? 'auto' : 'none' }}
+        className="absolute top-0 left-0 bottom-0 z-20"
+        style={{
+          pointerEvents: shouldCapturePointer ? 'auto' : 'none',
+          right: priceScaleWidth,
+          width: `calc(100% - ${priceScaleWidth}px)`,
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
