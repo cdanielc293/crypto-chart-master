@@ -40,8 +40,11 @@ export default function UserProfileMenu() {
     .slice(0, 2);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+    } finally {
+      navigate('/', { replace: true });
+    }
   };
 
   return (
