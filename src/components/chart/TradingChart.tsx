@@ -1715,30 +1715,39 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     for (const ind of indicators) {
       if (hiddenIndicators.has(ind)) continue;
 
-      if (ind.startsWith('EMA')) {
-        const period = parseInt(ind.split(' ')[1]);
+      const cfg = indicatorConfigs.get(ind) || getDefaultConfig(ind);
+
+      if (cfg.type === 'EMA') {
+        const emaCfg = cfg as import('@/types/indicators').EMAConfig;
+        if (!emaCfg.style.visible) continue;
         const s = chart.addSeries(LineSeries, {
-          color: EMA_COLORS[ind] || '#ffffff', lineWidth: 1,
+          color: emaCfg.style.color, lineWidth: emaCfg.style.lineWidth as any,
+          lineStyle: mapLineStyleType(emaCfg.style.lineStyle),
           priceLineVisible: false, lastValueVisible: false,
         });
-        s.setData(calculateEMA(data, period));
+        s.setData(calculateEMA(data, emaCfg.period, emaCfg.source));
         indicatorSeriesRef.current.set(ind, s);
-      } else if (ind.startsWith('SMA')) {
-        const period = parseInt(ind.split(' ')[1]);
+      } else if (cfg.type === 'SMA') {
+        const smaCfg = cfg as import('@/types/indicators').SMAConfig;
+        if (!smaCfg.style.visible) continue;
         const s = chart.addSeries(LineSeries, {
-          color: EMA_COLORS[ind] || '#ffffff', lineWidth: 1,
+          color: smaCfg.style.color, lineWidth: smaCfg.style.lineWidth as any,
+          lineStyle: mapLineStyleType(smaCfg.style.lineStyle),
           priceLineVisible: false, lastValueVisible: false,
         });
-        s.setData(calculateSMA(data, period));
+        s.setData(calculateSMA(data, smaCfg.period, smaCfg.source));
         indicatorSeriesRef.current.set(ind, s);
-      } else if (ind === 'Bollinger Bands') {
-        if (hiddenIndicators.has('Bollinger Bands')) continue;
-        const bb = calculateBollinger(data);
-        const colors = ['#e91e63', '#2196f3', '#e91e63'];
+      } else if (cfg.type === 'Bollinger Bands') {
+        const bbCfg = cfg as import('@/types/indicators').BollingerConfig;
+        const bb = calculateBollinger(data, bbCfg.length, bbCfg.stdDev, bbCfg.source, bbCfg.basisMAType);
+        const styles = [bbCfg.upperStyle, bbCfg.basisStyle, bbCfg.lowerStyle];
+        const datasets = [bb.upper, bb.middle, bb.lower];
         const names = ['BB Upper', 'BB Middle', 'BB Lower'];
-        [bb.upper, bb.middle, bb.lower].forEach((d, i) => {
+        datasets.forEach((d, i) => {
+          if (!styles[i].visible) return;
           const s = chart.addSeries(LineSeries, {
-            color: colors[i], lineWidth: 1, lineStyle: i === 1 ? 0 : 2,
+            color: styles[i].color, lineWidth: styles[i].lineWidth as any,
+            lineStyle: mapLineStyleType(styles[i].lineStyle),
             priceLineVisible: false, lastValueVisible: false,
           });
           s.setData(d);
@@ -1746,7 +1755,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         });
       }
     }
-  }, [indicators, hiddenIndicators, rawDataRef.current.length]);
+  }, [indicators, hiddenIndicators, indicatorConfigs, rawDataRef.current.length]);
 
   // ─── Replay: blue vertical line following mouse during selection ───
   useEffect(() => {
