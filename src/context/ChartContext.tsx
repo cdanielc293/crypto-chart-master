@@ -70,6 +70,8 @@ interface ChartContextType {
   setSelectedDrawingId: (id: string | null) => void;
   indicators: string[];
   toggleIndicator: (name: string) => void;
+  hiddenIndicators: Set<string>;
+  toggleHiddenIndicator: (name: string) => void;
   favoriteIntervals: Interval[];
   toggleFavoriteInterval: (interval: Interval) => void;
   // Replay
@@ -158,6 +160,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [indicators, setIndicators] = useState<string[]>([]);
+  const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
   const [favoriteIntervals, setFavoriteIntervals] = useState<Interval[]>(() => {
     const saved = localStorage.getItem('favoriteIntervals');
     return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
@@ -257,6 +260,24 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIndicators(prev =>
       prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
     );
+    // Also remove from hidden when removing indicator
+    setHiddenIndicators(prev => {
+      if (prev.has(name)) {
+        const next = new Set(prev);
+        next.delete(name);
+        return next;
+      }
+      return prev;
+    });
+  }, []);
+
+  const toggleHiddenIndicator = useCallback((name: string) => {
+    setHiddenIndicators(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   }, []);
 
   const toggleFavoriteInterval = useCallback((iv: Interval) => {
@@ -280,7 +301,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addToWatchlist, removeFromWatchlist,
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
-      indicators, toggleIndicator,
+      indicators, toggleIndicator, hiddenIndicators, toggleHiddenIndicator,
       favoriteIntervals, toggleFavoriteInterval,
       replayState, setReplayState,
       replayBarIndex, setReplayBarIndex,
