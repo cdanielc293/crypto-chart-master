@@ -1,8 +1,9 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { Mail } from 'lucide-react';
 import vizionLogo from '@/assets/vizion-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
 
@@ -23,26 +24,23 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
-  // If already logged in, redirect to chart
   useEffect(() => {
     if (user) navigate('/chart', { replace: true });
   }, [user, navigate]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       toast.error('יש למלא אימייל וסיסמה.');
       return;
     }
-
     if (password.length < 6) {
       toast.error('הסיסמה חייבת להכיל לפחות 6 תווים.');
       return;
     }
-
     if (mode === 'signup') {
       if (password !== confirmPassword) {
         toast.error('אימות הסיסמה לא תואם.');
@@ -51,7 +49,6 @@ export default function Signup() {
       await signUpWithEmail(trimmedEmail, password);
       return;
     }
-
     await signInWithEmail(trimmedEmail, password);
   };
 
@@ -64,14 +61,9 @@ export default function Signup() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
-        <img
-          src={signupHero}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        <img src={signupHero} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#050508]/80" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050508]/60 via-transparent to-[#050508]/40" />
-
         <div className="relative z-10 px-12 pb-20 self-end w-full">
           <motion.h2
             className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight"
@@ -95,7 +87,6 @@ export default function Signup() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
-        {/* Close button */}
         <button
           onClick={() => navigate(-1)}
           className="absolute top-5 right-5 text-white/30 hover:text-white/60 transition-colors text-2xl"
@@ -117,87 +108,27 @@ export default function Signup() {
           </span>
         </motion.div>
 
-        {/* Sign Up Card */}
         <motion.div
           className="w-full max-w-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <h1 className="text-2xl font-bold text-center mb-2">Sign up</h1>
+          <h1 className="text-2xl font-bold text-center mb-2">
+            {mode === 'signup' ? 'יצירת חשבון' : 'התחברות'}
+          </h1>
           <p className="text-sm text-white/40 text-center mb-8">
             Selected plan:{' '}
             <span className="text-cyan-400 font-semibold">{tierLabel}</span>
             <span className="text-white/20"> · Free during launch</span>
           </p>
 
-          <div className="grid grid-cols-2 rounded-lg border border-white/10 p-1 mb-5 bg-white/[0.02]">
-            <button
-              type="button"
-              onClick={() => setMode('signup')}
-              className={`rounded-md py-2 text-sm transition-colors ${mode === 'signup' ? 'bg-white/[0.08] text-white' : 'text-white/50 hover:text-white/80'}`}
-            >
-              הרשמה
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('signin')}
-              className={`rounded-md py-2 text-sm transition-colors ${mode === 'signin' ? 'bg-white/[0.08] text-white' : 'text-white/50 hover:text-white/80'}`}
-            >
-              התחברות
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              placeholder="name@company.com"
-              className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              placeholder="סיסמה"
-              className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-            />
-            {mode === 'signup' && (
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-                placeholder="אימות סיסמה"
-                className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
-              />
-            )}
-
-            <button
-              type="submit"
-              disabled={signingIn}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-cyan-400/40 bg-cyan-400/15 hover:bg-cyan-400/20 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {signingIn ? 'טוען...' : mode === 'signup' ? 'יצירת חשבון עם אימייל' : 'התחברות עם אימייל'}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-white/20">או</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          {/* OAuth Buttons */}
+          {/* Primary OAuth buttons */}
           <div className="space-y-2.5">
             <button
               type="button"
               onClick={() => signInWithOAuth('google')}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm font-medium"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-sm font-semibold"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -211,7 +142,7 @@ export default function Signup() {
             <button
               type="button"
               onClick={() => signInWithOAuth('apple')}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm font-medium"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-sm font-semibold"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
@@ -220,7 +151,92 @@ export default function Signup() {
             </button>
           </div>
 
-          {/* Guest Divider */}
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-white/20">או</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Email toggle button */}
+          {!showEmailForm && (
+            <button
+              type="button"
+              onClick={() => setShowEmailForm(true)}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-colors text-sm text-white/60 hover:text-white/90"
+            >
+              <Mail className="w-4 h-4" />
+              {mode === 'signup' ? 'הרשמה עם אימייל' : 'התחברות עם אימייל'}
+            </button>
+          )}
+
+          {/* Email form (expandable) */}
+          <AnimatePresence>
+            {showEmailForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-2 rounded-lg border border-white/10 p-1 mb-4 bg-white/[0.02]">
+                  <button
+                    type="button"
+                    onClick={() => setMode('signup')}
+                    className={`rounded-md py-2 text-sm transition-colors ${mode === 'signup' ? 'bg-white/[0.08] text-white' : 'text-white/50 hover:text-white/80'}`}
+                  >
+                    הרשמה
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('signin')}
+                    className={`rounded-md py-2 text-sm transition-colors ${mode === 'signin' ? 'bg-white/[0.08] text-white' : 'text-white/50 hover:text-white/80'}`}
+                  >
+                    התחברות
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    placeholder="name@company.com"
+                    className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    placeholder="סיסמה"
+                    className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                  />
+                  {mode === 'signup' && (
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
+                      placeholder="אימות סיסמה"
+                      className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/30"
+                    />
+                  )}
+                  <button
+                    type="submit"
+                    disabled={signingIn}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-cyan-400/40 bg-cyan-400/15 hover:bg-cyan-400/20 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {signingIn ? 'טוען...' : mode === 'signup' ? 'יצירת חשבון' : 'התחברות'}
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Guest divider */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-xs text-white/20">או</span>
@@ -230,10 +246,7 @@ export default function Signup() {
           {/* Guest */}
           <button
             type="button"
-            onClick={() => {
-              enterAsGuest();
-              navigate('/chart');
-            }}
+            onClick={() => { enterAsGuest(); navigate('/chart'); }}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm text-white/60 hover:text-white/90"
           >
             כניסה כאורח
@@ -251,7 +264,6 @@ export default function Signup() {
           </p>
         </motion.div>
 
-        {/* Footer text */}
         <motion.p
           className="absolute bottom-6 text-xs text-white/15 text-center max-w-xs"
           initial={{ opacity: 0 }}
