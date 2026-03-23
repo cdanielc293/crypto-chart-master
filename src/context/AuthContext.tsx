@@ -178,10 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithOAuth = (provider: 'google' | 'apple') => {
-    // OAuth requires HTTPS on the self-hosted instance.
-    // Once HTTPS is configured, this will redirect to the self-hosted Supabase OAuth flow.
     const selfHostedUrl = 'https://api.vizionx.pro';
-    const redirectTo = encodeURIComponent(window.location.origin + '/chart');
+    const redirectTo = encodeURIComponent(window.location.origin + '/auth/callback');
     window.location.href = `${selfHostedUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
   };
 
