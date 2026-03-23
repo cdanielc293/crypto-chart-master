@@ -5,7 +5,7 @@
 #   cp .env.example .env   # fill in your secrets
 #   docker compose up -d
 #
-# The frontend at http://localhost:3000 talks to Kong at http://localhost:8000
+# The frontend at http://127.0.0.1:3000 talks to Kong at http://127.0.0.1:8000
 # All inter-service traffic stays on the internal "vizionx" bridge network.
 ###############################################################################
 
@@ -82,13 +82,13 @@ services:
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${ENABLE_GOOGLE_AUTH:-false}
       GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL:-http://localhost:8000}/auth/v1/callback
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL:-http://127.0.0.1:8000}/auth/v1/callback
 
       # Apple OAuth
       GOTRUE_EXTERNAL_APPLE_ENABLED: ${ENABLE_APPLE_AUTH:-false}
       GOTRUE_EXTERNAL_APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       GOTRUE_EXTERNAL_APPLE_SECRET: ${APPLE_CLIENT_SECRET:-}
-      GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: ${API_EXTERNAL_URL:-http://localhost:8000}/auth/v1/callback
+      GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: ${API_EXTERNAL_URL:-http://127.0.0.1:8000}/auth/v1/callback
 
   # ──────────────────── PostgREST ────────────────────
   rest:
