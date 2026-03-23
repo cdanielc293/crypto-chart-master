@@ -34,12 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const registerDevice = async (accessToken: string) => {
       try {
-        await supabase.functions.invoke('register-device', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'x-real-user-agent': navigator.userAgent,
-          },
-        });
+        // Get current session info via RPC
+        const { data: { user: currentUser } } = await supabase.auth.getUser(accessToken);
+        if (!currentUser) return;
+
+        const { data: sessions } = await supabase.rpc('get_user_sessions', { p_user_id: currentUser.id });
+        const currentSession = sessions?.[0];
+        if (!currentSession) return;
+
+        await supabase
+          .from('session_devices')
+          .upsert({
+            user_id: currentUser.id,
+            session_id: currentSession.session_id,
+            real_ip: 'browser-client',
+            real_user_agent: navigator.userAgent,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,session_id' });
       } catch {
         // Non-critical: do nothing
       }
