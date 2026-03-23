@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { ALL_INTERVALS } from '@/types/chart';
 import type { Interval } from '@/types/chart';
 import {

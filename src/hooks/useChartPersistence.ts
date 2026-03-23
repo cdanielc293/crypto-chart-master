@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import type { Drawing, ChartType, Interval } from '@/types/chart';
 import type { IndicatorInstance } from '@/types/indicators';
 
