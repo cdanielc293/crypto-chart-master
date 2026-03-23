@@ -22,20 +22,21 @@ services:
   # ──────────────────── PostgreSQL ────────────────────
   db:
     image: supabase/postgres:15.6.1.143
-    restart: unless-stopped
+    restart: always
     networks: [vizionx]
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXP:-3600}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,7 +44,7 @@ services:
   # ──────────────────── GoTrue (Auth) ────────────────────
   auth:
     image: supabase/gotrue:v2.164.0
-    restart: unless-stopped
+    restart: always
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +55,7 @@ services:
       API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
 
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
 
       GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3000}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
@@ -92,13 +93,13 @@ services:
   # ──────────────────── PostgREST ────────────────────
   rest:
     image: postgrest/postgrest:v12.2.3
-    restart: unless-stopped
+    restart: always
     depends_on:
       db:
         condition: service_healthy
     networks: [vizionx]
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
@@ -109,7 +110,7 @@ services:
   # ──────────────────── Realtime ────────────────────
   realtime:
     image: supabase/realtime:v2.30.34
-    restart: unless-stopped
+    restart: always
     depends_on:
       db:
         condition: service_healthy
@@ -120,7 +121,7 @@ services:
       DB_PORT: "5432"
       DB_USER: supabase_admin
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: postgres
+      DB_NAME: ${POSTGRES_DB:-postgres}
       DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
       DB_ENC_KEY: supabaserealtime
       API_JWT_SECRET: ${JWT_SECRET}
@@ -134,7 +135,7 @@ services:
   # ──────────────────── Storage ────────────────────
   storage:
     image: supabase/storage-api:v1.11.13
-    restart: unless-stopped
+    restart: always
     depends_on:
       db:
         condition: service_healthy
@@ -146,7 +147,7 @@ services:
       SERVICE_KEY: ${SERVICE_ROLE_KEY}
       POSTGREST_URL: http://rest:3000
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: file
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -161,7 +162,7 @@ services:
   # ──────────────────── imgproxy ────────────────────
   imgproxy:
     image: darthsim/imgproxy:v3.8.0
-    restart: unless-stopped
+    restart: always
     networks: [vizionx]
     environment:
       IMGPROXY_BIND: ":8080"
@@ -174,7 +175,7 @@ services:
   # ──────────────────── Meta (pg-meta) ────────────────────
   meta:
     image: supabase/postgres-meta:v0.83.2
-    restart: unless-stopped
+    restart: always
     depends_on:
       db:
         condition: service_healthy
@@ -183,14 +184,14 @@ services:
       PG_META_PORT: "8080"
       PG_META_DB_HOST: db
       PG_META_DB_PORT: "5432"
-      PG_META_DB_NAME: postgres
+      PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
       PG_META_DB_USER: supabase_admin
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
 
   # ──────────────────── Kong API Gateway ────────────────────
   kong:
     image: kong:2.8.1
-    restart: unless-stopped
+    restart: always
     depends_on:
       auth:
         condition: service_started
@@ -221,7 +222,7 @@ services:
   # ──────────────────── Studio (optional dashboard) ──────
   studio:
     image: supabase/studio:20240729-ce42139
-    restart: unless-stopped
+    restart: always
     depends_on:
       meta:
         condition: service_started
