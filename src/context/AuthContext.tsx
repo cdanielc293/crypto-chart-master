@@ -73,10 +73,10 @@ async function callAuthProxy(body: Record<string, string | undefined>) {
   });
 
   const raw = await res.text();
-  let data: Record<string, unknown> = {};
+  let data: any = {};
   if (raw) {
     try {
-      data = JSON.parse(raw) as Record<string, unknown>;
+      data = JSON.parse(raw);
     } catch {
       data = { error: raw };
     }
