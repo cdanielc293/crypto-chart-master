@@ -24,13 +24,12 @@ cd vizionx/docker
 
 # 2. Create your environment file
 cp .env.example .env
-# Edit .env — at minimum set POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY, SERVICE_ROLE_KEY
 
 # 3. Start everything
 docker compose up -d
 ```
 
-That's it. All services will be available within ~30 seconds.
+That's it. On a clean machine, all backend services bootstrap automatically with no manual SQL setup.
 
 ---
 
@@ -50,9 +49,9 @@ That's it. All services will be available within ~30 seconds.
 
 | What | URL |
 |------|-----|
-| API Gateway | `http://localhost:8000` |
-| Studio Dashboard | `http://localhost:3001` |
-| Database (direct) | `localhost:5432` |
+| API Gateway | `http://127.0.0.1:8000` |
+| Studio Dashboard | `http://127.0.0.1:8001` |
+| Database (direct) | `127.0.0.1:5432` |
 
 ---
 
@@ -77,7 +76,7 @@ That's it. All services will be available within ~30 seconds.
 └─────────────────────────────────────────────────┘
 ```
 
-All inter-service traffic uses Docker DNS (service names). No external DNS required.
+All inter-service traffic uses Docker DNS (service names), while exposed host ports are bound to `127.0.0.1` for local-only access.
 
 ---
 
@@ -91,8 +90,8 @@ See [`docker/.env.example`](docker/.env.example) for the full list. Critical var
 | `JWT_SECRET` | Shared JWT signing secret (min 32 chars) |
 | `ANON_KEY` | Supabase anonymous JWT |
 | `SERVICE_ROLE_KEY` | Supabase service-role JWT |
-| `SITE_URL` | Frontend URL for auth redirects |
-| `API_EXTERNAL_URL` | Public API URL for OAuth callbacks |
+| `SITE_URL` | Frontend URL for auth redirects (default: `http://127.0.0.1:3000`) |
+| `API_EXTERNAL_URL` | API URL for OAuth callbacks (default: `http://127.0.0.1:8000`) |
 
 ---
 
@@ -123,11 +122,11 @@ Same pattern applies for Apple OAuth.
 Point your frontend `.env` at the local gateway:
 
 ```env
-VITE_SUPABASE_URL=http://localhost:8000
-VITE_SUPABASE_ANON_KEY=<your ANON_KEY>
+VITE_SUPABASE_URL=http://127.0.0.1:8000
+VITE_SUPABASE_PUBLISHABLE_KEY=<your ANON_KEY>
 ```
 
-For production with HTTPS, update `API_EXTERNAL_URL` and `SITE_URL` to your domain.
+The current codebase already includes local defaults, so this file is optional for local startup.
 
 ---
 
