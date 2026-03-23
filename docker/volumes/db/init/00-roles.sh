@@ -64,10 +64,20 @@ psql -v ON_ERROR_STOP=1 --username "$DB_BOOTSTRAP_USER" --dbname "$DB_BOOTSTRAP_
   GRANT ALL ON SCHEMA public TO public;
   ALTER SCHEMA public OWNER TO supabase_admin;
   GRANT USAGE, CREATE ON SCHEMA public TO supabase_auth_admin, supabase_storage_admin, authenticator;
+  GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
   GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, service_role, authenticated, anon;
   GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO supabase_admin;
   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO supabase_admin;
   GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO supabase_admin;
+
+  -- Ensure PostgREST roles can access objects while RLS enforces data access
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
 EOSQL
 
 echo "✅ Internal roles + public schema permissions synced"

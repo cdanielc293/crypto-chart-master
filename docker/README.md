@@ -7,9 +7,10 @@ Run the entire Supabase + VizionX backend on any machine with a single command.
 ```bash
 cd docker
 cp .env.example .env
-# Edit .env with your secrets (JWT_SECRET, POSTGRES_PASSWORD, ANON_KEY, SERVICE_ROLE_KEY)
 docker compose up -d
 ```
+
+No additional SQL steps or manual database fixes are required.
 
 ## Services
 
@@ -21,22 +22,29 @@ docker compose up -d
 | PostgREST | http://rest:3000      | (via Kong)    |
 | Realtime  | http://realtime:4000  | (via Kong)    |
 | Storage   | http://storage:5000   | (via Kong)    |
-| Studio    | http://studio:3000    | 3001          |
+| Studio    | http://studio:3000    | 8001          |
+
+All published ports are bound to `127.0.0.1` for local-only access.
 
 ## Frontend Configuration
 
 Set your frontend `.env` to:
 
 ```
-SUPABASE_URL=http://localhost:8000
-SUPABASE_ANON_KEY=<your anon key>
+VITE_SUPABASE_URL=http://127.0.0.1:8000
+VITE_SUPABASE_PUBLISHABLE_KEY=<your anon key>
 ```
 
-For production with a reverse proxy (e.g., https://api.vizionx.pro), update `API_EXTERNAL_URL` and `SITE_URL` accordingly.
+The app code already includes these local defaults, so this file is optional.
+
+For production with a reverse proxy (e.g., `https://vizionx.pro`), override `API_EXTERNAL_URL` and `SITE_URL` in `docker/.env`.
 
 ## Database
 
-The database schema is automatically applied on first boot via `volumes/db/init/00-schema.sql`. This includes all tables, RLS policies, functions, and triggers.
+The database bootstrap runs automatically on first boot:
+
+- `volumes/db/init/00-roles.sh` creates required internal roles, syncs passwords, and grants schema/object permissions.
+- `volumes/db/init/01-schema.sql` creates the schema, RLS policies, functions, and triggers.
 
 ## OAuth
 

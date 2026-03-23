@@ -25,7 +25,7 @@ services:
     restart: always
     networks: [vizionx]
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_USER: ${POSTGRES_USER:-supabase_admin}
@@ -52,12 +52,12 @@ services:
     environment:
       GOTRUE_API_HOST: "0.0.0.0"
       GOTRUE_API_PORT: "9999"
-      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://127.0.0.1:8000}
 
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
 
-      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      GOTRUE_SITE_URL: ${SITE_URL:-http://127.0.0.1:3000}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       GOTRUE_DISABLE_SIGNUP: "false"
 
@@ -205,8 +205,8 @@ services:
         condition: service_started
     networks: [vizionx]
     ports:
-      - "${KONG_HTTP_PORT:-8000}:8000"
-      - "${KONG_HTTPS_PORT:-8443}:8443"
+      - "127.0.0.1:${KONG_HTTP_PORT:-8000}:8000"
+      - "127.0.0.1:${KONG_HTTPS_PORT:-8443}:8443"
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
@@ -228,14 +228,14 @@ services:
         condition: service_started
     networks: [vizionx]
     ports:
-      - "${STUDIO_PORT:-8001}:3000"
+      - "127.0.0.1:${STUDIO_PORT:-8001}:3000"
     environment:
       STUDIO_PG_META_URL: http://meta:8080
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       DEFAULT_ORGANIZATION_NAME: VizionX
       DEFAULT_PROJECT_NAME: VizionX
       SUPABASE_URL: http://kong:8000
-      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL:-http://127.0.0.1:8000}
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_JWT_SECRET: ${JWT_SECRET}
