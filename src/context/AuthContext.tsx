@@ -66,18 +66,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingIn, setSigningIn] = useState(false);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('vizion_guest') === 'true');
 
-  // Bootstrap: try to restore session
+  // Bootstrap: try to restore session or handle OAuth callback
   useEffect(() => {
     const restore = async () => {
+      // Check for OAuth callback tokens in URL hash
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken) {
+          try {
+            const userData = await callAuthProxy({ action: 'get_user', access_token: accessToken });
+            const sessionData = {
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+              user: userData as User,
+            };
+            setUser(userData as User);
+            setSession({ access_token: accessToken, refresh_token: refreshToken } as unknown as Session);
+            saveSession(sessionData);
+            setIsGuest(false);
+            localStorage.removeItem('vizion_guest');
+            // Clear the hash from the URL
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            toast.success('התחברת בהצלחה עם Google');
+          } catch (err) {
+            console.error('OAuth callback error', err);
+            toast.error('ההתחברות עם Google נכשלה.');
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
       const saved = loadSession();
       if (saved) {
         try {
-          // Validate token by getting user
           const userData = await callAuthProxy({ action: 'get_user', access_token: saved.access_token });
           setUser(userData as User);
           setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token } as unknown as Session);
         } catch {
-          // Try refresh
           try {
             const refreshed = await callAuthProxy({ action: 'refresh', refresh_token: saved.refresh_token });
             setUser(refreshed.user as User);
