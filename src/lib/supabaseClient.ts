@@ -1,10 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || 'http://127.0.0.1:8000';
-const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpemlvbnhfbG9jYWwiLCJpYXQiOjE3NzQyODU1MTIsImV4cCI6MjA4OTY0NTUxMiwicm9sZSI6ImFub24ifQ.UuqmTgOaEWEpFxKiCIN8qCeviQOAbdzoQaHbs2uMM7Y';
+const SUPABASE_URL = 'https://api.vizionx.pro';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);

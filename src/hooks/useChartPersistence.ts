@@ -143,7 +143,12 @@ export function useChartPersistence(
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (!userId) return;
-      // Final save attempt before unload (avoids hardcoded host dependency)
+      const payload = serializeState(userId, symbol, state);
+      const body = JSON.stringify(payload);
+      // Use sendBeacon for reliability on page close
+      const url = `http://213.57.181.98:8000/rest/v1/user_chart_state?on_conflict=user_id,symbol`;
+      navigator.sendBeacon?.(url); // fallback - upsert via supabase below
+      // Synchronous save attempt
       save();
     };
 
