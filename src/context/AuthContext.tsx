@@ -148,6 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithOAuth = (provider: 'google' | 'apple') => {
+    // OAuth requires HTTPS on the self-hosted instance.
+    // Once HTTPS is configured, this will redirect to the self-hosted Supabase OAuth flow.
+    const selfHostedUrl = 'http://213.57.181.98:8000'; // Will be updated to HTTPS
+    const redirectTo = encodeURIComponent(window.location.origin + '/chart');
+    window.location.href = `${selfHostedUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
+  };
+
   const enterAsGuest = () => {
     localStorage.setItem('vizion_guest', 'true');
     setIsGuest(true);
@@ -171,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signingIn, isGuest, signInWithEmail, signUpWithEmail, enterAsGuest, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signingIn, isGuest, signInWithEmail, signUpWithEmail, signInWithOAuth, enterAsGuest, signOut }}>
       {children}
     </AuthContext.Provider>
   );
