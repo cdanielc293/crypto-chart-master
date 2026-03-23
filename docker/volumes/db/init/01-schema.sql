@@ -4,6 +4,17 @@
 -- This file runs on first `docker compose up` to bootstrap the database.
 -------------------------------------------------------------------------------
 
+-- Ensure auth namespace + helper function exist before policies/functions use them
+CREATE SCHEMA IF NOT EXISTS auth;
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+$$;
+
 -- =============================================================================
 -- 1. TABLES
 -- =============================================================================
@@ -176,24 +187,45 @@ RETURNS TABLE (
   real_ip       TEXT,
   real_user_agent TEXT
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT
-    s.id         AS session_id,
-    s.created_at,
-    s.updated_at,
-    s.refreshed_at,
-    s.ip,
-    s.user_agent,
-    sd.real_ip,
-    sd.real_user_agent
-  FROM auth.sessions s
-  LEFT JOIN public.session_devices sd
-    ON sd.user_id = s.user_id AND sd.session_id = s.id
-  WHERE s.user_id = p_user_id
-  ORDER BY s.created_at DESC;
+BEGIN
+  IF to_regclass('auth.sessions') IS NULL THEN
+    RETURN QUERY
+    SELECT
+      sd.session_id,
+      sd.created_at,
+      sd.updated_at,
+      sd.updated_at AS refreshed_at,
+      NULL::INET AS ip,
+      NULL::TEXT AS user_agent,
+      sd.real_ip,
+      sd.real_user_agent
+    FROM public.session_devices sd
+    WHERE sd.user_id = p_user_id
+    ORDER BY sd.created_at DESC;
+    RETURN;
+  END IF;
+
+  RETURN QUERY EXECUTE $qry$
+    SELECT
+      s.id AS session_id,
+      s.created_at,
+      s.updated_at,
+      s.refreshed_at,
+      s.ip,
+      s.user_agent,
+      sd.real_ip,
+      sd.real_user_agent
+    FROM auth.sessions s
+    LEFT JOIN public.session_devices sd
+      ON sd.user_id = s.user_id AND sd.session_id = s.id
+    WHERE s.user_id = $1
+    ORDER BY s.created_at DESC
+  $qry$ USING p_user_id;
+END;
 $$;
 
 -- Revoke (delete) a specific session for a user
@@ -204,12 +236,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  deleted_count INT;
+  deleted_count INT := 0;
 BEGIN
-  DELETE FROM auth.sessions
-  WHERE id = p_session_id AND user_id = p_user_id;
-
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  IF to_regclass('auth.sessions') IS NOT NULL THEN
+    EXECUTE 'DELETE FROM auth.sessions WHERE id = $1 AND user_id = $2'
+    USING p_session_id, p_user_id;
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  END IF;
 
   -- Also clean up device record
   DELETE FROM public.session_devices
@@ -245,10 +278,14 @@ END;
 $$;
 
 -- Attach trigger to auth.users
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+DO $$
+BEGIN
+  IF to_regclass('auth.users') IS NOT NULL THEN
+    EXECUTE 'DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users';
+    EXECUTE 'CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user()';
+  END IF;
+END;
+$$;
 
 
 -- =============================================================================
