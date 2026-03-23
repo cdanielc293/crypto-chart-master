@@ -2,7 +2,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
-const AUTH_PROXY_URL = `https://vxiiygyszxhgeswwkpjd.supabase.co/functions/v1/auth-proxy`;
+const SELF_HOSTED_SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL?.trim() || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+const SELF_HOSTED_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpemlvbnhfbG9jYWwiLCJpYXQiOjE3NzQyODU1MTIsImV4cCI6MjA4OTY0NTUxMiwicm9sZSI6ImFub24ifQ.UuqmTgOaEWEpFxKiCIN8qCeviQOAbdzoQaHbs2uMM7Y';
 
 interface AuthContextType {
   user: User | null;
@@ -26,15 +30,67 @@ export function useAuth() {
 }
 
 async function callAuthProxy(body: Record<string, string | undefined>) {
-  const res = await fetch(AUTH_PROXY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || data.msg || data.error_description || 'Auth request failed');
+  const { action, email, password, access_token, refresh_token } = body;
+  let endpoint = '';
+  let method: 'GET' | 'POST' = 'POST';
+  let payload: Record<string, string | undefined> | undefined;
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    apikey: SELF_HOSTED_ANON_KEY,
+  };
+
+  switch (action) {
+    case 'signup':
+      endpoint = '/auth/v1/signup';
+      payload = { email, password };
+      break;
+    case 'signin':
+      endpoint = '/auth/v1/token?grant_type=password';
+      payload = { email, password };
+      break;
+    case 'signout':
+      endpoint = '/auth/v1/logout';
+      payload = {};
+      if (access_token) headers.Authorization = `Bearer ${access_token}`;
+      break;
+    case 'get_user':
+      endpoint = '/auth/v1/user';
+      method = 'GET';
+      if (access_token) headers.Authorization = `Bearer ${access_token}`;
+      break;
+    case 'refresh':
+      endpoint = '/auth/v1/token?grant_type=refresh_token';
+      payload = { refresh_token };
+      break;
+    default:
+      throw new Error('Unknown auth action');
   }
+
+  const res = await fetch(`${SELF_HOSTED_SUPABASE_URL}${endpoint}`, {
+    method,
+    headers,
+    ...(method === 'POST' ? { body: JSON.stringify(payload ?? {}) } : {}),
+  });
+
+  const raw = await res.text();
+  let data: any = {};
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = { error: raw };
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      (data.error as string) ||
+        (data.msg as string) ||
+        (data.error_description as string) ||
+        `Auth request failed (${res.status})`
+    );
+  }
+
   return data;
 }
 
@@ -178,9 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithOAuth = (provider: 'google' | 'apple') => {
-    const selfHostedUrl = 'https://api.vizionx.pro';
     const redirectTo = encodeURIComponent(window.location.origin + '/auth/callback');
-    window.location.href = `${selfHostedUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
+    window.location.href = `${SELF_HOSTED_SUPABASE_URL}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
   };
 
   const enterAsGuest = () => {

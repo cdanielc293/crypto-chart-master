@@ -6,6 +6,7 @@
 
 -- Ensure auth namespace + helper function exist before policies/functions use them
 CREATE SCHEMA IF NOT EXISTS auth;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS UUID
@@ -14,6 +15,8 @@ STABLE
 AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
+
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, authenticator;
 
 -- =============================================================================
 -- 1. TABLES
