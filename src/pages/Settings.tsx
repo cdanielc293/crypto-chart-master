@@ -13,7 +13,7 @@ import {
   ArrowLeft, User, Shield, CreditCard, Receipt, Bell, Globe, Youtube, Instagram, Twitter,
   Facebook, Link2, Save, Monitor, Smartphone, Tablet, Laptop, LogOut, Loader2,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 
 const sidebarSections = [
   {
