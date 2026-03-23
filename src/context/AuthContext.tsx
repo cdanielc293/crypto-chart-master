@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import type { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+
+const AUTH_PROXY_URL = `https://vxiiygyszxhgeswwkpjd.supabase.co/functions/v1/auth-proxy`;
 
 interface AuthContextType {
   user: User | null;
@@ -16,12 +17,45 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const SIGNOUT_TIMEOUT_MS = 8000;
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
+}
+
+async function callAuthProxy(body: Record<string, string | undefined>) {
+  const res = await fetch(AUTH_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || data.msg || data.error_description || 'Auth request failed');
+  }
+  return data;
+}
+
+// Persist session to localStorage
+const SESSION_KEY = 'vizion_self_hosted_session';
+
+function saveSession(session: { access_token: string; refresh_token: string; user: User }) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function loadSession(): { access_token: string; refresh_token: string; user: User } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -31,84 +65,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingIn, setSigningIn] = useState(false);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('vizion_guest') === 'true');
 
+  // Bootstrap: try to restore session
   useEffect(() => {
-    const registerDevice = async (accessToken: string) => {
-      try {
-        // Get current session info via RPC
-        const { data: { user: currentUser } } = await supabase.auth.getUser(accessToken);
-        if (!currentUser) return;
-
-        const { data: sessions } = await supabase.rpc('get_user_sessions', { p_user_id: currentUser.id });
-        const currentSession = sessions?.[0];
-        if (!currentSession) return;
-
-        await supabase
-          .from('session_devices')
-          .upsert({
-            user_id: currentUser.id,
-            session_id: currentSession.session_id,
-            real_ip: 'browser-client',
-            real_user_agent: navigator.userAgent,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id,session_id' });
-      } catch {
-        // Non-critical: do nothing
+    const restore = async () => {
+      const saved = loadSession();
+      if (saved) {
+        try {
+          // Validate token by getting user
+          const userData = await callAuthProxy({ action: 'get_user', access_token: saved.access_token });
+          setUser(userData as User);
+          setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token } as unknown as Session);
+        } catch {
+          // Try refresh
+          try {
+            const refreshed = await callAuthProxy({ action: 'refresh', refresh_token: saved.refresh_token });
+            setUser(refreshed.user as User);
+            setSession({ access_token: refreshed.access_token, refresh_token: refreshed.refresh_token } as unknown as Session);
+            saveSession(refreshed);
+          } catch {
+            clearSession();
+          }
+        }
       }
-    };
-
-    const scheduleDeviceRegistration = (accessToken: string) => {
-      window.setTimeout(() => {
-        void registerDevice(accessToken);
-      }, 800);
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
       setLoading(false);
-
-      if (nextSession?.access_token && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        scheduleDeviceRegistration(nextSession.access_token);
-      }
-    });
-
-    const bootstrapAuth = async () => {
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
-      setSession(existingSession);
-      setUser(existingSession?.user ?? null);
-      setLoading(false);
-
-      if (existingSession?.access_token) {
-        scheduleDeviceRegistration(existingSession.access_token);
-      }
     };
-
-    void bootstrapAuth();
-
-    return () => subscription.unsubscribe();
+    void restore();
   }, []);
 
   const signInWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
-
-    if (!navigator.onLine) {
-      toast.error('אין חיבור אינטרנט כרגע.');
-      return;
-    }
-
+    if (!navigator.onLine) { toast.error('אין חיבור אינטרנט כרגע.'); return; }
     setSigningIn(true);
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const data = await callAuthProxy({ action: 'signin', email, password });
+      setUser(data.user as User);
+      setSession({ access_token: data.access_token, refresh_token: data.refresh_token } as unknown as Session);
+      saveSession(data);
+      setIsGuest(false);
+      localStorage.removeItem('vizion_guest');
       toast.success('התחברת בהצלחה');
     } catch (error) {
       console.error('Auth sign-in failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (msg.includes('Failed to fetch') || msg.includes('ERR_FAILED') || msg.includes('Load failed')) {
-        toast.error('שירות ההתחברות לא זמין כרגע (522/CORS מהשרת). נסה שוב בעוד כמה דקות.');
+      if (msg.includes('Invalid login credentials')) {
+        toast.error('אימייל או סיסמה שגויים.');
       } else {
-        toast.error(msg.includes('Invalid login credentials') ? 'אימייל או סיסמה שגויים.' : 'ההתחברות נכשלה. נסה שוב.');
+        toast.error('ההתחברות נכשלה. נסה שוב.');
       }
     } finally {
       setSigningIn(false);
@@ -117,39 +119,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
-
-    if (!navigator.onLine) {
-      toast.error('אין חיבור אינטרנט כרגע.');
-      return;
-    }
-
+    if (!navigator.onLine) { toast.error('אין חיבור אינטרנט כרגע.'); return; }
     setSigningIn(true);
-
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/chart`,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.user && !data.session) {
-        toast.success('נשלח אליך מייל אימות. אשר את האימייל ואז התחבר.');
+      const data = await callAuthProxy({ action: 'signup', email, password });
+      // If auto-confirm is on, we get access_token directly
+      if (data.access_token) {
+        setUser(data.user as User);
+        setSession({ access_token: data.access_token, refresh_token: data.refresh_token } as unknown as Session);
+        saveSession(data);
+        setIsGuest(false);
+        localStorage.removeItem('vizion_guest');
+        toast.success('ההרשמה הושלמה בהצלחה! מתחבר...');
       } else {
-        toast.success('ההרשמה הושלמה בהצלחה.');
+        toast.success('נשלח אליך מייל אימות. אשר את האימייל ואז התחבר.');
       }
     } catch (error) {
       console.error('Auth sign-up failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      if (msg.includes('Failed to fetch') || msg.includes('ERR_FAILED') || msg.includes('Load failed')) {
-        toast.error('שירות ההרשמה לא זמין כרגע (522/CORS מהשרת). נסה שוב בעוד כמה דקות.');
-      } else if (msg.includes('already registered')) {
+      if (msg.includes('already registered') || msg.includes('already been registered')) {
         toast.error('האימייל כבר קיים במערכת. נסה להתחבר.');
       } else {
-        toast.error('ההרשמה נכשלה. נסה שוב.');
+        toast.error('ההרשמה נכשלה: ' + msg);
       }
     } finally {
       setSigningIn(false);
@@ -162,23 +153,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    const saved = loadSession();
     try {
-      const result = await Promise.race([
-        supabase.auth.signOut(),
-        new Promise<{ error: Error }>((resolve) => {
-          window.setTimeout(() => resolve({ error: new Error('Sign out timeout') }), SIGNOUT_TIMEOUT_MS);
-        }),
-      ]);
-
-      if (result?.error) {
-        toast.error('ההתנתקות מתעכבת, בוצעה יציאה מקומית.');
+      if (saved?.access_token) {
+        await callAuthProxy({ action: 'signout', access_token: saved.access_token });
       }
     } catch {
-      toast.error('שגיאה בהתנתקות, בוצעה יציאה מקומית.');
+      // Non-critical
     } finally {
       setUser(null);
       setSession(null);
       setIsGuest(false);
+      clearSession();
       localStorage.removeItem('vizion_guest');
     }
   };
