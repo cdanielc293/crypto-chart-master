@@ -26,6 +26,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/chart" element={
               <ProtectedRoute>
                 <ChartPage />
