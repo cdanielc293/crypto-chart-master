@@ -1,26 +1,35 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Handles OAuth callback from the self-hosted Supabase instance.
- * Tokens arrive in the URL hash; AuthContext's bootstrap effect picks them up.
- * This page simply redirects to /chart once the hash has been consumed.
+ * Handles OAuth callback. Supabase client picks up tokens from the URL
+ * automatically via onAuthStateChange. We just wait and redirect.
  */
 export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // AuthContext's useEffect will detect the hash tokens on mount.
-    // Give it a tick to process, then navigate to /chart.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        navigate('/chart', { replace: true });
+      }
+    });
+
+    // Fallback redirect after 3s
     const timer = setTimeout(() => {
       navigate('/chart', { replace: true });
-    }, 500);
-    return () => clearTimeout(timer);
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <p className="text-sm text-muted-foreground animate-pulse">מאמת... מתחבר...</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#050508] text-white">
+      <p className="text-sm text-white/40 animate-pulse">מאמת... מתחבר...</p>
     </div>
   );
 }
