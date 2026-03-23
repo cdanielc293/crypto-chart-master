@@ -13,7 +13,7 @@ import {
   ArrowLeft, User, Shield, CreditCard, Receipt, Bell, Globe, Youtube, Instagram, Twitter,
   Facebook, Link2, Save, Monitor, Smartphone, Tablet, Laptop, LogOut, Loader2,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 
 const sidebarSections = [
   {
@@ -77,21 +77,52 @@ export default function Settings() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
+  const parseUserAgent = (ua: string) => {
+    let device = 'PC', os = 'Unknown', browser = 'Unknown';
+    if (/iPad/i.test(ua)) device = 'iPad';
+    else if (/iPhone/i.test(ua)) device = 'iPhone';
+    else if (/Android.*Mobile/i.test(ua)) device = 'Mobile';
+    else if (/Android/i.test(ua)) device = 'Tablet';
+    else if (/Macintosh/i.test(ua)) device = 'Mac';
+    if (/Windows NT 10/i.test(ua)) os = 'Windows 10';
+    else if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/Mac OS X/i.test(ua)) os = 'macOS';
+    else if (/iPhone OS/i.test(ua)) os = 'iOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+    if (/Edg\/([\d.]+)/i.test(ua)) browser = 'Edge';
+    else if (/Chrome\/([\d.]+)/i.test(ua)) browser = 'Chrome';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+    else if (/Firefox/i.test(ua)) browser = 'Firefox';
+    return { device, os, browser };
+  };
+
   const fetchSessions = useCallback(async () => {
     setSessionsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await supabase.functions.invoke('list-sessions', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+      if (!user) return;
+      const { data: rawSessions, error } = await supabase.rpc('get_user_sessions', { p_user_id: user.id });
+      if (error) throw error;
+      const enriched = (rawSessions || []).map((s: any) => {
+        const ua = s.real_user_agent || s.user_agent || '';
+        const parsed = parseUserAgent(ua);
+        const ip = s.real_ip || (s.ip ? String(s.ip) : 'Unknown');
+        return {
+          id: s.session_id,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          refreshed_at: s.refreshed_at,
+          ip,
+          ...parsed,
+        };
       });
-      if (res.data?.sessions) setSessions(res.data.sessions);
+      setSessions(enriched);
     } catch (e) {
       console.error('Failed to fetch sessions', e);
     } finally {
       setSessionsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (activeSection === 'sessions') fetchSessions();
@@ -100,12 +131,12 @@ export default function Settings() {
   const revokeSession = async (sessionId: string) => {
     setRevokingId(sessionId);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await supabase.functions.invoke('revoke-session', {
-        body: { session_id: sessionId },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+      if (!user) return;
+      const { error } = await supabase.rpc('revoke_user_session', {
+        p_user_id: user.id,
+        p_session_id: sessionId,
       });
+      if (error) throw error;
       setSessions(s => s.filter(x => x.id !== sessionId));
       toast.success('Session revoked');
     } catch {
