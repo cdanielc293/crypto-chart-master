@@ -271,16 +271,120 @@ export default function Terms() {
 
           <h2>24. Governing Law</h2>
           <p>
-            These Terms shall be governed by and construed in accordance with applicable laws, without regard to conflict of law principles. 
-            Any legal proceedings arising from these Terms shall be conducted in the appropriate jurisdiction.
+            These Terms and your use of VizionX are governed by the laws of the State of New York, United States, 
+            without regard to its conflict of law provisions. If you reside in a member state of the European Economic Area (EEA) 
+            or in any jurisdiction where this arbitration agreement is prohibited by local law, the arbitration provisions below 
+            do not apply to you, and disputes will be governed by the applicable local law and resolved in the courts of your country of residence. 
+            The application of the United Nations Convention on Contracts for the International Sale of Goods (CISG) is expressly excluded.
           </p>
 
-          <h2>25. Dispute Resolution & Arbitration</h2>
+          <h2>25. Arbitration Agreement</h2>
+
+          <h3>25.1 Applicability</h3>
           <p>
-            Any dispute, controversy, or claim arising from or relating to these Terms or VizionX services shall be resolved 
-            through binding arbitration on an individual basis. You waive the right to participate in class-action lawsuits 
-            or class-wide arbitration. You may opt out of this arbitration agreement by providing written notice within 30 days 
-            of account creation. Claims for injunctive relief or intellectual property protection may be brought in any competent court.
+            Subject to the terms of this Arbitration Agreement, you and VizionX agree that any disagreement, controversy, or claim 
+            arising out of or relating to your access to or use of VizionX at{' '}
+            <a href="https://www.vizionx.pro" className="text-cyan-400 hover:underline">www.vizionx.pro</a>, 
+            any communications you receive, and/or these Terms of Use (each, a "Dispute") will be resolved by binding arbitration 
+            rather than in court, except that: (1) you and VizionX may assert claims in small claims court if such claims qualify 
+            and remain in small claims court; and (2) you or VizionX may seek equitable relief in court for infringement or misuse 
+            of intellectual property rights (including trademarks, trade secrets, copyrights, and patents). 
+            "Dispute" also includes disputes arising from facts occurring before or after these Terms, 
+            as well as claims that may arise after termination of these Terms.
+          </p>
+
+          <h3>25.2 Waiver of Jury Trial</h3>
+          <p className="uppercase text-xs text-white/50 leading-relaxed">
+            YOU AND VIZIONX HEREBY WAIVE ANY CONSTITUTIONAL AND STATUTORY RIGHTS TO SUE IN COURT AND HAVE A TRIAL 
+            BEFORE A JUDGE OR JURY. YOU AND VIZIONX ELECT THAT ALL DISPUTES SHALL BE RESOLVED BY ARBITRATION UNDER 
+            THIS AGREEMENT, EXCEPT AS SPECIFIED IN SECTION 25.1 ABOVE. THERE IS NO JUDGE OR JURY IN ARBITRATION, 
+            AND COURT REVIEW OF AN ARBITRATION AWARD IS SUBJECT TO VERY LIMITED REVIEW.
+          </p>
+
+          <h3>25.3 Waiver of Class and Collective Relief</h3>
+          <p className="uppercase text-xs text-white/50 leading-relaxed">
+            EACH PARTY MAY BRING CLAIMS AGAINST THE OTHER ONLY ON AN INDIVIDUAL BASIS AND NOT ON A CLASS, REPRESENTATIVE, 
+            OR COLLECTIVE BASIS. THE PARTIES HEREBY WAIVE ALL RIGHTS TO HAVE ANY DISPUTE BROUGHT, HEARD, ADMINISTERED, 
+            RESOLVED, OR ARBITRATED ON A CLASS, COLLECTIVE, OR REPRESENTATIVE BASIS. ONLY INDIVIDUAL RELIEF IS AVAILABLE. 
+            THE ARBITRATOR MAY AWARD DECLARATORY OR INJUNCTIVE RELIEF ONLY IN FAVOR OF THE INDIVIDUAL PARTY SEEKING RELIEF 
+            AND ONLY TO THE EXTENT NECESSARY TO PROVIDE RELIEF WARRANTED BY THAT PARTY'S INDIVIDUAL CLAIM.
+          </p>
+          <p>
+            If a final, non-appealable decision determines that the limitations of this subsection are invalid or unenforceable 
+            as to a particular claim or request for relief (such as public injunctive relief), that particular claim shall be 
+            severed from arbitration and may be litigated in state or federal courts located in New York. 
+            All other Disputes shall remain subject to arbitration. This subsection does not prevent either party 
+            from participating in a class-wide or mass settlement of claims.
+          </p>
+
+          <h3>25.4 Arbitration Rules & Forum</h3>
+          <p>
+            These Terms evidence a transaction involving interstate commerce, and the Federal Arbitration Act (9 U.S.C. § 1 et seq.) 
+            governs the interpretation and enforcement of this Arbitration Agreement. Arbitration will be administered by a nationally 
+            recognized arbitration organization in accordance with its then-current rules and procedures, as modified by this Agreement. 
+            A party initiating arbitration must provide a written Demand including: (1) name, contact information, and account details; 
+            (2) a statement of claims and factual bases; (3) a description of the remedy sought with a good-faith calculation of the amount 
+            in controversy in U.S. Dollars; and (4) certification that the requesting party will pay applicable filing fees.
+          </p>
+          <p>
+            Demands should be sent to{' '}
+            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>. 
+            Unless otherwise agreed, arbitration will be conducted in the county of your residence. 
+            The arbitration shall be conducted in English by a single arbitrator who is either a retired judge or licensed attorney.
+          </p>
+
+          <h3>25.5 Authority of the Arbitrator</h3>
+          <p>
+            The arbitrator shall have exclusive authority to resolve any Dispute, including the interpretation, enforceability, 
+            revocability, scope, or validity of this Arbitration Agreement, except that disputes regarding Section 25.3 
+            (Waiver of Class and Collective Relief) shall be decided by a court of competent jurisdiction. 
+            The arbitrator may grant dispositive motions and shall issue a written award with findings and conclusions. 
+            The arbitrator's award is final and binding, and judgment may be entered in any court having jurisdiction.
+          </p>
+
+          <h3>25.6 Batch Arbitration</h3>
+          <p>
+            If 25 or more individual Demands of a substantially similar nature are filed against VizionX by or with the assistance 
+            of the same law firm or organization within a 90-day period, the arbitration administrator shall: (1) group Demands 
+            into batches of up to 100; (2) appoint one arbitrator per batch; and (3) resolve each batch on a consolidated basis 
+            with a single set of fees, one procedural calendar, one hearing (if any), and one final award determining individual relief 
+            for each claimant. Batches shall be administered concurrently where possible. This provision does not authorize class, 
+            collective, or representative arbitration except as expressly stated herein.
+          </p>
+
+          <h3>25.7 30-Day Opt-Out Right</h3>
+          <p>
+            You may opt out of this Arbitration Agreement by sending written notice to{' '}
+            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>{' '}
+            within 30 days of first becoming subject to it. Your notice must include your name, address, 
+            the email address associated with your VizionX account, and a clear statement that you wish to opt out. 
+            Opt-out notices must be sent individually — notices from third parties purporting to act on your behalf are ineffective. 
+            Opting out does not affect any other part of these Terms or any prior arbitration agreements you did not timely opt out of.
+          </p>
+
+          <h3>25.8 Severability of Arbitration Provisions</h3>
+          <p>
+            If any part of this Arbitration Agreement (other than Section 25.6) is found invalid or unenforceable, 
+            the remainder shall continue in full force. If Section 25.6 is found invalid or unenforceable, 
+            the entire Arbitration Agreement shall be void, and all Disputes will be heard in state or federal courts 
+            located in New York. All Disputes must be initiated within the applicable statute of limitations.
+          </p>
+
+          <h3>25.9 Modifications to Arbitration Agreement</h3>
+          <p>
+            VizionX may modify this Arbitration Agreement in the future. Changes will be posted at{' '}
+            <a href="https://www.vizionx.pro/terms" className="text-cyan-400 hover:underline">www.vizionx.pro/terms</a>. 
+            Your continued use of VizionX after changes are posted constitutes acceptance. 
+            If you previously agreed to an arbitration agreement and did not validly opt out, 
+            modifications do not provide a new opt-out opportunity for prior agreements.
+          </p>
+
+          <h3>25.10 Governing Courts</h3>
+          <p>
+            To the extent a Dispute is not covered by this Arbitration Agreement, it shall proceed before state or federal courts 
+            located in New York, except for small claims court actions which may be brought in the county of your residence. 
+            If you reside in the EEA, disputes will be resolved in the courts of your country of residence, 
+            and you may invoke the mandatory consumer protection laws of your jurisdiction.
           </p>
 
           <h2>26. Severability</h2>
@@ -289,7 +393,13 @@ export default function Terms() {
             to the minimum extent necessary, and the remaining provisions shall continue in full force and effect.
           </p>
 
-          <h2>27. Contact</h2>
+          <h2>27. Entire Agreement</h2>
+          <p>
+            These Terms, together with our Privacy Policy and any other policies referenced herein, constitute the entire agreement 
+            between you and VizionX regarding your use of the platform and supersede all prior agreements and understandings.
+          </p>
+
+          <h2>28. Contact</h2>
           <p>
             For questions about these Terms, please contact us at{' '}
             <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>.
