@@ -1,11 +1,12 @@
-import type { ChartDrawing, CoordHelper, AnchorPoint } from './types';
+import type { ChartDrawing, CoordHelper, AnchorPoint, CandleData } from './types';
 
 type Renderer = (
   ctx: CanvasRenderingContext2D,
   drawing: ChartDrawing,
   coord: CoordHelper,
   w: number,
-  h: number
+  h: number,
+  candles?: CandleData[]
 ) => void;
 
 function toXY(coord: CoordHelper, time: number, price: number): { x: number; y: number } | null {
@@ -1035,6 +1036,39 @@ const renderXabcd: Renderer = (ctx, d, coord) => {
   ctx.restore();
 };
 
+// ─── Anchored VWAP ───
+const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
+  if (d.points.length < 1 || !candles || candles.length === 0) return;
+  const anchorTime = d.points[0].time;
+  const startIdx = candles.findIndex(c => c.time >= anchorTime);
+  if (startIdx < 0) return;
+  let cumVP = 0, cumV = 0;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = startIdx; i < candles.length; i++) {
+    const c = candles[i];
+    const tp = (c.high + c.low + c.close) / 3;
+    const vol = c.volume || 1;
+    cumVP += tp * vol; cumV += vol;
+    const vwap = cumVP / cumV;
+    const x = coord.timeToX(c.time);
+    const y = coord.priceToY(vwap);
+    if (x !== null && y !== null) pts.push({ x, y });
+  }
+  if (pts.length < 1) return;
+  setupStroke(ctx, d);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+  const last = pts[pts.length - 1];
+  ctx.save();
+  ctx.font = '10px monospace';
+  ctx.fillStyle = d.color;
+  ctx.textAlign = 'left';
+  ctx.fillText('AVWAP', last.x + 5, last.y - 4);
+  ctx.restore();
+};
+
 // ─── Renderer map ───
 
 const RENDERERS: Record<string, Renderer> = {
@@ -1087,19 +1121,22 @@ const RENDERERS: Record<string, Renderer> = {
   abcd: renderXabcd,
   headshoulders: renderXabcd,
   threedrives: renderXabcd,
+  anchoredvwap: renderAnchoredVwap,
 };
+
 
 export function renderDrawing(
   ctx: CanvasRenderingContext2D,
   drawing: ChartDrawing,
   coord: CoordHelper,
   w: number,
-  h: number
+  h: number,
+  candles?: CandleData[]
 ) {
   if (!drawing.visible) return;
   const renderer = RENDERERS[drawing.type] || renderGeneric;
   ctx.save();
-  renderer(ctx, drawing, coord, w, h);
+  renderer(ctx, drawing, coord, w, h, candles);
   ctx.restore();
 
   // Render text label if present

@@ -160,7 +160,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     ctx.clearRect(0, 0, w, h);
 
     for (const d of chartDrawings) {
-      renderDrawing(ctx, d, coord, w, h);
+      renderDrawing(ctx, d, coord, w, h, candles);
       const isSelected = d.id === selectedDrawingId || selectedDrawingIds.has(d.id);
       if (isSelected) {
         const anchors = getAnchors(d, coord);
@@ -226,7 +226,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         props: previewProps,
       };
       ctx.globalAlpha = 0.7;
-      renderDrawing(ctx, previewDrawing, coord, w, h);
+      renderDrawing(ctx, previewDrawing, coord, w, h, candles);
       ctx.globalAlpha = 1;
 
       for (const pt of pendingPointsRef.current) {
