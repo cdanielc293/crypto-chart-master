@@ -124,10 +124,16 @@ export default function LayoutManager() {
         // This will be handled by persistence per symbol
       }
 
-      // Restore multi-panel symbols
+      // Restore multi-panel symbols, intervals, and chart types
       if (grid.count > 1) {
         panels.forEach((panel, i) => {
           ctx.setPanelSymbol(i, panel.symbol || 'BTCUSDT');
+          if (panel.interval) {
+            ctx.setPanelInterval(i, panel.interval as any);
+          }
+          if (panel.chartType) {
+            ctx.setPanelChartType(i, panel.chartType as any);
+          }
         });
       }
     }
