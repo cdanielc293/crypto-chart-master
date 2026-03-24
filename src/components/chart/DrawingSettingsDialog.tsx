@@ -215,10 +215,70 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-        <select className="bg-muted border border-border rounded px-2 py-1 text-sm text-muted-foreground">
-          <option>Template</option>
-        </select>
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border gap-2">
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          {showTemplateSave ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={newTemplateName}
+                onChange={e => setNewTemplateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+                placeholder="Template name"
+                className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 focus:border-primary focus:outline-none"
+                autoFocus
+              />
+              <button onClick={handleSaveTemplate} className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90">Save</button>
+              <button onClick={() => setShowTemplateSave(false)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <select
+                onChange={e => {
+                  const idx = parseInt(e.target.value);
+                  if (!isNaN(idx) && templates[idx]) handleApplyTemplate(templates[idx]);
+                  e.target.value = '';
+                }}
+                className="bg-muted border border-border rounded px-2 py-1 text-sm text-muted-foreground max-w-[120px]"
+                defaultValue=""
+              >
+                <option value="" disabled>Template</option>
+                {templates.map((t, i) => (
+                  <option key={i} value={i}>{t.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowTemplateSave(true)}
+                className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
+                title="Save as template"
+              >
+                <Save size={14} />
+              </button>
+              {templates.length > 0 && (
+                <button
+                  onClick={() => {
+                    const name = prompt('Delete template name:');
+                    if (name) {
+                      const idx = templates.findIndex(t => t.name === name);
+                      if (idx >= 0) handleDeleteTemplate(idx);
+                    }
+                  }}
+                  className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
+                  title="Delete template"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+              <button
+                onClick={handleSetDefault}
+                className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 border border-border rounded transition-colors"
+                title="Set current style as default for this tool type"
+              >
+                Set default
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <button onClick={handleCancel} className="px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded transition-colors">Cancel</button>
           <button onClick={handleOk} className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">Ok</button>
