@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -178,7 +178,7 @@ export default function MediaEmbedWidget({
 
   const embedUrl = useMemo(() => toEmbedUrl(platform, activeUrl), [platform, activeUrl]);
 
-  const submit = (event: React.FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
     setActiveUrl(input.trim());
     setLoadError(false);
