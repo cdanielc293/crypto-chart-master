@@ -167,15 +167,34 @@ export default function Admin() {
                         <th className="px-4 py-3 text-left">Username</th>
                         <th className="px-4 py-3 text-left">Plan</th>
                         <th className="px-4 py-3 text-left">Change Plan</th>
+                        <th className="px-4 py-3 text-left">Last Login</th>
+                        <th className="px-4 py-3 text-left">Online</th>
                         <th className="px-4 py-3 text-left">Joined</th>
                         <th className="px-4 py-3 text-left">Status</th>
                         <th className="px-4 py-3 text-left">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {profiles?.map((p: any) => (
+                      {profiles?.map((p: any) => {
+                        const isOnline = p.last_seen_at && (Date.now() - new Date(p.last_seen_at).getTime()) < 5 * 60 * 1000;
+                        const getOnlineDuration = () => {
+                          if (!p.last_seen_at || !p.last_login) return '—';
+                          const lastSeen = new Date(p.last_seen_at).getTime();
+                          const lastLogin = new Date(p.last_login).getTime();
+                          if (lastSeen < lastLogin) return '—';
+                          const diffMs = lastSeen - lastLogin;
+                          const mins = Math.floor(diffMs / 60000);
+                          if (mins < 1) return '< 1m';
+                          if (mins < 60) return `${mins}m`;
+                          const hrs = Math.floor(mins / 60);
+                          const remMins = mins % 60;
+                          if (hrs < 24) return `${hrs}h ${remMins}m`;
+                          const days = Math.floor(hrs / 24);
+                          return `${days}d ${hrs % 24}h`;
+                        };
+                        return (
                         <tr key={p.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className="px-4 py-3 text-white/50 text-xs">{p.email || '—'}</td>
+                          <td className="px-4 py-3 text-white/50 text-xs max-w-[180px] truncate">{p.email || '—'}</td>
                           <td className="px-4 py-3 text-white/80">{p.full_name || '—'}</td>
                           <td className="px-4 py-3 text-white/50">{p.username || '—'}</td>
                           <td className="px-4 py-3">
@@ -203,6 +222,13 @@ export default function Admin() {
                               ))}
                             </select>
                           </td>
+                          <td className="px-4 py-3 text-white/40 text-xs">{p.last_login ? formatDate(p.last_login) : '—'}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`} />
+                              <span className="text-xs text-white/50">{isOnline ? 'Online' : getOnlineDuration()}</span>
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-white/40 text-xs">{formatDate(p.created_at)}</td>
                           <td className="px-4 py-3">
                             {p.is_blocked ? (
@@ -223,7 +249,8 @@ export default function Admin() {
                             </Button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
