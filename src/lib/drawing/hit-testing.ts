@@ -180,8 +180,34 @@ export function hitTestDrawing(
     return false;
   }
 
+  // Parallel channel: hit test both top and bottom lines
+  if (type === 'parallelchannel') {
+    if (drawing.points.length < 3) {
+      // During drawing with 2 points, test the single line
+      if (drawing.points.length === 2) {
+        const pts = drawing.points.map(p => toXY(coord, p.time, p.price)).filter(Boolean) as { x: number; y: number }[];
+        if (pts.length >= 2 && distToSegment(mx, my, pts[0].x, pts[0].y, pts[1].x, pts[1].y) <= HIT_RADIUS) return true;
+      }
+      return false;
+    }
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    const p2 = toXY(coord, drawing.points[1].time, drawing.points[1].price);
+    const p3 = toXY(coord, drawing.points[2].time, drawing.points[2].price);
+    if (!p1 || !p2 || !p3) return false;
+    const offsetY = p3.y - p1.y;
+    // Top line
+    if (distToSegment(mx, my, p1.x, p1.y, p2.x, p2.y) <= HIT_RADIUS) return true;
+    // Bottom line
+    if (distToSegment(mx, my, p1.x, p1.y + offsetY, p2.x, p2.y + offsetY) <= HIT_RADIUS) return true;
+    // Middle line (if visible)
+    const midOff = offsetY * 0.5;
+    if (distToSegment(mx, my, p1.x, p1.y + midOff, p2.x, p2.y + midOff) <= HIT_RADIUS) return true;
+    // Area between lines
+    return false;
+  }
+
   // Triangle and 3-point shapes
-  if (['triangle', 'trianglepattern', 'parallelchannel', 'pitchfork',
+  if (['triangle', 'trianglepattern', 'pitchfork',
     'schiffpitchfork', 'modifiedschiff', 'insidepitchfork', 'arc', 'curve'].includes(type)) {
     if (drawing.points.length < 2) return false;
     const pts = drawing.points
