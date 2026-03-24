@@ -399,10 +399,13 @@ export default function Terms() {
           </p>
 
           <h2>28. Contact</h2>
-          <p>
-            For questions about these Terms, please contact us at{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>.
-          </p>
+          <p>For questions about these Terms, please use the form below:</p>
+          <InlineContactForm
+            category="legal"
+            title="Legal Inquiry"
+            placeholder="Describe your question or concern about these Terms..."
+            buttonLabel="Submit"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">

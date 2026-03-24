@@ -140,15 +140,20 @@ export default function Accessibility() {
 
           <h2>Contact Us</h2>
           <p>
-            Your feedback helps us build a better, more inclusive platform. If you encounter any accessibility issues 
-            or have suggestions for improvement, please reach out to us at{' '}
-            <a href="mailto:accessibility@vizionx.pro" className="text-cyan-400 hover:underline">accessibility@vizionx.pro</a>.
+            Your feedback helps us build a better, more inclusive platform. If you encounter any accessibility issues
+            or have suggestions for improvement, please reach out using the form below:
           </p>
+          <InlineContactForm
+            category="accessibility"
+            title="Accessibility Feedback"
+            placeholder="Describe the accessibility issue or suggestion..."
+            buttonLabel="Submit Feedback"
+          />
           <p className="text-white/40 text-xs">
-            Note: This email address is dedicated to accessibility-related feedback only.
+            This form is dedicated to accessibility-related feedback only.
           </p>
           <p>
-            Thank you for being part of the VizionX community and for supporting our mission to create 
+            Thank you for being part of the VizionX community and for supporting our mission to create
             an accessible and inclusive analytical platform for all.
           </p>
 
