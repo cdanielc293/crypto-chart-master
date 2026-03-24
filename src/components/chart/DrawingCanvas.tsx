@@ -460,11 +460,59 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
       if (dragTypeRef.current === 'anchor') {
         const idx = dragAnchorIdxRef.current;
-        const newPoints = dragStartRef.current.points.map((p, i) => {
-          if (i === idx) return { time, price };
-          return { ...p };
-        });
-        updateDrawing(selected.id, { ...selected, points: newPoints });
+        
+        // Handle virtual anchors for parallel channel
+        if (selected.type === 'parallelchannel' && idx >= 10 && selected.points.length >= 3) {
+          const origPoints = dragStartRef.current.points;
+          const newPoints = origPoints.map(p => ({ ...p }));
+          const origP1Y = coord.priceToY(origPoints[0].price);
+          const origP2Y = coord.priceToY(origPoints[1].price);
+          const origP3Y = coord.priceToY(origPoints[2].price);
+          if (origP1Y === null || origP2Y === null || origP3Y === null) return;
+          const origOffsetY = origP3Y - origP1Y;
+          
+          if (idx === 10) {
+            // Bottom-left: move point 0's corresponding bottom anchor -> adjust channel width (point 2)
+            // The bottom-left is at p1 + offset. Moving it changes the offset.
+            const newOffsetPrice = price - origPoints[0].price;
+            newPoints[2] = { time: origPoints[2].time, price: origPoints[0].price + newOffsetPrice };
+            // Also allow horizontal movement of point 0
+            newPoints[0] = { time, price: origPoints[0].price };
+            newPoints[2] = { time: origPoints[2].time, price: origPoints[0].price + newOffsetPrice };
+          } else if (idx === 12) {
+            // Bottom-right: move point 1's corresponding bottom anchor
+            const newOffsetPrice = price - origPoints[1].price;
+            newPoints[2] = { time: origPoints[2].time, price: origPoints[0].price + newOffsetPrice };
+            newPoints[1] = { time, price: origPoints[1].price };
+          } else if (idx === 11) {
+            // Bottom-middle: shift channel width uniformly
+            const origMidY = (origP1Y + origP2Y) / 2 + origOffsetY;
+            const newMidY = coord.priceToY(price);
+            if (newMidY === null) return;
+            const deltaY = newMidY - origMidY;
+            const newP3Price = coord.yToPrice(origP3Y + deltaY);
+            if (newP3Price === null) return;
+            newPoints[2] = { ...origPoints[2], price: newP3Price };
+          } else if (idx === 13) {
+            // Top-middle: shift top line uniformly (move p1 and p2 vertically)
+            const origMidY = (origP1Y + origP2Y) / 2;
+            const newMidY = coord.priceToY(price);
+            if (newMidY === null) return;
+            const deltaY = newMidY - origMidY;
+            const newP1Price = coord.yToPrice(origP1Y + deltaY);
+            const newP2Price = coord.yToPrice(origP2Y + deltaY);
+            if (newP1Price === null || newP2Price === null) return;
+            newPoints[0] = { ...origPoints[0], price: newP1Price };
+            newPoints[1] = { ...origPoints[1], price: newP2Price };
+          }
+          updateDrawing(selected.id, { ...selected, points: newPoints });
+        } else {
+          const newPoints = dragStartRef.current.points.map((p, i) => {
+            if (i === idx) return { time, price };
+            return { ...p };
+          });
+          updateDrawing(selected.id, { ...selected, points: newPoints });
+        }
       } else {
         const newPoints = dragStartRef.current.points.map(p => {
           const origX = coord.timeToX(p.time);
