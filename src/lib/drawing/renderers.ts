@@ -1209,46 +1209,117 @@ const renderFibTrendTime: Renderer = (ctx, d, coord, _w, h) => {
 
 // ─── Positions ───
 
-const renderPosition: Renderer = (ctx, d, coord) => {
+const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 2) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
   const isLong = d.type === 'longposition';
+  const props = d.props || {};
   const entry = d.points[0].price;
   const target = d.points[1].price;
+  const qty = props.quantity || 1;
+  const stopPrice = props.stopPrice;
+
   const yEntry = coord.priceToY(entry);
   const yTarget = coord.priceToY(target);
   if (yEntry === null || yTarget === null) return;
 
-  // Background
-  const profitColor = isLong ? (target > entry) : (target < entry);
-  ctx.fillStyle = profitColor ? 'rgba(38,166,154,0.12)' : 'rgba(239,83,80,0.12)';
-  ctx.fillRect(p1.x, Math.min(yEntry, yTarget), Math.abs(p2.x - p1.x) || 150, Math.abs(yTarget - yEntry));
+  const boxLeft = p1.x;
+  const boxRight = Math.max(p2.x, p1.x + 180);
+  const boxW = boxRight - boxLeft;
+
+  // Profit zone
+  const inProfit = isLong ? (target > entry) : (target < entry);
+  const profitBg = 'rgba(38,166,154,0.12)';
+  const lossBg = 'rgba(239,83,80,0.12)';
+
+  ctx.fillStyle = inProfit ? profitBg : lossBg;
+  ctx.fillRect(boxLeft, Math.min(yEntry, yTarget), boxW, Math.abs(yTarget - yEntry));
+
+  // Stop loss zone
+  let yStop: number | null = null;
+  if (stopPrice != null && stopPrice > 0) {
+    yStop = coord.priceToY(stopPrice);
+    if (yStop !== null) {
+      const stopInLoss = isLong ? (stopPrice < entry) : (stopPrice > entry);
+      ctx.fillStyle = stopInLoss ? lossBg : profitBg;
+      ctx.fillRect(boxLeft, Math.min(yEntry, yStop), boxW, Math.abs(yStop - yEntry));
+    }
+  }
 
   // Entry line
   ctx.strokeStyle = '#2196f3';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(p1.x, yEntry);
-  ctx.lineTo(p1.x + 150, yEntry);
-  ctx.stroke();
-  // Target line
-  ctx.strokeStyle = profitColor ? '#26a69a' : '#ef5350';
-  ctx.beginPath();
-  ctx.moveTo(p1.x, yTarget);
-  ctx.lineTo(p1.x + 150, yTarget);
+  ctx.moveTo(boxLeft, yEntry);
+  ctx.lineTo(boxRight, yEntry);
   ctx.stroke();
 
+  // Target line
+  ctx.strokeStyle = inProfit ? '#26a69a' : '#ef5350';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, yTarget);
+  ctx.lineTo(boxRight, yTarget);
+  ctx.stroke();
+
+  // Stop line
+  if (yStop !== null) {
+    ctx.strokeStyle = '#ef5350';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(boxLeft, yStop);
+    ctx.lineTo(boxRight, yStop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Calculate P&L
+  const pnlTarget = isLong ? target - entry : entry - target;
+  const pnlTargetPct = ((pnlTarget / entry) * 100).toFixed(2);
+  const pnlTargetAbs = (pnlTarget * qty).toFixed(2);
+
   // Labels
-  ctx.fillStyle = '#d1d4dc';
-  ctx.font = '10px monospace';
-  ctx.fillText(`Entry: ${entry.toFixed(2)}`, p1.x + 5, yEntry - 4);
-  ctx.fillText(`Target: ${target.toFixed(2)}`, p1.x + 5, yTarget - 4);
-  const pnl = isLong ? target - entry : entry - target;
-  const pnlPct = ((pnl / entry) * 100).toFixed(2);
-  ctx.fillStyle = profitColor ? '#26a69a' : '#ef5350';
-  ctx.fillText(`${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} (${pnlPct}%)`, p1.x + 5, (yEntry + yTarget) / 2);
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+
+  // Entry label
+  ctx.fillStyle = '#2196f3';
+  ctx.fillText(`Entry: ${entry.toFixed(2)}`, boxLeft + 5, yEntry - 5);
+
+  // Target label with P&L
+  ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
+  ctx.fillText(`Target: ${target.toFixed(2)}  ${pnlTarget >= 0 ? '+' : ''}${pnlTargetPct}%  (${pnlTarget >= 0 ? '+' : ''}${pnlTargetAbs})`, boxLeft + 5, yTarget + (yTarget < yEntry ? -5 : 14));
+
+  // Stop label
+  if (yStop !== null && stopPrice != null) {
+    const pnlStop = isLong ? stopPrice - entry : entry - stopPrice;
+    const pnlStopPct = ((pnlStop / entry) * 100).toFixed(2);
+    const pnlStopAbs = (pnlStop * qty).toFixed(2);
+    ctx.fillStyle = '#ef5350';
+    ctx.fillText(`Stop: ${stopPrice.toFixed(2)}  ${pnlStop >= 0 ? '+' : ''}${pnlStopPct}%  (${pnlStop >= 0 ? '+' : ''}${pnlStopAbs})`, boxLeft + 5, yStop + (yStop > yEntry ? 14 : -5));
+
+    // Risk/Reward ratio
+    if (Math.abs(pnlStop) > 0) {
+      const rr = Math.abs(pnlTarget / pnlStop);
+      ctx.fillStyle = '#d1d4dc';
+      ctx.fillText(`R/R: ${rr.toFixed(2)}`, boxLeft + 5, (yEntry + yTarget) / 2);
+    }
+  } else {
+    // Just show P&L in center
+    ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
+    ctx.fillText(`P&L: ${pnlTarget >= 0 ? '+' : ''}${pnlTarget.toFixed(2)} (${pnlTargetPct}%)`, boxLeft + 5, (yEntry + yTarget) / 2);
+  }
+
+  // Quantity label
+  if (qty > 1) {
+    ctx.fillStyle = '#787b86';
+    ctx.font = '10px monospace';
+    ctx.fillText(`Qty: ${qty}`, boxRight - 60, yEntry - 5);
+  }
 };
 
 // ─── Gann Box ───
