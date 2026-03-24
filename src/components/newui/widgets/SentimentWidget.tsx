@@ -1,53 +1,64 @@
-// AI Sentiment Heatmap placeholder
-import { useEffect, useRef } from 'react';
+// AI Sentiment — professional heatmap grid with mock scores
+const ASSETS = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'LINK', 'MATIC'];
+const TIMEFRAMES = ['1H', '4H', '1D', '1W'];
+
+// Deterministic mock sentiment scores
+function getScore(asset: string, tf: string): number {
+  const hash = (asset.charCodeAt(0) * 7 + asset.charCodeAt(1) * 13 + tf.charCodeAt(0) * 3) % 100;
+  return hash - 50; // -50 to +50
+}
+
+function scoreColor(score: number): string {
+  if (score > 30) return 'rgba(16,185,129,0.7)';
+  if (score > 10) return 'rgba(16,185,129,0.35)';
+  if (score > -10) return 'rgba(255,255,255,0.06)';
+  if (score > -30) return 'rgba(239,68,68,0.35)';
+  return 'rgba(239,68,68,0.7)';
+}
+
+function scoreText(score: number): string {
+  if (score > 30) return 'text-emerald-400';
+  if (score > 10) return 'text-emerald-400/60';
+  if (score > -10) return 'text-white/30';
+  if (score > -30) return 'text-red-400/60';
+  return 'text-red-400';
+}
 
 export default function SentimentWidget() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let frame: number;
-    let t = 0;
-
-    const draw = () => {
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      ctx.scale(2, 2);
-
-      const cols = 12;
-      const rows = 4;
-      const cw = w / cols;
-      const ch = h / rows;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const val = Math.sin((c + t * 0.02) * 0.5) * Math.cos((r + t * 0.01) * 0.8);
-          const hue = val > 0 ? 142 : 0; // green vs red
-          const sat = 70;
-          const light = 25 + Math.abs(val) * 30;
-          ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, 0.6)`;
-          ctx.fillRect(c * cw + 1, r * ch + 1, cw - 2, ch - 2);
-        }
-      }
-      t++;
-      frame = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
   return (
-    <div className="w-full h-full relative">
-      <canvas ref={canvasRef} className="w-full h-full rounded-lg" />
-      <div className="absolute top-2 right-2 text-[9px] tracking-widest text-orange-400/50 font-mono uppercase">
-        AI Sentiment
-      </div>
+    <div className="w-full h-full overflow-auto">
+      <table className="w-full text-[10px] font-mono">
+        <thead>
+          <tr className="text-white/20 uppercase tracking-wider text-[8px]">
+            <th className="text-left py-1 px-2 font-medium">Asset</th>
+            {TIMEFRAMES.map(tf => (
+              <th key={tf} className="text-center py-1 px-1 font-medium">{tf}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {ASSETS.map(asset => (
+            <tr key={asset} className="border-b border-white/[0.02]">
+              <td className="py-1 px-2 text-white/60 font-semibold">{asset}</td>
+              {TIMEFRAMES.map(tf => {
+                const score = getScore(asset, tf);
+                return (
+                  <td key={tf} className="py-1 px-1 text-center">
+                    <div
+                      className="rounded px-1.5 py-0.5 inline-block min-w-[32px]"
+                      style={{ background: scoreColor(score) }}
+                    >
+                      <span className={`text-[9px] font-bold ${scoreText(score)}`}>
+                        {score > 0 ? '+' : ''}{score}
+                      </span>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

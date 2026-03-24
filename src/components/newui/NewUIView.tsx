@@ -1,4 +1,4 @@
-// New UI — Futuristic modular trading terminal
+// New UI — Professional modular trading terminal
 // Fully isolated from Classic view
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -9,17 +9,15 @@ import WidgetWrapper from './WidgetWrapper';
 import WidgetRenderer from './widgets/WidgetRenderer';
 
 const COLS = 4;
-const ROW_HEIGHT = 200;
+const ROW_HEIGHT = 220;
 
 export default function NewUIView() {
   const { widgets, addWidget, removeWidget, favorites, toggleFavorite } = useNewUILayout();
   const [hubOpen, setHubOpen] = useState(false);
 
-  // Calculate grid rows needed
   const maxRow = widgets.reduce((max, w) => Math.max(max, w.position.row + w.position.rowSpan), 0);
   const totalRows = Math.max(maxRow + 1, 3);
 
-  // Build occupied map
   const occupied = new Set<string>();
   widgets.forEach(w => {
     for (let r = w.position.row; r < w.position.row + w.position.rowSpan; r++) {
@@ -29,7 +27,6 @@ export default function NewUIView() {
     }
   });
 
-  // Empty slots
   const emptySlots: { col: number; row: number }[] = [];
   for (let r = 0; r < totalRows; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -41,15 +38,14 @@ export default function NewUIView() {
 
   return (
     <div className="newui-root newui-grid-bg flex flex-col h-full w-full overflow-auto">
-      <div className="flex-1 p-4 md:p-6">
+      <div className="flex-1 p-3">
         <div
-          className="grid gap-3"
+          className="grid gap-2"
           style={{
             gridTemplateColumns: `repeat(${COLS}, 1fr)`,
             gridAutoRows: `${ROW_HEIGHT}px`,
           }}
         >
-          {/* Placed widgets */}
           {widgets.map(w => (
             <div
               key={w.id}
@@ -57,7 +53,6 @@ export default function NewUIView() {
                 gridColumn: `${w.position.col + 1} / span ${w.position.colSpan}`,
                 gridRow: `${w.position.row + 1} / span ${w.position.rowSpan}`,
               }}
-              className="animate-scale-in"
             >
               <WidgetWrapper widget={w} onRemove={removeWidget}>
                 <WidgetRenderer widget={w} />
@@ -65,7 +60,6 @@ export default function NewUIView() {
             </div>
           ))}
 
-          {/* Empty slots with + button */}
           {emptySlots.map(slot => (
             <div
               key={`empty-${slot.col}-${slot.row}`}
@@ -76,12 +70,12 @@ export default function NewUIView() {
               className="newui-slot flex items-center justify-center group"
               onClick={() => setHubOpen(true)}
             >
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-xl border border-dashed border-[#00f0ff]/15 flex items-center justify-center text-[#00f0ff]/25 group-hover:text-[#00f0ff]/60 group-hover:border-[#00f0ff]/30 transition-all duration-300">
-                  <Plus size={20} />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-8 h-8 rounded border border-dashed border-white/[0.08] flex items-center justify-center text-white/15 group-hover:text-white/35 group-hover:border-white/15 transition-all">
+                  <Plus size={16} />
                 </div>
-                <span className="text-[10px] font-medium tracking-wider text-white/15 group-hover:text-white/30 transition-colors uppercase">
-                  Add Widget
+                <span className="text-[9px] font-mono tracking-wider text-white/10 group-hover:text-white/25 transition-colors uppercase">
+                  Add
                 </span>
               </div>
             </div>
@@ -89,7 +83,6 @@ export default function NewUIView() {
         </div>
       </div>
 
-      {/* Widget Hub overlay */}
       <WidgetHub
         open={hubOpen}
         onClose={() => setHubOpen(false)}
