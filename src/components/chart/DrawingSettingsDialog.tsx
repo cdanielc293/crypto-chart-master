@@ -97,12 +97,17 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   const [localProps, setLocalProps] = useState<Record<string, any>>({});
   const [localColor, setLocalColor] = useState('');
   const [localLineWidth, setLocalLineWidth] = useState(2);
+  const [templates, setTemplates] = useState<DrawingTemplate[]>([]);
+  const [showTemplateSave, setShowTemplateSave] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
 
   useEffect(() => {
     if (open && drawing) {
       setLocalProps({ ...drawing.props });
       setLocalColor(drawing.color);
       setLocalLineWidth(drawing.lineWidth);
+      setTemplates(getTemplatesForType(drawing.type));
+      setShowTemplateSave(false);
     }
   }, [open, drawing?.id]);
 
@@ -123,6 +128,42 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 
   const handleCancel = () => {
     onClose();
+  };
+
+  const handleSaveTemplate = () => {
+    if (!newTemplateName.trim()) return;
+    const tmpl: DrawingTemplate = {
+      name: newTemplateName.trim(),
+      color: localColor,
+      lineWidth: localLineWidth,
+      props: { ...localProps },
+    };
+    const updated = [...templates, tmpl];
+    setTemplates(updated);
+    saveTemplatesForType(drawing.type, updated);
+    setNewTemplateName('');
+    setShowTemplateSave(false);
+  };
+
+  const handleApplyTemplate = (tmpl: DrawingTemplate) => {
+    setLocalColor(tmpl.color);
+    setLocalLineWidth(tmpl.lineWidth);
+    setLocalProps(prev => ({ ...prev, ...tmpl.props }));
+  };
+
+  const handleDeleteTemplate = (idx: number) => {
+    const updated = templates.filter((_, i) => i !== idx);
+    setTemplates(updated);
+    saveTemplatesForType(drawing.type, updated);
+  };
+
+  const handleSetDefault = () => {
+    setDefaultTemplate(drawing.type, {
+      name: 'default',
+      color: localColor,
+      lineWidth: localLineWidth,
+      props: { ...localProps },
+    });
   };
 
   return (
