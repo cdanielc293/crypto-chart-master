@@ -100,19 +100,27 @@ function ChartWithShortcuts() {
     return () => document.removeEventListener('contextmenu', blockContextMenu);
   }, []);
 
+  const { viewMode } = useViewMode();
+
   return (
     <>
       <div className="flex flex-col h-screen w-full overflow-hidden">
         <TopToolbar />
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          <LeftToolbar />
-          <ChartArea />
-          <RightSidebar />
-        </div>
-        <ReplayControls />
+        {viewMode === 'classic' ? (
+          <div className="flex flex-1 min-h-0 overflow-hidden animate-fade-in">
+            <LeftToolbar />
+            <ChartArea />
+            <RightSidebar />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-hidden animate-fade-in">
+            <NewUIView />
+          </div>
+        )}
+        {viewMode === 'classic' && <ReplayControls />}
         <FeedbackWidgets />
       </div>
-      <FavoritesToolbar />
+      {viewMode === 'classic' && <FavoritesToolbar />}
       <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SessionDisconnectedDialog
         open={disconnected}
