@@ -23,6 +23,8 @@ export default function Signup() {
   const tier = searchParams.get('tier') || '';
   const tierLabel = tier ? (tierNames[tier] || 'VizionX Start') : '';
   const initialMode = searchParams.get('mode') === 'login' ? 'signin' : 'signup';
+  // If signup mode but no tier selected, redirect to pricing
+  const hasTier = !!searchParams.get('tier');
   const [mode, setMode] = useState<'signup' | 'signin'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
