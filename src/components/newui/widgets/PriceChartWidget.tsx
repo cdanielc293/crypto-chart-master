@@ -1122,7 +1122,7 @@ export default function PriceChartWidget() {
         return;
       }
 
-      // Single-point tools: place immediately
+      // Single-point tools: place immediately, then auto-switch to cursor (like Classic)
       if (needed === 1) {
         commitDrawing({
           id: `${tool}-${Date.now()}`,
@@ -1131,6 +1131,7 @@ export default function PriceChartWidget() {
           color: '#778ba4',
           lineWidth: 1.4,
         });
+        setDrawingTool('none');
         return;
       }
 
