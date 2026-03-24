@@ -62,12 +62,12 @@ function ChartWithShortcuts() {
     <>
       <div className="flex flex-col h-screen w-full overflow-hidden">
         <TopToolbar />
-        <ReplayControls />
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <LeftToolbar />
           <ChartArea />
           <RightSidebar />
         </div>
+        <ReplayControls />
         <FeedbackWidgets />
       </div>
       <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
