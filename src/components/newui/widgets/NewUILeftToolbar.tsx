@@ -235,9 +235,13 @@ interface Props {
   onSelectTool: (tool: NewUIDrawingTool) => void;
   drawingsCount: number;
   onDeleteAll: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-export default function NewUILeftToolbar({ activeTool, onSelectTool, drawingsCount, onDeleteAll }: Props) {
+export default function NewUILeftToolbar({ activeTool, onSelectTool, drawingsCount, onDeleteAll, onUndo, onRedo, canUndo, canRedo }: Props) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [selectedPerCategory, setSelectedPerCategory] = useState<Record<string, NewUIDrawingTool>>({
@@ -344,6 +348,30 @@ export default function NewUILeftToolbar({ activeTool, onSelectTool, drawingsCou
           )}
         </div>
       ))}
+
+      <div className="w-6 h-px bg-white/[0.06] my-1" />
+
+      {/* Undo / Redo */}
+      <button
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+          canUndo ? 'text-white/30 hover:bg-white/[0.04] hover:text-white/60' : 'text-white/10 cursor-not-allowed'
+        }`}
+      >
+        <Undo2 size={S} />
+      </button>
+      <button
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Y)"
+        className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+          canRedo ? 'text-white/30 hover:bg-white/[0.04] hover:text-white/60' : 'text-white/10 cursor-not-allowed'
+        }`}
+      >
+        <Undo2 size={S} className="scale-x-[-1]" />
+      </button>
 
       <div className="w-6 h-px bg-white/[0.06] my-1" />
 

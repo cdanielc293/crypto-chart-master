@@ -30,7 +30,7 @@ function toDrawing(d: ChartDrawing): Drawing {
 }
 
 export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode, priceScaleWidth = 55 }: Props) {
-  const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId, selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing } = useChart();
+  const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId, selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing, undoDrawing, redoDrawing, canUndoDrawing, canRedoDrawing } = useChart();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
 
@@ -691,6 +691,17 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           setToolbarPos(null);
         }
       }
+      // Ctrl+Z / Ctrl+Y undo/redo for drawings
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoDrawing();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoDrawing();
+        return;
+      }
       // Alt+V shortcut for vertical line
       if (e.altKey && e.key.toLowerCase() === 'v') {
         e.preventDefault();
@@ -701,7 +712,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     window.addEventListener('keydown', handler);
     window.addEventListener('keyup', upHandler);
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
-  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing]);
+  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, undoDrawing, redoDrawing]);
 
   useEffect(() => {
     pendingPointsRef.current = [];

@@ -368,7 +368,7 @@ const bottomActions = [
 ];
 
 export default function LeftToolbar() {
-  const { drawingTool, setDrawingTool, drawings, removeDrawing } = useChart();
+  const { drawingTool, setDrawingTool, drawings, removeDrawing, undoDrawing, redoDrawing, canUndoDrawing, canRedoDrawing } = useChart();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [starredTools, setStarredToolsState] = useState<Set<string>>(getStarredTools);
   const [toggles, setToggles] = useState<Record<string, boolean>>({
@@ -539,6 +539,31 @@ export default function LeftToolbar() {
           )}
         </div>
       ))}
+
+      {/* Separator */}
+      <div className="w-6 h-px bg-chart-border my-1" />
+
+      {/* Undo / Redo */}
+      <button
+        onClick={undoDrawing}
+        disabled={!canUndoDrawing}
+        title="Undo (Ctrl+Z)"
+        className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+          canUndoDrawing ? 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground' : 'text-muted-foreground/20 cursor-not-allowed'
+        }`}
+      >
+        <Undo2 size={TOOL_SIZE} />
+      </button>
+      <button
+        onClick={redoDrawing}
+        disabled={!canRedoDrawing}
+        title="Redo (Ctrl+Y)"
+        className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+          canRedoDrawing ? 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground' : 'text-muted-foreground/20 cursor-not-allowed'
+        }`}
+      >
+        <Undo2 size={TOOL_SIZE} className="scale-x-[-1]" />
+      </button>
 
       {/* Separator */}
       <div className="w-6 h-px bg-chart-border my-1" />

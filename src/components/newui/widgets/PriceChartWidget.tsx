@@ -624,6 +624,20 @@ export default function PriceChartWidget() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
 
+  // Undo/Redo stacks
+  const undoStackRef = useRef<WidgetDrawing[][]>([]);
+  const redoStackRef = useRef<WidgetDrawing[][]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const pushUndo = useCallback(() => {
+    undoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  }, []);
+
   const dataRef = useRef<Candle[]>([]);
   const stateRef = useRef<ChartState>({
     offsetX: 0, candleWidth: DEFAULT_CW, crosshair: null,
@@ -660,6 +674,30 @@ export default function PriceChartWidget() {
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(render);
   }, []);
+
+  const undoDrawings = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    redoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = undoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const redoDrawings = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    undoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = redoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+    scheduleRender();
+  }, [scheduleRender]);
 
   useEffect(() => {
     configRef.current = config;
@@ -713,28 +751,31 @@ export default function PriceChartWidget() {
   const removeAllIndicators = useCallback(() => setIndicators([]), []);
 
   const commitDrawing = useCallback((drawing: WidgetDrawing) => {
+    pushUndo();
     drawingsRef.current = [...drawingsRef.current, drawing];
     persistDrawings(drawingsRef.current);
     setDrawingsCount(drawingsRef.current.length);
     scheduleRender();
-  }, [scheduleRender]);
+  }, [scheduleRender, pushUndo]);
 
   const removeAllDrawings = useCallback(() => {
+    pushUndo();
     drawingsRef.current = [];
     draftPointsRef.current = [];
     persistDrawings(drawingsRef.current);
     setDrawingsCount(0);
     setSelectedDrawingId(null);
     scheduleRender();
-  }, [scheduleRender]);
+  }, [scheduleRender, pushUndo]);
 
   const removeDrawing = useCallback((id: string) => {
+    pushUndo();
     drawingsRef.current = drawingsRef.current.filter(d => d.id !== id);
     persistDrawings(drawingsRef.current);
     setDrawingsCount(drawingsRef.current.length);
     if (selectedDrawingId === id) setSelectedDrawingId(null);
     scheduleRender();
-  }, [scheduleRender, selectedDrawingId]);
+  }, [scheduleRender, selectedDrawingId, pushUndo]);
 
   const updateDrawing = useCallback((id: string, updates: Partial<WidgetDrawing>) => {
     drawingsRef.current = drawingsRef.current.map(d => d.id === id ? { ...d, ...updates } : d);
@@ -767,12 +808,24 @@ export default function PriceChartWidget() {
         scheduleRender();
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         removeDrawing(selectedDrawingId);
+      }
+      // Ctrl+Z / Ctrl+Y undo/redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoDrawings();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoDrawings();
+        return;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [scheduleRender, selectedDrawingId, removeDrawing]);
+  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings]);
 
   // ─── Data fetch ───
   useEffect(() => {
@@ -1348,6 +1401,7 @@ export default function PriceChartWidget() {
       if (hit) {
         setSelectedDrawingId(hit.id);
         if (!hit.locked) {
+          pushUndo();
           dragDrawingRef.current = {
             id: hit.id,
             startMx: x,
@@ -1572,6 +1626,10 @@ export default function PriceChartWidget() {
         onSelectTool={handleSelectTool}
         drawingsCount={drawingsCount}
         onDeleteAll={removeAllDrawings}
+        onUndo={undoDrawings}
+        onRedo={redoDrawings}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       {/* Chart area */}
