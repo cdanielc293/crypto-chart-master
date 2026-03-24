@@ -601,7 +601,7 @@ function NewsTab({ symbols }: { symbols: string[] }) {
 
 // ─── Main Component ───
 
-export default function AdvancedWatchlist({ onClose }: { onClose: () => void }) {
+export default function AdvancedWatchlist({ onClose, panelWidth }: { onClose: () => void; panelWidth: number }) {
   const {
     symbol, setSymbol, watchlists, activeWatchlistId,
     watchlistPrices, gridLayout, activePanelIndex, setPanelSymbol, panelSymbols,
