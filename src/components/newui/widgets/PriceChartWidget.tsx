@@ -226,6 +226,95 @@ function persistDrawings(drawings: WidgetDrawing[]) {
   localStorage.setItem(DRAWINGS_STORAGE_KEY, JSON.stringify(drawings));
 }
 
+// ─── Hit testing for drawings ───
+const HIT_RADIUS = 8;
+
+function distToSegment(mx: number, my: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(mx - x1, my - y1);
+  const t = Math.max(0, Math.min(1, ((mx - x1) * dx + (my - y1) * dy) / lenSq));
+  return Math.hypot(mx - (x1 + t * dx), my - (y1 + t * dy));
+}
+
+function hitTestWidgetDrawing(
+  d: WidgetDrawing,
+  mx: number, my: number,
+  timeToX: (t: number) => number | null,
+  priceToY: (p: number) => number,
+  chartW: number, priceH: number,
+): boolean {
+  if (d.visible === false) return false;
+  const pts = d.points.map(p => {
+    const x = timeToX(p.time);
+    const y = priceToY(p.price);
+    return x !== null ? { x, y } : null;
+  }).filter(Boolean) as { x: number; y: number }[];
+
+  const type = d.type;
+
+  if (type === 'horizontalline' && d.points.length >= 1) {
+    const y = priceToY(d.points[0].price);
+    return Math.abs(my - y) <= HIT_RADIUS;
+  }
+  if (type === 'verticalline' && pts.length >= 1) {
+    return Math.abs(mx - pts[0].x) <= HIT_RADIUS;
+  }
+  if (type === 'crossline' && pts.length >= 1) {
+    return Math.abs(mx - pts[0].x) <= HIT_RADIUS || Math.abs(my - pts[0].y) <= HIT_RADIUS;
+  }
+  if (['arrowmarkup', 'arrowmarkdown', 'arrowmarker', 'text', 'note'].includes(type) && pts.length >= 1) {
+    return Math.hypot(mx - pts[0].x, my - pts[0].y) <= 15;
+  }
+
+  // Two-point line types
+  if (['trendline', 'infoline', 'trendangle', 'ray', 'extendedline', 'horizontalray'].includes(type) && pts.length >= 2) {
+    return distToSegment(mx, my, pts[0].x, pts[0].y, pts[1].x, pts[1].y) <= HIT_RADIUS;
+  }
+
+  // Rectangle types
+  if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
+    'longposition', 'shortposition', 'gannbox', 'fixedrangevolume'].includes(type) && pts.length >= 2) {
+    const left = Math.min(pts[0].x, pts[1].x), right = Math.max(pts[0].x, pts[1].x);
+    const top = Math.min(pts[0].y, pts[1].y), bottom = Math.max(pts[0].y, pts[1].y);
+    return mx >= left - HIT_RADIUS && mx <= right + HIT_RADIUS && my >= top - HIT_RADIUS && my <= bottom + HIT_RADIUS;
+  }
+
+  if (type === 'circle' && pts.length >= 2) {
+    const r = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    const dist = Math.hypot(mx - pts[0].x, my - pts[0].y);
+    return dist <= r + HIT_RADIUS;
+  }
+
+  if (type === 'ellipse' && pts.length >= 2) {
+    const rx = Math.abs(pts[1].x - pts[0].x) || 1, ry = Math.abs(pts[1].y - pts[0].y) || 1;
+    const norm = ((mx - pts[0].x) / rx) ** 2 + ((my - pts[0].y) / ry) ** 2;
+    return norm <= 1.3;
+  }
+
+  if (type === 'fibonacci' && pts.length >= 2) {
+    const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+    const p0 = d.points[0].price, p1 = d.points[1].price;
+    for (const l of levels) {
+      const price = p0 + (p1 - p0) * l;
+      const y = priceToY(price);
+      if (Math.abs(my - y) <= HIT_RADIUS) return true;
+    }
+    return false;
+  }
+
+  // Multi-point
+  if (pts.length >= 2) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (distToSegment(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) <= HIT_RADIUS) return true;
+    }
+  }
+  if (pts.length === 1) {
+    return Math.hypot(mx - pts[0].x, my - pts[0].y) <= 15;
+  }
+  return false;
+}
+
 // ─── Drawing renderer ───
 function renderDrawing(
   ctx: CanvasRenderingContext2D,
@@ -235,6 +324,7 @@ function renderDrawing(
   chartW: number,
   priceH: number,
 ) {
+  if (d.visible === false) return;
   ctx.strokeStyle = d.color;
   ctx.fillStyle = d.color;
   ctx.lineWidth = d.lineWidth;
@@ -253,15 +343,18 @@ function renderDrawing(
   if (type === 'horizontalline' && d.points.length >= 1) {
     const y = priceToY(d.points[0].price);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(chartW, y); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, [{ x: chartW / 2, y }], d.color);
     return;
   }
   if (type === 'verticalline' && pts.length >= 1) {
     ctx.beginPath(); ctx.moveTo(pts[0].x, 0); ctx.lineTo(pts[0].x, priceH); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
   if (type === 'crossline' && pts.length >= 1) {
     ctx.beginPath(); ctx.moveTo(0, pts[0].y); ctx.lineTo(chartW, pts[0].y); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pts[0].x, 0); ctx.lineTo(pts[0].x, priceH); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
   if ((type === 'arrowmarkup' || type === 'arrowmarkdown') && pts.length >= 1) {
@@ -272,6 +365,7 @@ function renderDrawing(
     ctx.lineTo(pts[0].x - sz * 0.6, pts[0].y - dir * sz * 0.3);
     ctx.lineTo(pts[0].x + sz * 0.6, pts[0].y - dir * sz * 0.3);
     ctx.closePath(); ctx.fill();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
   if (type === 'text' && pts.length >= 1) {
@@ -279,6 +373,7 @@ function renderDrawing(
     ctx.fillStyle = d.color;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillText('Text', pts[0].x, pts[0].y);
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
   if (type === 'note' && pts.length >= 1) {
@@ -288,6 +383,7 @@ function renderDrawing(
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText('Note', pts[0].x + 10, pts[0].y);
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -296,10 +392,12 @@ function renderDrawing(
 
   if (type === 'trendline' || type === 'infoline' || type === 'trendangle') {
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.stroke();
-    // Draw anchor dots
-    for (const p of pts) {
-      ctx.fillStyle = d.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    else {
+      for (const p of pts) {
+        ctx.fillStyle = d.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+      }
     }
     return;
   }
@@ -311,11 +409,13 @@ function renderDrawing(
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     ctx.lineTo(pts[0].x + dx / mag * len, pts[0].y + dy / mag * len);
     ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
   if (type === 'horizontalray') {
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(chartW, pts[0].y); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -327,18 +427,17 @@ function renderDrawing(
     ctx.moveTo(pts[0].x - dx / mag * len, pts[0].y - dy / mag * len);
     ctx.lineTo(pts[0].x + dx / mag * len, pts[0].y + dy / mag * len);
     ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
-  if (type === 'rectangle' || type === 'rotatedrectangle' || type === 'pricerange' ||
-      type === 'daterange' || type === 'datepricerange' || type === 'longposition' ||
-      type === 'shortposition' || type === 'gannbox' || type === 'fixedrangevolume') {
+  if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
+    'longposition', 'shortposition', 'gannbox', 'fixedrangevolume'].includes(type)) {
     const x1 = Math.min(pts[0].x, pts[1].x), y1 = Math.min(pts[0].y, pts[1].y);
     const w = Math.abs(pts[1].x - pts[0].x), h = Math.abs(pts[1].y - pts[0].y);
     ctx.fillStyle = hexToRgba(d.color, 0.08);
     ctx.fillRect(x1, y1, w, h);
     ctx.strokeRect(x1, y1, w, h);
-
     if (type === 'longposition' || type === 'shortposition') {
       const isLong = type === 'longposition';
       ctx.fillStyle = isLong ? hexToRgba('#26a69a', 0.15) : hexToRgba('#ef5350', 0.15);
@@ -346,6 +445,7 @@ function renderDrawing(
       ctx.strokeStyle = isLong ? '#26a69a' : '#ef5350';
       ctx.strokeRect(x1, y1, w, h);
     }
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -354,6 +454,7 @@ function renderDrawing(
     ctx.fillStyle = hexToRgba(d.color, 0.06);
     ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, r, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -362,6 +463,7 @@ function renderDrawing(
     ctx.fillStyle = hexToRgba(d.color, 0.06);
     ctx.beginPath(); ctx.ellipse(pts[0].x, pts[0].y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -376,20 +478,19 @@ function renderDrawing(
       ctx.strokeStyle = colors[i];
       ctx.lineWidth = 0.8;
       ctx.beginPath(); ctx.moveTo(Math.min(x1, x2), y); ctx.lineTo(Math.max(x1, x2), y); ctx.stroke();
-      // Fill zone
       if (i < levels.length - 1) {
         const nextPrice = p0 + (p1 - p0) * levels[i + 1];
         const ny = priceToY(nextPrice);
         ctx.fillStyle = hexToRgba(colors[i], 0.04);
         ctx.fillRect(Math.min(x1, x2), Math.min(y, ny), Math.abs(x2 - x1), Math.abs(ny - y));
       }
-      // Label
       ctx.fillStyle = colors[i];
       ctx.font = '10px Inter, monospace';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(`${(levels[i] * 100).toFixed(1)}% — ${formatPrice(price)}`, Math.min(x1, x2) + 4, y - 8);
     }
     ctx.lineWidth = d.lineWidth;
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -398,7 +499,6 @@ function renderDrawing(
     const offY = pts[2].y - pts[0].y;
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y + offY); ctx.lineTo(pts[1].x, pts[1].y + offY); ctx.stroke();
-    // Mid line
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = hexToRgba(d.color, 0.4);
     ctx.beginPath();
@@ -406,7 +506,6 @@ function renderDrawing(
     ctx.lineTo(pts[1].x, pts[1].y + offY / 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    // Fill
     ctx.fillStyle = hexToRgba(d.color, 0.05);
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
@@ -414,6 +513,7 @@ function renderDrawing(
     ctx.lineTo(pts[1].x, pts[1].y + offY);
     ctx.lineTo(pts[0].x, pts[0].y + offY);
     ctx.closePath(); ctx.fill();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -425,21 +525,21 @@ function renderDrawing(
     ctx.closePath();
     ctx.fillStyle = hexToRgba(d.color, 0.06);
     ctx.fill(); ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
   // Pitchfork
-  if ((type === 'pitchfork' || type === 'schiffpitchfork' || type === 'modifiedschiff' || type === 'insidepitchfork') && pts.length >= 3) {
+  if (['pitchfork', 'schiffpitchfork', 'modifiedschiff', 'insidepitchfork'].includes(type) && pts.length >= 3) {
     const midX = (pts[1].x + pts[2].x) / 2;
     const midY = (pts[1].y + pts[2].y) / 2;
-    // Median line
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(midX + (midX - pts[0].x) * 5, midY + (midY - pts[0].y) * 5); ctx.stroke();
-    // Tines
     const dx = midX - pts[0].x, dy = midY - pts[0].y;
     ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.moveTo(pts[1].x, pts[1].y); ctx.lineTo(pts[1].x + dx * 6, pts[1].y + dy * 6); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(pts[2].x, pts[2].y); ctx.lineTo(pts[2].x + dx * 6, pts[2].y + dy * 6); ctx.stroke();
     ctx.setLineDash([]);
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
@@ -448,7 +548,6 @@ function renderDrawing(
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.stroke();
-    // Labels
     const labels = type === 'xabcd' ? ['X','A','B','C','D'] :
                    type === 'abcd' ? ['A','B','C','D'] :
                    type === 'headshoulders' ? ['1','2','3','4','5','6','7'] :
@@ -460,10 +559,11 @@ function renderDrawing(
       ctx.fillText(labels[i], pts[i].x, pts[i].y - 6);
       ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, 3, 0, Math.PI * 2); ctx.fill();
     }
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
 
-  // Freehand (brush, highlighter, arrowdraw, path, polyline)
+  // Freehand
   if (['brush', 'highlighter', 'arrowdraw', 'path', 'polyline'].includes(type) && pts.length >= 2) {
     if (type === 'highlighter') {
       ctx.strokeStyle = hexToRgba(d.color, 0.3);
@@ -473,14 +573,28 @@ function renderDrawing(
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.stroke();
     ctx.lineWidth = d.lineWidth;
+    if (d.selected) {
+      renderSelectionAnchors(ctx, [pts[0], pts[pts.length - 1]], d.color);
+    }
     return;
   }
 
-  // Generic fallback: draw lines between all points
+  // Generic fallback
   if (pts.length >= 2) {
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.stroke();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+  }
+}
+
+function renderSelectionAnchors(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], color: string) {
+  for (const p of pts) {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
   }
 }
 
