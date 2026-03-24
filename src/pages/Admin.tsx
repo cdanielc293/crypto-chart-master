@@ -162,6 +162,7 @@ export default function Admin() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-white/[0.02] text-white/40 text-xs">
+                        <th className="px-4 py-3 text-left">Email</th>
                         <th className="px-4 py-3 text-left">Name</th>
                         <th className="px-4 py-3 text-left">Username</th>
                         <th className="px-4 py-3 text-left">Plan</th>
