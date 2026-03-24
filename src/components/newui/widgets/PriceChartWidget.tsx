@@ -77,7 +77,7 @@ async function fetchBTCKlines(interval: string, limit: number): Promise<Candle[]
 
 // ─── Formatting ───
 function formatPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(1);
+  if (p >= 10000) return p.toFixed(2);
   if (p >= 100) return p.toFixed(2);
   if (p >= 1) return p.toFixed(3);
   return p.toFixed(6);
@@ -98,11 +98,12 @@ function formatDateFull(ts: number, intervalSec: number): string {
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
 
-function calculateNiceStep(range: number, minPx: number): number {
-  const rough = range / (minPx > 0 ? (range / minPx) : 5);
+function calculateNiceStep(range: number, availablePx: number, minGapPx = 60): number {
+  const maxTicks = Math.max(2, Math.floor(availablePx / minGapPx));
+  const rough = range / maxTicks;
   const mag = Math.pow(10, Math.floor(Math.log10(rough)));
   const r = rough / mag;
-  return (r <= 1.5 ? 1 : r <= 3 ? 2 : r <= 7 ? 5 : 10) * mag;
+  return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * mag;
 }
 
 // ─── Constants ───
@@ -381,7 +382,7 @@ export default function PriceChartWidget() {
       ctx.font = '12px Inter, monospace';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      const priceStep = calculateNiceStep(totalRange, priceH / 50);
+      const priceStep = calculateNiceStep(totalRange, priceH);
       for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
         const y = priceToY(p);
         if (y < -10 || y > priceH + 10) continue;
@@ -504,7 +505,7 @@ export default function PriceChartWidget() {
     ctx.font = '12px Inter, monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    const priceStep2 = calculateNiceStep(totalRange, priceH / 50);
+    const priceStep2 = calculateNiceStep(totalRange, priceH);
     for (let p = Math.ceil(minPrice / priceStep2) * priceStep2; p <= maxPrice; p += priceStep2) {
       const y = priceToY(p);
       if (y < 5 || y > priceH - 5) continue;
