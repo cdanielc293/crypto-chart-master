@@ -439,6 +439,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      shiftKeyRef.current = e.shiftKey;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
         // Don't delete if focused on an input
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
@@ -462,8 +463,10 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
     };
+    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keyup', upHandler);
+    return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
   }, [selectedDrawingId, drawings, removeDrawing, setSelectedDrawingId, updateDrawing]);
 
   useEffect(() => {
