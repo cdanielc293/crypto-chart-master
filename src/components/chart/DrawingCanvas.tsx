@@ -318,7 +318,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    pendingPointsRef.current = [...pendingPointsRef.current, { time, price }];
+    // Shift-snap for second point on line-type tools
+    let pointToAdd = { time, price };
+    if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
+      pointToAdd = snapAngle45(pendingPointsRef.current[0], pointToAdd);
+    }
+    pendingPointsRef.current = [...pendingPointsRef.current, pointToAdd];
 
     if (pendingPointsRef.current.length >= toolPoints) {
       const newDrawing: Drawing = {
