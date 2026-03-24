@@ -441,7 +441,9 @@ const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
 
   // Background fill between level 0 and level 1
   if (props.showBackground) {
-    const bgColor = oneColor || props.backgroundColor || d.color;
+    const hasCustomLevels2 = !!props.channelLevels;
+    const bgColor = oneColor || (hasCustomLevels2 ? (props.backgroundColor || d.color) : d.color);
+    const bgOpacity = props.backgroundOpacity ?? 0.06;
     const bgOpacity = props.backgroundOpacity ?? 0.06;
     ctx.save();
     ctx.globalAlpha = bgOpacity;
