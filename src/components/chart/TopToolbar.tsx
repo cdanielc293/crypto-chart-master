@@ -1,4 +1,5 @@
 import vizionLogo from '@/assets/vizionx-logo.png';
+import { parseSymbol, getDisplayPair } from '@/lib/symbolUtils';
 import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
