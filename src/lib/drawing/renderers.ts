@@ -479,7 +479,6 @@ const renderEllipse: Renderer = (ctx, d, coord) => {
   }
   renderShapeText(ctx, props, d.color, p1.x, p1.y);
 };
-};
 
 const renderTriangle: Renderer = (ctx, d, coord) => {
   if (d.points.length < 3) return;
