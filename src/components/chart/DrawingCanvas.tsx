@@ -814,7 +814,18 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             if (selectedDrawingId) allIds.add(selectedDrawingId);
             for (const id of allIds) {
               const d = drawings.find(dd => dd.id === id);
-              if (d) updateDrawing(d.id, { ...d, ...updates });
+              if (d) {
+                const finalUpdates = { ...updates };
+                // When color changes on a channel tool, also update channel level colors
+                if (finalUpdates.color && d.type === 'parallelchannel' && d.props?.channelLevels) {
+                  finalUpdates.props = {
+                    ...d.props,
+                    ...finalUpdates.props,
+                    channelLevels: d.props.channelLevels.map((l: any) => ({ ...l, color: finalUpdates.color })),
+                  };
+                }
+                updateDrawing(d.id, { ...d, ...finalUpdates });
+              }
             }
           }}
           onClone={() => {
