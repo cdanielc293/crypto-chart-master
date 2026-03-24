@@ -1401,6 +1401,7 @@ export default function PriceChartWidget() {
       if (hit) {
         setSelectedDrawingId(hit.id);
         if (!hit.locked) {
+          pushUndo();
           dragDrawingRef.current = {
             id: hit.id,
             startMx: x,
