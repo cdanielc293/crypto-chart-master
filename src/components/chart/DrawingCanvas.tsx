@@ -47,7 +47,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const ctrlKeyRef = useRef(false);
   const areaSelectStartRef = useRef<{ x: number; y: number } | null>(null);
   const areaSelectEndRef = useRef<{ x: number; y: number } | null>(null);
-  const justPlacedRef = useRef(false);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
@@ -381,9 +380,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Prevent double-placement from double-click firing two mousedowns
-    if (justPlacedRef.current) {
-      justPlacedRef.current = false;
+    // Ignore second click of a double-click for single-point tools (prevents duplicate Text/Note)
+    if (toolPoints === 1 && e.detail > 1) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -419,7 +417,6 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
-      justPlacedRef.current = true;
       // Auto-switch back to cursor after placing a drawing
       setDrawingTool('cursor');
     }
