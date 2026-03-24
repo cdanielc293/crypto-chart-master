@@ -760,12 +760,16 @@ export default function PriceChartWidget() {
       if (e.key === 'Escape') {
         draftPointsRef.current = [];
         setDrawingTool('none');
+        setSelectedDrawingId(null);
         scheduleRender();
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
+        removeDrawing(selectedDrawingId);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [scheduleRender]);
+  }, [scheduleRender, selectedDrawingId, removeDrawing]);
 
   // ─── Data fetch ───
   useEffect(() => {
