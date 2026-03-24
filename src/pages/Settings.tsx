@@ -445,6 +445,7 @@ export default function Settings() {
                 }`}>
                   {planLabels[plan] || plan}
                 </p>
+                <p className="text-xs text-cyan-400/60 mt-1 font-medium">Free for Beta Version</p>
                 <Button
                   variant="outline"
                   size="sm"
