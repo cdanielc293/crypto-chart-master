@@ -12,7 +12,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { RotateCcw, ZoomIn, ZoomOut, Maximize2, Clock, Copy } from 'lucide-react';
+import { RotateCcw, ZoomIn, ZoomOut, Maximize2, Clock, Copy, BarChart3, Settings, Trash2, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ─── Types ───
 interface Candle {
@@ -641,53 +642,115 @@ export default function PriceChartWidget() {
   return (
     <div ref={containerRef} className="w-full h-full relative select-none">
       <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0"
-            style={{ cursor }}
-            onMouseMove={handleMouseMove}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onWheel={handleWheel}
-            onDoubleClick={handleDoubleClick}
-          />
+        <ContextMenuTrigger asChild disabled={false}>
+          <div className="absolute inset-0">
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0"
+              style={{ cursor }}
+              onMouseMove={handleMouseMove}
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onWheel={handleWheel}
+              onDoubleClick={handleDoubleClick}
+            />
+          </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-52 bg-[#0d1a30]/95 backdrop-blur-md border-white/10 text-white/80">
-          <ContextMenuItem onClick={resetView} className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-            <RotateCcw className="w-3.5 h-3.5" /> Reset chart view
+        <ContextMenuContent className="w-64 bg-[hsl(var(--card))]/95 backdrop-blur-md border-[hsl(var(--border))]">
+          {/* Symbol settings — like Classic */}
+          <ContextMenuItem
+            className="gap-2 text-xs"
+            onClick={() => toast.info('Symbol settings coming soon')}
+          >
+            <BarChart3 size={14} className="text-muted-foreground" />
+            BTC/USDT settings…
           </ContextMenuItem>
-          <ContextMenuItem onClick={fitToScreen} className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-            <Maximize2 className="w-3.5 h-3.5" /> Fit to screen
+
+          <ContextMenuSeparator />
+
+          {/* Reset chart view — like Classic */}
+          <ContextMenuItem onClick={resetView} className="gap-2 text-xs">
+            <RotateCcw size={14} className="text-muted-foreground" />
+            Reset chart view
+            <span className="ml-auto text-[10px] text-muted-foreground">Alt+R</span>
           </ContextMenuItem>
-          <ContextMenuSeparator className="bg-white/5" />
-          <ContextMenuItem onClick={zoomIn} className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-            <ZoomIn className="w-3.5 h-3.5" /> Zoom in
+
+          <ContextMenuItem onClick={fitToScreen} className="gap-2 text-xs">
+            <Maximize2 size={14} className="text-muted-foreground" />
+            Fit to screen
           </ContextMenuItem>
-          <ContextMenuItem onClick={zoomOut} className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-            <ZoomOut className="w-3.5 h-3.5" /> Zoom out
+
+          <ContextMenuSeparator />
+
+          {/* Zoom */}
+          <ContextMenuItem onClick={zoomIn} className="gap-2 text-xs">
+            <ZoomIn size={14} className="text-muted-foreground" />
+            Zoom in
+            <span className="ml-auto text-[10px] text-muted-foreground">+</span>
           </ContextMenuItem>
-          <ContextMenuSeparator className="bg-white/5" />
+          <ContextMenuItem onClick={zoomOut} className="gap-2 text-xs">
+            <ZoomOut size={14} className="text-muted-foreground" />
+            Zoom out
+            <span className="ml-auto text-[10px] text-muted-foreground">−</span>
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Remove indicators/drawings — like Classic */}
+          <ContextMenuItem
+            disabled
+            className="gap-2 text-xs"
+          >
+            <Trash2 size={14} className="text-muted-foreground" />
+            No indicators to remove
+          </ContextMenuItem>
+          <ContextMenuItem
+            disabled
+            className="gap-2 text-xs"
+          >
+            <Pencil size={14} className="text-muted-foreground" />
+            No drawings to remove
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Timeframe sub-menu */}
           <ContextMenuSub>
-            <ContextMenuSubTrigger className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-              <Clock className="w-3.5 h-3.5" /> Timeframe
+            <ContextMenuSubTrigger className="gap-2 text-xs">
+              <Clock size={14} className="text-muted-foreground" />
+              Timeframe
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="bg-[#0d1a30]/95 backdrop-blur-md border-white/10 text-white/80">
+            <ContextMenuSubContent className="bg-[hsl(var(--card))]/95 backdrop-blur-md border-[hsl(var(--border))]">
               {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map(tf => (
                 <ContextMenuItem
                   key={tf}
                   onClick={() => setTimeframe(tf)}
-                  className={`text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white ${timeframe === tf ? 'text-cyan-400' : ''}`}
+                  className={`text-xs ${timeframe === tf ? 'text-cyan-400' : ''}`}
                 >
                   {TIMEFRAME_CONFIG[tf].label} {timeframe === tf && '✓'}
                 </ContextMenuItem>
               ))}
             </ContextMenuSubContent>
           </ContextMenuSub>
-          <ContextMenuSeparator className="bg-white/5" />
-          <ContextMenuItem onClick={copyLastPrice} className="gap-2 text-xs hover:bg-white/5 focus:bg-white/5 focus:text-white">
-            <Copy className="w-3.5 h-3.5" /> Copy last price
+
+          <ContextMenuSeparator />
+
+          {/* Copy last price */}
+          <ContextMenuItem onClick={copyLastPrice} className="gap-2 text-xs">
+            <Copy size={14} className="text-muted-foreground" />
+            Copy last price
+          </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {/* Settings — like Classic */}
+          <ContextMenuItem
+            className="gap-2 text-xs"
+            onClick={() => toast.info('Chart settings coming soon')}
+          >
+            <Settings size={14} className="text-muted-foreground" />
+            Settings…
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
