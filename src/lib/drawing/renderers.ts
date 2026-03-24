@@ -361,7 +361,10 @@ const renderParallelChannel: Renderer = (ctx, d, coord) => {
   ctx.lineTo(p2.x, p2.y + offsetY);
   ctx.stroke();
   // Fill
-  ctx.fillStyle = d.color + '15';
+  const props = d.props || {};
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+  ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
   ctx.lineTo(p2.x, p2.y);
@@ -369,6 +372,29 @@ const renderParallelChannel: Renderer = (ctx, d, coord) => {
   ctx.lineTo(p1.x, p1.y + offsetY);
   ctx.closePath();
   ctx.fill();
+
+  // Text
+  const text = props.text;
+  if (text && text.trim()) {
+    const fontSize = props.textSize || 12;
+    const fontStyle = `${props.textItalic ? 'italic ' : ''}${props.textBold ? 'bold ' : ''}${fontSize}px sans-serif`;
+    ctx.font = fontStyle;
+    ctx.fillStyle = props.textColor || d.color;
+    const textPos = props.textPosition || 'middle'; // 'top' | 'middle' | 'bottom'
+    const textAlign = props.textAlign || 'center'; // 'left' | 'center' | 'right'
+    ctx.textAlign = textAlign as CanvasTextAlign;
+    ctx.textBaseline = 'middle';
+    const midX = textAlign === 'left' ? Math.min(p1.x, p2.x) + 8
+      : textAlign === 'right' ? Math.max(p1.x, p2.x) - 8
+      : (p1.x + p2.x) / 2;
+    let textY: number;
+    const topLine = (p1.y + p2.y) / 2;
+    const bottomLine = (p1.y + offsetY + p2.y + offsetY) / 2;
+    if (textPos === 'top') textY = Math.min(topLine, bottomLine) + 14;
+    else if (textPos === 'bottom') textY = Math.max(topLine, bottomLine) - 14;
+    else textY = (topLine + bottomLine) / 2;
+    ctx.fillText(text, midX, textY);
+  }
 };
 
 // ─── Fibonacci ───
