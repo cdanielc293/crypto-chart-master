@@ -109,6 +109,7 @@ function ChartWithShortcuts() {
         onConfirmMe={() => dismissIpAlert(true)}
         onNotMe={handleIpNotMe}
       />
+      <WelcomeOnboardingDialog />
     </>
   );
 }
