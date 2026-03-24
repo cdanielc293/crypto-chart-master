@@ -154,7 +154,9 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
 
   // Available exchanges for source filter
   const sourceOptions = useMemo(() => {
-    const exchanges = getAllExchanges();
+    // Only show exchanges that actually returned results
+    const exchangesWithResults = new Set(results.map(r => r.exchangeId));
+    const exchanges = getAllExchanges().filter(e => exchangesWithResults.has(e.info.id));
     return [
       { id: 'all', label: 'All sources' },
       ...exchanges.map(e => ({ id: e.info.id, label: e.info.name })),
