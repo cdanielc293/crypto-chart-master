@@ -371,6 +371,14 @@ function TextTab({ localProps, updateLocal }: { localProps: Record<string, any>;
           </select>
         </div>
       </div>
+
+      {/* Text orientation */}
+      <SelectField
+        label="Text orientation"
+        value={localProps.textOrientation || 'horizontal'}
+        options={[{ value: 'horizontal', label: 'Horizontal' }, { value: 'vertical', label: 'Vertical' }]}
+        onChange={v => updateLocal('textOrientation', v)}
+      />
     </>
   );
 }
