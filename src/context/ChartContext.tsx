@@ -79,6 +79,9 @@ interface ChartContextType {
   removeDrawing: (id: string) => void;
   selectedDrawingId: string | null;
   setSelectedDrawingId: (id: string | null) => void;
+  selectedDrawingIds: Set<string>;
+  setSelectedDrawingIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  toggleSelectedDrawing: (id: string) => void;
   indicators: string[];
   addIndicator: (definitionId: string) => void;
   removeIndicator: (instanceId: string) => void;
