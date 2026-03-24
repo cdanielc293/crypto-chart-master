@@ -10,6 +10,8 @@ import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import { getKlines, getOlderKlinesFromCache } from '@/lib/klineCache';
+import { getHistoricalBarsLimit } from '@/lib/planLimits';
+import { useProfile } from '@/hooks/useProfile';
 import { getBinanceSourceInterval, getIntervalDurationMs, shouldAggregateInterval, toIntervalBucketStart } from '@/lib/chartIntervals';
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
