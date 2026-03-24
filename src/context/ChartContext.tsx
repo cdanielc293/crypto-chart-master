@@ -541,6 +541,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
       selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing,
+      undoDrawing, redoDrawing, canUndoDrawing, canRedoDrawing,
       indicators, addIndicator, removeIndicator, toggleIndicator,
       hiddenIndicators, toggleHiddenIndicator,
       indicatorConfigs, updateIndicatorConfig,
