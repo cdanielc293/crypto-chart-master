@@ -47,6 +47,18 @@ export function useAdminStats() {
   });
 }
 
+export function useAdminActivityStats() {
+  return useQuery({
+    queryKey: ['admin-activity-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_activity_stats');
+      if (error) throw error;
+      return data as ActivityStats;
+    },
+    refetchInterval: 30000, // refresh every 30s
+  });
+}
+
 export function useAdminProfiles() {
   return useQuery({
     queryKey: ['admin-profiles'],
