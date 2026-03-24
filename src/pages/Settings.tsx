@@ -42,6 +42,12 @@ const sidebarSections = [
       { id: 'notifications', label: 'Alerts delivery', icon: Bell },
     ],
   },
+  {
+    label: 'SUPPORT',
+    items: [
+      { id: 'support', label: 'Contact support', icon: MessageSquare },
+    ],
+  },
 ];
 
 export default function Settings() {
