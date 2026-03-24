@@ -1464,9 +1464,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const existing = rawCandlesRef.current;
         let merged = mergeCandlesByTime(olderCandles, existing);
 
-        // Trim to plan limit (keep most recent bars)
+        // Trim to plan time-based depth limit (remove candles before earliest allowed)
+        const beforeTrim = merged.length;
+        merged = merged.filter(c => Number(c.time) >= earliestAllowed);
         if (merged.length > maxBars) {
           merged = merged.slice(merged.length - maxBars);
+        }
+        if (merged.length < beforeTrim) {
           setBarsLimitReached(true);
           hasMoreOlderRef.current = false;
         }
