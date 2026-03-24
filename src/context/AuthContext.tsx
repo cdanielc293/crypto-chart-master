@@ -38,6 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (newSession?.user) {
         setIsGuest(false);
         localStorage.removeItem('vizion_guest');
+        // Log login event
+        supabase.from('user_login_log').insert({ user_id: newSession.user.id }).then(() => {});
       }
       setLoading(false);
     });
@@ -50,6 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Heartbeat: update user_activity every 2 minutes for online tracking
+  useEffect(() => {
+    if (!user) return;
+    const sendHeartbeat = () => {
+      supabase.from('user_activity').upsert(
+        { user_id: user.id, last_seen_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      ).then(() => {});
+    };
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 120000); // every 2 min
+    return () => clearInterval(interval);
+  }, [user]);
 
   const signInWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
