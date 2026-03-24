@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useChart } from '@/context/ChartContext';
 import { BarChart3, Trash2, TrendingUp, Minus } from 'lucide-react';
 
-export default function ObjectTreePanel() {
+export default function ObjectTreePanel({ panelWidth }: { panelWidth: number }) {
   const { symbol, interval, drawings, removeDrawing, indicators, toggleIndicator } = useChart();
   const [tab, setTab] = useState<'tree' | 'data'>('tree');
 
   return (
-    <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+    <div className="flex flex-col min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden" style={{ width: panelWidth }}>
       {/* Tabs */}
       <div className="flex border-b border-chart-border">
         <button

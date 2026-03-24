@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Plus, Search, ArrowDownUp, MoreHorizontal, Bell } from 'lucide-react';
 
-export default function AlertsPanel() {
+export default function AlertsPanel({ panelWidth }: { panelWidth: number }) {
   const [tab, setTab] = useState<'alerts' | 'log'>('alerts');
 
   return (
-    <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+    <div className="flex flex-col min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden" style={{ width: panelWidth }}>
       {/* Tabs */}
       <div className="flex border-b border-chart-border">
         <button
