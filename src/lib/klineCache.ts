@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { ALL_INTERVALS } from '@/types/chart';
 import type { Interval } from '@/types/chart';
+import { parseSymbol } from '@/lib/symbolUtils';
 import {
   aggregateCandlesToInterval,
   getBinanceSourceInterval,
@@ -713,7 +714,9 @@ export async function getKlines(
   interval: Interval,
   options: GetKlinesOptions = {},
 ): Promise<RawKline[]> {
-  const normalizedSymbol = symbol.trim().toUpperCase();
+  // Strip exchange suffix — klineCache always uses the raw symbol for Binance/Supabase
+  const { raw } = parseSymbol(symbol);
+  const normalizedSymbol = raw.trim().toUpperCase();
   if (!normalizedSymbol) return [];
 
   const replayEndTimeSec = options.replayEndTimeSec;
@@ -775,6 +778,8 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
+  const { raw } = parseSymbol(symbol);
+  const cleanSymbol = raw.trim().toUpperCase();
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
@@ -785,7 +790,7 @@ export async function getOlderKlinesFromCache(
     const p = supabase
       .from('klines')
       .select('time, open, high, low, close, volume')
-      .eq('symbol', symbol)
+      .eq('symbol', cleanSymbol)
       .eq('interval', sourceInterval)
       .lt('time', beforeTime)
       .order('time', { ascending: false })
@@ -807,9 +812,9 @@ export async function getOlderKlinesFromCache(
   // Fallback: fetch from Binance
   try {
     const endTimeMs = beforeTime * 1000 - 1;
-    const rows = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTimeMs);
+    const rows = await fetchFromBinance(cleanSymbol, sourceInterval, 1000, undefined, endTimeMs);
     if (rows.length > 0) {
-      void upsertKlines(symbol, sourceInterval, rows);
+      void upsertKlines(cleanSymbol, sourceInterval, rows);
       return aggregateForInterval(rows, interval)
         .filter(k => k.time < beforeTime)
         .slice(-limit);
@@ -821,7 +826,8 @@ export async function getOlderKlinesFromCache(
 
 /** Warm cache for all source intervals used across timeframe options for a symbol. */
 export async function prefetchSymbolHistory(symbol: string): Promise<void> {
-  const normalizedSymbol = symbol.trim().toUpperCase();
+  const { raw } = parseSymbol(symbol);
+  const normalizedSymbol = raw.trim().toUpperCase();
   if (!normalizedSymbol) return;
   if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
 

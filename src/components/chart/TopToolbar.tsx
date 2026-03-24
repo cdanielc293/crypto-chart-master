@@ -1,4 +1,5 @@
 import vizionLogo from '@/assets/vizionx-logo.png';
+import { parseSymbol, getDisplayPair } from '@/lib/symbolUtils';
 import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
@@ -75,7 +76,8 @@ export default function TopToolbar() {
     };
   }, []);
 
-  const pair = symbol.replace('USDT', ' / TetherUS');
+  const parsed = parseSymbol(symbol);
+  const pair = getDisplayPair(symbol);
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
 
   // Group intervals for dropdown
@@ -123,7 +125,7 @@ export default function TopToolbar() {
         >
           <Search size={16} className="text-muted-foreground" />
           <span>{pair}</span>
-          <span className="text-muted-foreground text-xs">· Binance</span>
+          <span className="text-muted-foreground text-xs">· {parsed.exchangeLabel}</span>
         </button>
 
         <div className="w-px h-5 bg-chart-border mx-1" />
