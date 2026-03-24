@@ -1427,17 +1427,18 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const cacheKey = getDataCacheKey();
 
     let cancelled = false;
-    let initialRangeEventSkipped = false;
+    let previousRangeFrom: number | null = null;
+    const suppressAutoEventsUntil = Date.now() + 2200;
 
     const loadOlderBars = async (range: { from: number; to: number } | null) => {
       if (!range || cancelled) return;
-      if (range.from > 50) return;
 
-      // Skip the first range-change event (fired on initial render/data load)
-      if (!initialRangeEventSkipped) {
-        initialRangeEventSkipped = true;
-        return;
-      }
+      const movedLeft = previousRangeFrom !== null && range.from < (previousRangeFrom - 1);
+      previousRangeFrom = range.from;
+
+      if (range.from > 50) return;
+      if (!movedLeft) return;
+      if (Date.now() < suppressAutoEventsUntil) return;
 
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
