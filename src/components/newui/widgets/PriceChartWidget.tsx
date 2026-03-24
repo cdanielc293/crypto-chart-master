@@ -1,5 +1,5 @@
 // Custom Chart Engine — Canvas-based candlestick chart with real Binance data,
-// configurable settings, and indicator overlay support.
+// configurable settings, indicator overlays, and lightweight drawing tools.
 // Fully isolated from Classic view.
 
 import { useEffect, useRef, useCallback, useState } from 'react';
@@ -13,7 +13,23 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { RotateCcw, ZoomIn, ZoomOut, Maximize2, Clock, Copy, BarChart3, Settings, Trash2, Pencil, TrendingUp, Loader2 } from 'lucide-react';
+import {
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Clock,
+  Copy,
+  BarChart3,
+  Settings,
+  Trash2,
+  Pencil,
+  TrendingUp,
+  Loader2,
+  MousePointer2,
+  Minus,
+  Slash,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
 import type { Point } from '@/types/indicators';
@@ -22,11 +38,17 @@ import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel
 
 // ─── Types ───
 interface Candle {
-  time: number; open: number; high: number; low: number; close: number; volume: number;
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 }
 
 type DragMode = 'none' | 'pan' | 'price-scale' | 'time-scale';
 type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1D' | '1W';
+type DrawingTool = 'none' | 'trendline' | 'hline';
 
 interface ChartState {
   offsetX: number;
@@ -43,9 +65,38 @@ interface ChartState {
   dragStartPanY: number;
 }
 
+interface DrawingPoint {
+  time: number;
+  price: number;
+}
+
+interface WidgetDrawing {
+  id: string;
+  type: 'trendline' | 'hline';
+  points: DrawingPoint[];
+  color: string;
+  lineWidth: number;
+}
+
+interface Projection {
+  startIdx: number;
+  candleWidth: number;
+  chartW: number;
+  priceH: number;
+  minPrice: number;
+  maxPrice: number;
+  dataLength: number;
+}
+
 // ─── Binance config ───
 const TF_BINANCE: Record<Timeframe, string> = {
-  '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w',
+  '1m': '1m',
+  '5m': '5m',
+  '15m': '15m',
+  '1h': '1h',
+  '4h': '4h',
+  '1D': '1d',
+  '1W': '1w',
 };
 
 const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number }> = {
@@ -58,11 +109,19 @@ const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; 
   '1W': { label: '1W', intervalSec: 604800, count: 200 },
 };
 
-// ─── Fetch from Binance ───
+// ─── Constants ───
+const PRICE_W = 90;
+const TIME_H = 28;
+const INFO_BAR_H = 22;
+const VOL_RATIO = 0.12;
+const MIN_CW = 1;
+const MAX_CW = 50;
+const DEFAULT_CW = 8;
+const DRAWINGS_STORAGE_KEY = 'newui-chart-drawings-v1';
+
+// ─── Data fetch ───
 async function fetchBTCKlines(interval: string, limit: number): Promise<Candle[]> {
-  const res = await fetch(
-    `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`
-  );
+  const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
   if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
   const data = await res.json();
   return data.map((k: any[]) => ({
@@ -85,18 +144,18 @@ function formatPrice(p: number): string {
 
 function formatTimeLabel(ts: number, intervalSec: number): string {
   const d = new Date(ts * 1000);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   if (intervalSec >= 604800) return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
   if (intervalSec >= 86400) return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
-  if (intervalSec >= 3600) return `${months[d.getUTCMonth()]} ${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2,'0')}:00`;
-  return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+  if (intervalSec >= 3600) return `${months[d.getUTCMonth()]} ${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:00`;
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 function formatDateFull(ts: number, intervalSec: number): string {
   const d = new Date(ts * 1000);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   if (intervalSec >= 86400) return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
-  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 function calculateNiceStep(range: number, availablePx: number, minGapPx = 70): number {
@@ -107,75 +166,137 @@ function calculateNiceStep(range: number, availablePx: number, minGapPx = 70): n
   return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * mag;
 }
 
-// ─── Constants ───
-const PRICE_W = 90;
-const TIME_H = 28;
-const INFO_BAR_H = 22;
-const VOL_RATIO = 0.12;
-const MIN_CW = 1;
-const MAX_CW = 50;
-const DEFAULT_CW = 8;
+function isBrightHexColor(hex: string): boolean {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) return false;
+  const r = parseInt(normalized.substring(0, 2), 16);
+  const g = parseInt(normalized.substring(2, 4), 16);
+  const b = parseInt(normalized.substring(4, 6), 16);
+  const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luma > 0.35;
+}
 
-// ─── Helper: load from localStorage ───
+// ─── localStorage helpers ───
 function loadConfig(): ChartConfig {
   try {
-    const s = localStorage.getItem('newui-chart-config');
-    return s ? { ...DEFAULT_CHART_CONFIG, ...JSON.parse(s) } : DEFAULT_CHART_CONFIG;
-  } catch { return DEFAULT_CHART_CONFIG; }
+    const raw = localStorage.getItem('newui-chart-config');
+    const parsed = raw ? JSON.parse(raw) : {};
+    const merged: ChartConfig = { ...DEFAULT_CHART_CONFIG, ...parsed };
+
+    // Keep New UI usable/professional by default (matching Classic behavior)
+    if (isBrightHexColor(merged.bg)) merged.bg = DEFAULT_CHART_CONFIG.bg;
+    merged.showGlow = false;
+    merged.showGrid = true;
+
+    return merged;
+  } catch {
+    return DEFAULT_CHART_CONFIG;
+  }
 }
 
 function loadIndicators(): ActiveIndicator[] {
   try {
     const s = localStorage.getItem('newui-active-indicators');
     return s ? JSON.parse(s) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-// ════════════════════════════════════════
-// Component
-// ════════════════════════════════════════
+function loadDrawings(): WidgetDrawing[] {
+  try {
+    const raw = localStorage.getItem(DRAWINGS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter((d) =>
+      d &&
+      (d.type === 'trendline' || d.type === 'hline') &&
+      Array.isArray(d.points) &&
+      typeof d.color === 'string' &&
+      typeof d.lineWidth === 'number'
+    );
+  } catch {
+    return [];
+  }
+}
+
+function persistDrawings(drawings: WidgetDrawing[]) {
+  localStorage.setItem(DRAWINGS_STORAGE_KEY, JSON.stringify(drawings));
+}
+
 export default function PriceChartWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drawingTool, setDrawingTool] = useState<DrawingTool>('none');
 
-  // Config & indicators — persisted
   const [config, setConfig] = useState<ChartConfig>(loadConfig);
   const [indicators, setIndicators] = useState<ActiveIndicator[]>(loadIndicators);
 
-  // Refs for render callback (avoids stale closures)
+  const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
+  const drawingsRef = useRef<WidgetDrawing[]>(initialDrawingsRef.current);
+  const draftDrawingRef = useRef<DrawingPoint | null>(null);
+  const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
+
   const dataRef = useRef<Candle[]>([]);
   const stateRef = useRef<ChartState>({
-    offsetX: 0, candleWidth: DEFAULT_CW,
-    crosshair: null, dragMode: 'none',
-    dragStartX: 0, dragStartY: 0,
-    dragStartOffset: 0, dragStartCandleWidth: DEFAULT_CW,
-    priceScaleZoom: 1, dragStartPriceZoom: 1,
-    panOffsetY: 0, dragStartPanY: 0,
+    offsetX: 0,
+    candleWidth: DEFAULT_CW,
+    crosshair: null,
+    dragMode: 'none',
+    dragStartX: 0,
+    dragStartY: 0,
+    dragStartOffset: 0,
+    dragStartCandleWidth: DEFAULT_CW,
+    priceScaleZoom: 1,
+    dragStartPriceZoom: 1,
+    panOffsetY: 0,
+    dragStartPanY: 0,
   });
+
+  const projectionRef = useRef<Projection | null>(null);
+  const hoverIdxRef = useRef<number>(-1);
+
   const configRef = useRef(config);
   const indicatorsRef = useRef(indicators);
   const indResultsRef = useRef<{ id: string; lines: { key: string; points: Point[]; color: string; width: number; style: string }[] }[]>([]);
+
   const rafRef = useRef(0);
   const intervalSecRef = useRef(14400);
   const wsRef = useRef<WebSocket | null>(null);
   const [cursor, setCursor] = useState('crosshair');
-  // For OHLCV info bar
-  const hoverIdxRef = useRef<number>(-1);
 
-  // Keep refs in sync
-  useEffect(() => { configRef.current = config; localStorage.setItem('newui-chart-config', JSON.stringify(config)); scheduleRender(); }, [config]);
-  useEffect(() => { indicatorsRef.current = indicators; localStorage.setItem('newui-active-indicators', JSON.stringify(indicators)); recalcIndicators(); }, [indicators]);
+  const scheduleRender = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(render);
+  }, []);
 
-  // ─── Indicator calculations ───
+  useEffect(() => {
+    configRef.current = config;
+    localStorage.setItem('newui-chart-config', JSON.stringify(config));
+    scheduleRender();
+  }, [config, scheduleRender]);
+
+  useEffect(() => {
+    indicatorsRef.current = indicators;
+    localStorage.setItem('newui-active-indicators', JSON.stringify(indicators));
+    recalcIndicators();
+  }, [indicators]);
+
   const recalcIndicators = useCallback(() => {
     const data = dataRef.current;
     const inds = indicatorsRef.current;
-    if (data.length === 0) { indResultsRef.current = []; return; }
+    if (data.length === 0) {
+      indResultsRef.current = [];
+      return;
+    }
 
-    const ohlcv = data.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume }));
+    const ohlcv = data.map((c) => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume }));
     const results: typeof indResultsRef.current = [];
 
     for (const ind of inds) {
@@ -186,7 +307,7 @@ export default function PriceChartWidget() {
       try {
         const calcResult = def.calculate(ohlcv, ind.params);
         const lines = Object.entries(calcResult).map(([key, points]) => {
-          const lineDef = def.lines.find(l => l.key === key);
+          const lineDef = def.lines.find((l) => l.key === key);
           return {
             key,
             points: points as Point[],
@@ -203,9 +324,8 @@ export default function PriceChartWidget() {
 
     indResultsRef.current = results;
     scheduleRender();
-  }, []);
+  }, [scheduleRender]);
 
-  // ─── Indicator management ───
   const addIndicator = useCallback((defId: string) => {
     const def = getIndicator(defId);
     if (!def) return;
@@ -213,22 +333,54 @@ export default function PriceChartWidget() {
     const color = def.lines[0]?.color ?? '#ffffff';
     const params: Record<string, any> = {};
     for (const p of def.params) params[p.key] = p.default;
-    setIndicators(prev => [...prev, { id, defId, params, color, visible: true }]);
+    setIndicators((prev) => [...prev, { id, defId, params, color, visible: true }]);
   }, []);
 
   const removeIndicator = useCallback((id: string) => {
-    setIndicators(prev => prev.filter(i => i.id !== id));
+    setIndicators((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
   const toggleIndicator = useCallback((id: string) => {
-    setIndicators(prev => prev.map(i => i.id === id ? { ...i, visible: !i.visible } : i));
+    setIndicators((prev) => prev.map((i) => (i.id === id ? { ...i, visible: !i.visible } : i)));
   }, []);
 
-  const removeAllIndicators = useCallback(() => {
-    setIndicators([]);
+  const removeAllIndicators = useCallback(() => setIndicators([]), []);
+
+  const upsertDrawing = useCallback((drawing: WidgetDrawing) => {
+    drawingsRef.current = [...drawingsRef.current, drawing];
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const removeAllDrawings = useCallback(() => {
+    drawingsRef.current = [];
+    draftDrawingRef.current = null;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(0);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const createPointFromScreen = useCallback((x: number, y: number): DrawingPoint | null => {
+    const projection = projectionRef.current;
+    const data = dataRef.current;
+    if (!projection || data.length === 0) return null;
+    if (x < 0 || y < 0 || x > projection.chartW || y > projection.priceH) return null;
+
+    const idx = Math.round(projection.startIdx + x / projection.candleWidth);
+    const clampedIdx = Math.max(0, Math.min(projection.dataLength - 1, idx));
+    const candle = data[clampedIdx];
+    if (!candle) return null;
+
+    const price = projection.minPrice + (1 - y / projection.priceH) * (projection.maxPrice - projection.minPrice);
+    return { time: candle.time, price };
   }, []);
 
-  // ─── Data fetch ───
+  const applyClassicPreset = useCallback(() => {
+    setConfig({ ...DEFAULT_CHART_CONFIG, showGlow: false, showGrid: true });
+    toast.success('Classic style applied');
+  }, []);
+
   useEffect(() => {
     const cfg = TIMEFRAME_CONFIG[timeframe];
     intervalSecRef.current = cfg.intervalSec;
@@ -254,14 +406,11 @@ export default function PriceChartWidget() {
         toast.error('Failed to load market data.');
         setLoading(false);
       });
-  }, [timeframe, recalcIndicators]);
+  }, [timeframe, recalcIndicators, scheduleRender]);
 
-  // ─── WebSocket for live updates ───
   useEffect(() => {
     const binanceInterval = TF_BINANCE[timeframe];
-    const wsUrl = `wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`;
-
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
@@ -271,8 +420,13 @@ export default function PriceChartWidget() {
         const k = msg.k;
         const candle: Candle = {
           time: Math.floor(k.t / 1000),
-          open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v,
+          open: +k.o,
+          high: +k.h,
+          low: +k.l,
+          close: +k.c,
+          volume: +k.v,
         };
+
         const data = dataRef.current;
         if (data.length > 0 && data[data.length - 1].time === candle.time) {
           data[data.length - 1] = candle;
@@ -281,7 +435,7 @@ export default function PriceChartWidget() {
         }
         recalcIndicators();
         scheduleRender();
-      } catch (e) {
+      } catch {
         // ignore parse errors
       }
     };
@@ -292,14 +446,21 @@ export default function PriceChartWidget() {
       ws.close();
       wsRef.current = null;
     };
-  }, [timeframe, recalcIndicators]);
+  }, [timeframe, recalcIndicators, scheduleRender]);
 
-  const scheduleRender = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(render);
-  }, []);
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (draftDrawingRef.current) {
+        draftDrawingRef.current = null;
+        scheduleRender();
+      }
+      setDrawingTool('none');
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [scheduleRender]);
 
-  // ─── Render ───
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -308,10 +469,11 @@ export default function PriceChartWidget() {
     const dpr = window.devicePixelRatio || 1;
     const w = container.clientWidth;
     const h = container.clientHeight;
+
     canvas.width = w * dpr;
     canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -326,11 +488,9 @@ export default function PriceChartWidget() {
     const priceH = chartH - volumeH;
     const intSec = intervalSecRef.current;
 
-    // ─── Background ───
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(0, 0, w, h);
 
-    // ─── Visible range ───
     const visibleCount = Math.max(1, Math.floor(chartW / st.candleWidth));
     const maxOff = Math.max(0, data.length - Math.floor(visibleCount * 0.1));
     st.offsetX = Math.max(-visibleCount * 0.7, Math.min(st.offsetX, maxOff));
@@ -344,21 +504,22 @@ export default function PriceChartWidget() {
       ctx.font = '13px Inter, monospace';
       ctx.textAlign = 'center';
       ctx.fillText('No data in view', chartW / 2, priceH / 2);
-      drawPriceAxis(ctx, w, chartW, chartH, priceH, cfg);
-      drawTimeAxis(ctx, w, h, chartW, chartH, cfg);
+      drawPriceAxis(ctx, chartW, chartH, cfg);
+      drawTimeAxis(ctx, w, chartW, chartH, cfg);
       return;
     }
 
-    // ─── Price range — use visible data to compute a tight range with padding ───
-    let rawMin = Infinity, rawMax = -Infinity, maxVol = 0;
+    let rawMin = Infinity;
+    let rawMax = -Infinity;
+    let maxVol = 0;
     for (const c of visible) {
       if (c.low < rawMin) rawMin = c.low;
       if (c.high > rawMax) rawMax = c.high;
       if (c.volume > maxVol) maxVol = c.volume;
     }
+
     const rawRange = rawMax - rawMin || 1;
     const midPrice = (rawMax + rawMin) / 2;
-    // 5% padding top/bottom like Classic
     const paddedHalfRange = (rawRange / 2) * 1.1;
     const scaledHalfRange = paddedHalfRange * st.priceScaleZoom;
     const pxPerPrice = priceH / (scaledHalfRange * 2);
@@ -367,41 +528,52 @@ export default function PriceChartWidget() {
     const maxPrice = midPrice + scaledHalfRange + panPriceOffset;
     const totalRange = maxPrice - minPrice;
 
+    projectionRef.current = {
+      startIdx,
+      candleWidth: st.candleWidth,
+      chartW,
+      priceH,
+      minPrice,
+      maxPrice,
+      dataLength: data.length,
+    };
+
     const priceToY = (p: number) => priceH * (1 - (p - minPrice) / totalRange);
     const yToPrice = (y: number) => minPrice + (1 - y / priceH) * totalRange;
     const xToIdx = (x: number) => Math.max(0, Math.min(data.length - 1, startIdx + Math.floor(x / st.candleWidth)));
 
-    // ─── Clip chart area ───
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, chartW, chartH);
     ctx.clip();
 
-    // ─── Grid ───
-    if (cfg.showGrid) {
-      const priceStep = calculateNiceStep(totalRange, priceH);
-      for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
-        const y = priceToY(p);
-        if (y < -10 || y > chartH + 10) continue;
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 0.5;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(chartW, y); ctx.stroke();
-      }
-
-      // Time grid — adaptive spacing
-      const minTimeGapPx = 100;
-      const tStep = Math.max(1, Math.ceil(minTimeGapPx / st.candleWidth));
-      for (let i = 0; i < visible.length; i++) {
-        if ((startIdx + i) % tStep !== 0) continue;
-        const x = (i - (st.offsetX - startIdx)) * st.candleWidth + st.candleWidth / 2;
-        if (x < 0 || x > chartW) continue;
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 0.5;
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, chartH); ctx.stroke();
-      }
+    // Grid (always enabled for trading clarity)
+    const priceStep = calculateNiceStep(totalRange, priceH);
+    for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
+      const y = priceToY(p);
+      if (y < -10 || y > chartH + 10) continue;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(chartW, y);
+      ctx.stroke();
     }
 
-    // ─── Volume bars ───
+    const minTimeGapPx = 100;
+    const tStep = Math.max(1, Math.ceil(minTimeGapPx / st.candleWidth));
+    for (let i = 0; i < visible.length; i++) {
+      if ((startIdx + i) % tStep !== 0) continue;
+      const x = (i - (st.offsetX - startIdx)) * st.candleWidth + st.candleWidth / 2;
+      if (x < 0 || x > chartW) continue;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, chartH);
+      ctx.stroke();
+    }
+
     if (cfg.showVolume) {
       for (let i = 0; i < visible.length; i++) {
         const c = visible[i];
@@ -414,7 +586,6 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Candlesticks ───
     for (let i = 0; i < visible.length; i++) {
       const c = visible[i];
       const x = (i - (st.offsetX - startIdx)) * st.candleWidth;
@@ -425,7 +596,6 @@ export default function PriceChartWidget() {
       const bH = Math.max(1, bBot - bTop);
       const bW = Math.max(1, st.candleWidth * 0.65);
 
-      // Wick
       ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
       ctx.lineWidth = Math.min(1.5, Math.max(0.5, st.candleWidth * 0.12));
       ctx.beginPath();
@@ -433,16 +603,14 @@ export default function PriceChartWidget() {
       ctx.lineTo(cx, priceToY(c.low));
       ctx.stroke();
 
-      // Body
-      if (cfg.showGlow && st.candleWidth >= 6) {
-        ctx.shadowColor = bull ? hexToRgba(cfg.candleUp, 0.2) : hexToRgba(cfg.candleDown, 0.2);
-        ctx.shadowBlur = 6;
+      if (cfg.showGlow && st.candleWidth >= 8) {
+        ctx.shadowColor = bull ? hexToRgba(cfg.candleUp, 0.18) : hexToRgba(cfg.candleDown, 0.18);
+        ctx.shadowBlur = 4;
       }
       ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
       ctx.fillRect(cx - bW / 2, bTop, bW, bH);
       ctx.shadowBlur = 0;
 
-      // Border when zoomed in
       if (cfg.showBorders && st.candleWidth >= 14) {
         ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
         ctx.lineWidth = 0.5;
@@ -450,7 +618,6 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Indicator lines ───
     const timeMap = new Map<number, number>();
     for (let i = 0; i < data.length; i++) timeMap.set(data[i].time, i);
 
@@ -458,9 +625,7 @@ export default function PriceChartWidget() {
       for (const line of indResult.lines) {
         ctx.strokeStyle = line.color;
         ctx.lineWidth = line.width;
-        ctx.setLineDash(
-          line.style === 'dashed' ? [5, 3] : line.style === 'dotted' ? [1.5, 2] : []
-        );
+        ctx.setLineDash(line.style === 'dashed' ? [5, 3] : line.style === 'dotted' ? [1.5, 2] : []);
         ctx.beginPath();
         let started = false;
 
@@ -471,34 +636,90 @@ export default function PriceChartWidget() {
           if (px < -30 || px > chartW + 30) continue;
           const py = priceToY(pt.value);
           if (py < -200 || py > priceH + 200) continue;
-          if (!started) { ctx.moveTo(px, py); started = true; }
-          else ctx.lineTo(px, py);
+          if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+          } else {
+            ctx.lineTo(px, py);
+          }
         }
         ctx.stroke();
         ctx.setLineDash([]);
       }
     }
 
-    // ─── Last price horizontal line ───
-    if (visible.length > 0) {
-      const last = data[data.length - 1]; // Always use latest candle
+    // Drawings
+    ctx.lineCap = 'round';
+    for (const drawing of drawingsRef.current) {
+      ctx.strokeStyle = drawing.color;
+      ctx.lineWidth = drawing.lineWidth;
+
+      if (drawing.type === 'hline') {
+        const y = priceToY(drawing.points[0].price);
+        if (y < -20 || y > priceH + 20) continue;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(chartW, y);
+        ctx.stroke();
+        continue;
+      }
+
+      if (drawing.type === 'trendline' && drawing.points.length >= 2) {
+        const i1 = timeMap.get(drawing.points[0].time);
+        const i2 = timeMap.get(drawing.points[1].time);
+        if (i1 === undefined || i2 === undefined) continue;
+        const x1 = (i1 - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        const y1 = priceToY(drawing.points[0].price);
+        const x2 = (i2 - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        const y2 = priceToY(drawing.points[1].price);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    }
+
+    // Trendline draft preview
+    if (drawingTool === 'trendline' && draftDrawingRef.current && st.crosshair) {
+      const i1 = timeMap.get(draftDrawingRef.current.time);
+      if (i1 !== undefined) {
+        const x1 = (i1 - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        const y1 = priceToY(draftDrawingRef.current.price);
+        const x2 = st.crosshair.x;
+        const y2 = st.crosshair.y;
+
+        ctx.strokeStyle = 'rgba(119, 139, 164, 0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    if (data.length > 0) {
+      const last = data[data.length - 1];
       const ly = priceToY(last.close);
       const bull = last.close >= last.open;
       if (ly > -20 && ly < priceH + 20) {
         ctx.setLineDash([3, 3]);
         ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.4) : hexToRgba(cfg.candleDown, 0.4);
         ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(chartW, ly); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, ly);
+        ctx.lineTo(chartW, ly);
+        ctx.stroke();
         ctx.setLineDash([]);
       }
     }
 
-    ctx.restore(); // end clip
+    ctx.restore();
 
-    // ─── Price axis background ───
-    drawPriceAxis(ctx, w, chartW, chartH, priceH, cfg);
+    drawPriceAxis(ctx, chartW, chartH, cfg);
 
-    // ─── Price labels ───
     ctx.font = '11px Inter, sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -506,15 +727,16 @@ export default function PriceChartWidget() {
     for (let p = Math.ceil(minPrice / priceStep2) * priceStep2; p <= maxPrice; p += priceStep2) {
       const y = priceToY(p);
       if (y < 8 || y > priceH - 8) continue;
-      // Tick mark
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(chartW, y); ctx.lineTo(chartW + 4, y); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(chartW, y);
+      ctx.lineTo(chartW + 4, y);
+      ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.fillText(formatPrice(p), w - 6, y);
     }
 
-    // ─── Last price label on price axis ───
     if (data.length > 0) {
       const last = data[data.length - 1];
       const ly = Math.max(12, Math.min(priceH - 12, priceToY(last.close)));
@@ -522,20 +744,17 @@ export default function PriceChartWidget() {
       const labelH = 20;
       const labelText = formatPrice(last.close);
       ctx.font = 'bold 11px Inter, sans-serif';
-      const tw = ctx.measureText(labelText).width + 12;
       ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
       ctx.fillRect(chartW, ly - labelH / 2, PRICE_W, labelH);
       ctx.fillStyle = '#fff';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
       ctx.fillText(labelText, w - 6, ly);
     }
 
-    // ─── Time axis background ───
-    drawTimeAxis(ctx, w, h, chartW, chartH, cfg);
+    drawTimeAxis(ctx, w, chartW, chartH, cfg);
 
-    // ─── Time labels ───
-    const minTimeGapPx = 100;
-    const tStep2 = Math.max(1, Math.ceil(minTimeGapPx / st.candleWidth));
+    const tStep2 = Math.max(1, Math.ceil(100 / st.candleWidth));
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -547,27 +766,35 @@ export default function PriceChartWidget() {
       ctx.fillText(formatTimeLabel(visible[i].time, intSec), x, chartH + 8);
     }
 
-    // ─── Crosshair ───
     if (st.crosshair && st.crosshair.x < chartW && st.crosshair.y < chartH && st.dragMode === 'none') {
       const { x: mx, y: my } = st.crosshair;
-      const chColor = hexToRgba(cfg.crosshairColor, 0.2);
+      const chColor = hexToRgba(cfg.crosshairColor, 0.25);
 
-      ctx.strokeStyle = chColor; ctx.lineWidth = 0.6; ctx.setLineDash([4, 4]);
-      ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, chartH); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, my); ctx.lineTo(chartW, my); ctx.stroke();
+      ctx.strokeStyle = chColor;
+      ctx.lineWidth = 0.6;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(mx, 0);
+      ctx.lineTo(mx, chartH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, my);
+      ctx.lineTo(chartW, my);
+      ctx.stroke();
       ctx.setLineDash([]);
 
-      // Price label on axis
       const lH = 18;
       ctx.fillStyle = '#0d1a30';
       ctx.fillRect(chartW, my - lH / 2, PRICE_W, lH);
-      ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3); ctx.lineWidth = 0.5;
+      ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3);
+      ctx.lineWidth = 0.5;
       ctx.strokeRect(chartW, my - lH / 2, PRICE_W, lH);
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.font = '11px Inter, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
       ctx.fillText(formatPrice(yToPrice(my)), w - 6, my);
 
-      // Time label on axis
       const hi = xToIdx(mx);
       hoverIdxRef.current = hi;
       if (data[hi]) {
@@ -576,37 +803,34 @@ export default function PriceChartWidget() {
         const tw = ctx.measureText(tl).width + 14;
         ctx.fillStyle = '#0d1a30';
         ctx.fillRect(mx - tw / 2, chartH, tw, TIME_H);
-        ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3); ctx.lineWidth = 0.5;
+        ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3);
+        ctx.lineWidth = 0.5;
         ctx.strokeRect(mx - tw / 2, chartH, tw, TIME_H);
-        ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
         ctx.fillText(tl, mx, chartH + 8);
       }
     } else {
       hoverIdxRef.current = data.length > 0 ? data.length - 1 : -1;
     }
 
-    // ─── OHLCV info bar (top-left, like Classic) ───
     const infoIdx = hoverIdxRef.current >= 0 && hoverIdxRef.current < data.length ? hoverIdxRef.current : data.length - 1;
     if (data[infoIdx]) {
       const c = data[infoIdx];
-      const bull = c.close >= c.open;
-      const col = bull ? cfg.candleUp : cfg.candleDown;
-      const changePct = c.open !== 0 ? ((c.close - c.open) / c.open * 100) : 0;
-      
-      ctx.font = '12px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      
-      // Background
+      const col = c.close >= c.open ? cfg.candleUp : cfg.candleDown;
+      const changePct = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
+
       const infoY = 4;
       let lx = 8;
-      
-      // Symbol
+
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
       ctx.fillText('BTC / TetherUS', lx, infoY);
       lx += ctx.measureText('BTC / TetherUS').width + 16;
-      
+
       ctx.font = '12px Inter, sans-serif';
       const items = [
         { label: 'O', value: formatPrice(c.open), color: col },
@@ -615,7 +839,7 @@ export default function PriceChartWidget() {
         { label: 'C', value: formatPrice(c.close), color: col },
         { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col },
       ];
-      
+
       for (const item of items) {
         if (item.label) {
           ctx.fillStyle = 'rgba(255,255,255,0.35)';
@@ -628,9 +852,7 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Indicator labels ───
-    const indResults = indResultsRef.current;
-    if (indResults.length > 0) {
+    if (indResultsRef.current.length > 0) {
       ctx.font = '10px Inter, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
@@ -645,30 +867,32 @@ export default function PriceChartWidget() {
         iy += 14;
       }
     }
-  }, []);
+  }, [drawingTool]);
 
-  function drawPriceAxis(ctx: CanvasRenderingContext2D, w: number, chartW: number, chartH: number, priceH: number, cfg: ChartConfig) {
-    // Price axis background
+  function drawPriceAxis(ctx: CanvasRenderingContext2D, chartW: number, chartH: number, cfg: ChartConfig) {
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(chartW, 0, PRICE_W, chartH);
-    // Separator line
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(chartW, 0); ctx.lineTo(chartW, chartH); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(chartW, 0);
+    ctx.lineTo(chartW, chartH);
+    ctx.stroke();
   }
 
-  function drawTimeAxis(ctx: CanvasRenderingContext2D, w: number, h: number, chartW: number, chartH: number, cfg: ChartConfig) {
+  function drawTimeAxis(ctx: CanvasRenderingContext2D, w: number, chartW: number, chartH: number, cfg: ChartConfig) {
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(0, chartH, w, TIME_H);
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, chartH); ctx.lineTo(chartW, chartH); ctx.stroke();
-    // Corner
+    ctx.beginPath();
+    ctx.moveTo(0, chartH);
+    ctx.lineTo(chartW, chartH);
+    ctx.stroke();
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(chartW, chartH, PRICE_W, TIME_H);
   }
 
-  // ─── getDragZone ───
   const getDragZone = useCallback((x: number, y: number): DragMode => {
     const container = containerRef.current;
     if (!container) return 'pan';
@@ -681,7 +905,6 @@ export default function PriceChartWidget() {
     return 'pan';
   }, []);
 
-  // ─── Mouse handlers ───
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -697,12 +920,10 @@ export default function PriceChartWidget() {
       const dx = e.clientX - st.dragStartX;
       const dy = e.clientY - st.dragStartY;
       st.offsetX = st.dragStartOffset - dx / st.candleWidth;
-      // Gentler vertical pan — scale down by 0.4 to match Classic feel
       st.panOffsetY = st.dragStartPanY + dy * 0.4;
       st.crosshair = null;
     } else if (st.dragMode === 'price-scale') {
       const dy = e.clientY - st.dragStartY;
-      // Smoother price scale zoom
       st.priceScaleZoom = Math.max(0.1, Math.min(10, st.dragStartPriceZoom * (1 + dy * 0.003)));
       st.crosshair = null;
     } else if (st.dragMode === 'time-scale') {
@@ -716,18 +937,68 @@ export default function PriceChartWidget() {
       st.crosshair = null;
     } else {
       const zone = getDragZone(x, y);
-      setCursor(zone === 'price-scale' ? 'ns-resize' : zone === 'time-scale' ? 'ew-resize' : 'crosshair');
-      st.crosshair = (x < chartW && y < chartH) ? { x, y } : null;
+      if (drawingTool !== 'none' && x < chartW && y < chartH) {
+        setCursor('crosshair');
+      } else {
+        setCursor(zone === 'price-scale' ? 'ns-resize' : zone === 'time-scale' ? 'ew-resize' : 'crosshair');
+      }
+      st.crosshair = x < chartW && y < chartH ? { x, y } : null;
     }
+
     scheduleRender();
-  }, [getDragZone, scheduleRender]);
+  }, [drawingTool, getDragZone, scheduleRender]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 2) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
+
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    const container = containerRef.current;
+    if (!container) return;
+    const chartW = container.clientWidth - PRICE_W;
+    const chartH = container.clientHeight - TIME_H;
+
+    // Drawing mode (click-to-place)
+    if (drawingTool !== 'none' && x < chartW && y < chartH) {
+      const point = createPointFromScreen(x, y);
+      if (!point) return;
+
+      if (drawingTool === 'hline') {
+        upsertDrawing({
+          id: `hline-${Date.now()}`,
+          type: 'hline',
+          points: [point],
+          color: '#778ba4',
+          lineWidth: 1.4,
+        });
+        toast.success('Horizontal line added');
+        return;
+      }
+
+      if (drawingTool === 'trendline') {
+        if (!draftDrawingRef.current) {
+          draftDrawingRef.current = point;
+          toast('Select second point for trendline');
+          scheduleRender();
+          return;
+        }
+
+        upsertDrawing({
+          id: `trend-${Date.now()}`,
+          type: 'trendline',
+          points: [draftDrawingRef.current, point],
+          color: '#778ba4',
+          lineWidth: 1.5,
+        });
+        draftDrawingRef.current = null;
+        toast.success('Trendline added');
+        return;
+      }
+    }
+
     const st = stateRef.current;
     const zone = getDragZone(x, y);
     st.dragMode = zone;
@@ -739,7 +1010,7 @@ export default function PriceChartWidget() {
     st.dragStartPanY = st.panOffsetY;
     st.crosshair = null;
     if (zone === 'pan') setCursor('grabbing');
-  }, [getDragZone]);
+  }, [createPointFromScreen, drawingTool, getDragZone, scheduleRender, upsertDrawing]);
 
   const handleMouseUp = useCallback(() => {
     stateRef.current.dragMode = 'none';
@@ -756,40 +1027,42 @@ export default function PriceChartWidget() {
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
+
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const container = containerRef.current;
     if (!container) return;
+
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
     if (x >= chartW && y < chartH) {
-      // Double-click on price axis: reset vertical
       stateRef.current.priceScaleZoom = 1;
       stateRef.current.panOffsetY = 0;
     } else if (y >= chartH && x < chartW) {
-      // Double-click on time axis: reset horizontal
       stateRef.current.candleWidth = DEFAULT_CW;
       const visibleCandles = Math.floor(chartW / DEFAULT_CW);
       stateRef.current.offsetX = Math.max(0, dataRef.current.length - visibleCandles);
     }
+
     scheduleRender();
   }, [scheduleRender]);
 
-  // ─── Wheel (native listener for passive: false) ───
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
+
       const st = stateRef.current;
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const chartW = rect.width - PRICE_W;
       const ratio = mx / chartW;
       const oldW = st.candleWidth;
-      // Smooth zoom factor
+
       const zf = e.deltaY > 0 ? 0.93 : 1.07;
       st.candleWidth = Math.max(MIN_CW, Math.min(MAX_CW, st.candleWidth * zf));
       const oldVis = chartW / oldW;
@@ -797,11 +1070,11 @@ export default function PriceChartWidget() {
       st.offsetX += (oldVis - newVis) * ratio;
       scheduleRender();
     };
+
     canvas.addEventListener('wheel', handler, { passive: false });
     return () => canvas.removeEventListener('wheel', handler);
   }, [scheduleRender]);
 
-  // ─── Context menu actions ───
   const resetView = useCallback(() => {
     const st = stateRef.current;
     st.priceScaleZoom = 1;
@@ -846,14 +1119,16 @@ export default function PriceChartWidget() {
     }
   }, []);
 
-  // ─── Init ───
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     scheduleRender();
     const obs = new ResizeObserver(() => scheduleRender());
     obs.observe(container);
-    return () => { obs.disconnect(); cancelAnimationFrame(rafRef.current); };
+    return () => {
+      obs.disconnect();
+      cancelAnimationFrame(rafRef.current);
+    };
   }, [scheduleRender]);
 
   return (
@@ -873,69 +1148,98 @@ export default function PriceChartWidget() {
             />
           </div>
         </ContextMenuTrigger>
+
         <ContextMenuContent className="w-64 bg-[#0a1628]/95 backdrop-blur-md border-white/[0.08]">
           <ContextMenuItem className="gap-2 text-xs" onClick={() => setSettingsOpen(true)}>
             <BarChart3 size={14} className="text-white/40" />
             BTC/USDT settings…
           </ContextMenuItem>
+
+          <ContextMenuItem className="gap-2 text-xs" onClick={applyClassicPreset}>
+            <RotateCcw size={14} className="text-white/40" />
+            Apply Classic style
+          </ContextMenuItem>
+
           <ContextMenuSeparator />
+
           <ContextMenuItem onClick={resetView} className="gap-2 text-xs">
             <RotateCcw size={14} className="text-white/40" />
             Reset chart view
-            <span className="ml-auto text-[10px] text-white/30">Alt+R</span>
           </ContextMenuItem>
           <ContextMenuItem onClick={fitToScreen} className="gap-2 text-xs">
             <Maximize2 size={14} className="text-white/40" />
             Fit to screen
           </ContextMenuItem>
+
           <ContextMenuSeparator />
+
           <ContextMenuItem onClick={zoomIn} className="gap-2 text-xs">
             <ZoomIn size={14} className="text-white/40" />
             Zoom in
-            <span className="ml-auto text-[10px] text-white/30">+</span>
           </ContextMenuItem>
           <ContextMenuItem onClick={zoomOut} className="gap-2 text-xs">
             <ZoomOut size={14} className="text-white/40" />
             Zoom out
-            <span className="ml-auto text-[10px] text-white/30">−</span>
           </ContextMenuItem>
+
           <ContextMenuSeparator />
-          <ContextMenuItem
-            onClick={removeAllIndicators}
-            disabled={indicators.length === 0}
-            className="gap-2 text-xs"
-          >
+
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="gap-2 text-xs">
+              <Pencil size={14} className="text-white/40" />
+              Drawing tools
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="bg-[#0a1628]/95 backdrop-blur-md border-white/[0.08]">
+              <ContextMenuItem className="text-xs" onClick={() => { setDrawingTool('none'); draftDrawingRef.current = null; scheduleRender(); }}>
+                {drawingTool === 'none' ? '✓ ' : ''}Cursor
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onClick={() => { setDrawingTool('trendline'); draftDrawingRef.current = null; scheduleRender(); }}>
+                {drawingTool === 'trendline' ? '✓ ' : ''}Trend line
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onClick={() => { setDrawingTool('hline'); draftDrawingRef.current = null; scheduleRender(); }}>
+                {drawingTool === 'hline' ? '✓ ' : ''}Horizontal line
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs" onClick={removeAllDrawings} disabled={drawingsCount === 0}>
+                Clear drawings ({drawingsCount})
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+
+          <ContextMenuItem onClick={removeAllIndicators} disabled={indicators.length === 0} className="gap-2 text-xs">
             <Trash2 size={14} className="text-white/40" />
             {indicators.length > 0 ? `Remove ${indicators.length} indicator${indicators.length > 1 ? 's' : ''}` : 'No indicators to remove'}
           </ContextMenuItem>
-          <ContextMenuItem disabled className="gap-2 text-xs">
-            <Pencil size={14} className="text-white/40" />
-            Drawing tools (coming soon)
-          </ContextMenuItem>
+
           <ContextMenuSeparator />
+
           <ContextMenuSub>
             <ContextMenuSubTrigger className="gap-2 text-xs">
               <Clock size={14} className="text-white/40" />
               Timeframe
             </ContextMenuSubTrigger>
             <ContextMenuSubContent className="bg-[#0a1628]/95 backdrop-blur-md border-white/[0.08]">
-              {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map(tf => (
+              {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map((tf) => (
                 <ContextMenuItem
                   key={tf}
                   onClick={() => setTimeframe(tf)}
                   className={`text-xs ${timeframe === tf ? 'text-cyan-400' : ''}`}
                 >
-                  {TIMEFRAME_CONFIG[tf].label} {timeframe === tf && '✓'}
+                  {TIMEFRAME_CONFIG[tf].label} {timeframe === tf ? '✓' : ''}
                 </ContextMenuItem>
               ))}
             </ContextMenuSubContent>
           </ContextMenuSub>
+
           <ContextMenuSeparator />
+
           <ContextMenuItem onClick={copyLastPrice} className="gap-2 text-xs">
             <Copy size={14} className="text-white/40" />
             Copy last price
           </ContextMenuItem>
+
           <ContextMenuSeparator />
+
           <ContextMenuItem className="gap-2 text-xs" onClick={() => setSettingsOpen(true)}>
             <Settings size={14} className="text-white/40" />
             Settings…
@@ -943,16 +1247,13 @@ export default function PriceChartWidget() {
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* Top toolbar */}
       <div className="absolute top-1.5 left-2 z-10 flex items-center gap-1 pointer-events-auto">
-        {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map(tf => (
+        {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map((tf) => (
           <button
             key={tf}
             onClick={() => setTimeframe(tf)}
             className={`px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
-              timeframe === tf
-                ? 'bg-white/10 text-white/80'
-                : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+              timeframe === tf ? 'bg-white/10 text-white/80' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
             }`}
           >
             {TIMEFRAME_CONFIG[tf].label}
@@ -961,18 +1262,43 @@ export default function PriceChartWidget() {
 
         <div className="w-px h-4 bg-white/[0.06] mx-1" />
 
-        <NewUIIndicatorPanel
-          indicators={indicators}
-          onAdd={addIndicator}
-          onRemove={removeIndicator}
-          onToggle={toggleIndicator}
+        <button
+          onClick={() => { setDrawingTool('none'); draftDrawingRef.current = null; scheduleRender(); }}
+          className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
+            drawingTool === 'none' ? 'bg-white/10 text-white/80' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+          }`}
+          title="Cursor"
         >
+          <MousePointer2 size={11} />
+        </button>
+
+        <button
+          onClick={() => { setDrawingTool('trendline'); draftDrawingRef.current = null; scheduleRender(); }}
+          className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
+            drawingTool === 'trendline' ? 'bg-white/10 text-white/80' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+          }`}
+          title="Trend line"
+        >
+          <Slash size={11} />
+        </button>
+
+        <button
+          onClick={() => { setDrawingTool('hline'); draftDrawingRef.current = null; scheduleRender(); }}
+          className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
+            drawingTool === 'hline' ? 'bg-white/10 text-white/80' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+          }`}
+          title="Horizontal line"
+        >
+          <Minus size={11} />
+        </button>
+
+        <div className="w-px h-4 bg-white/[0.06] mx-1" />
+
+        <NewUIIndicatorPanel indicators={indicators} onAdd={addIndicator} onRemove={removeIndicator} onToggle={toggleIndicator}>
           <button className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
             <TrendingUp size={12} />
             Indicators
-            {indicators.length > 0 && (
-              <span className="ml-0.5 text-[9px] text-cyan-400/80">{indicators.length}</span>
-            )}
+            {indicators.length > 0 && <span className="ml-0.5 text-[9px] text-cyan-400/80">{indicators.length}</span>}
           </button>
         </NewUIIndicatorPanel>
 
@@ -984,15 +1310,11 @@ export default function PriceChartWidget() {
         </button>
       </div>
 
-      {/* Symbol + timeframe label */}
       <div className="absolute top-1.5 right-[94px] flex items-center gap-2 pointer-events-none z-10">
-        <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">
-          BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}
-        </span>
+        <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}</span>
         {loading && <Loader2 size={12} className="animate-spin text-white/20" />}
       </div>
 
-      {/* Live indicator dot */}
       {!loading && (
         <div className="absolute top-2.5 right-20 z-10 flex items-center gap-1 pointer-events-none">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1000,18 +1322,17 @@ export default function PriceChartWidget() {
         </div>
       )}
 
-      {/* Settings dialog */}
-      <NewUIChartSettings
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        config={config}
-        onChange={setConfig}
-      />
+      {drawingTool === 'trendline' && draftDrawingRef.current && (
+        <div className="absolute bottom-8 left-3 text-[10px] font-mono text-white/50 pointer-events-none z-10">
+          Trendline: select second point (Esc to cancel)
+        </div>
+      )}
+
+      <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
     </div>
   );
 }
 
-// ─── Utility ───
 function hexToRgba(hex: string, alpha: number): string {
   if (hex.startsWith('rgba') || hex.startsWith('rgb')) return hex;
   const h = hex.replace('#', '');
