@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import heroBg from '@/assets/hero-bg.jpg';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import { ChevronDown, BarChart3, Search, Zap, Shield, Globe, TrendingUp } from 'lucide-react';
+import PolicyFooter from '@/components/PolicyFooter';
 
 const features = [
   { icon: BarChart3, title: 'Advanced Charting', desc: 'Professional-grade charts with 100+ indicators, drawing tools, and multi-timeframe analysis.' },
