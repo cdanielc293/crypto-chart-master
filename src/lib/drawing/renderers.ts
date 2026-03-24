@@ -343,35 +343,54 @@ const renderTrendAngle: Renderer = (ctx, d, coord) => {
 
 // ─── Channels ───
 
-const renderParallelChannel: Renderer = (ctx, d, coord) => {
+const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 3) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   const p3 = toXY(coord, d.points[2].time, d.points[2].price);
   if (!p1 || !p2 || !p3) return;
-  // p3 defines the offset
-  const offsetY = p3.y - p1.y;
-  setupStroke(ctx, d);
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y + offsetY);
-  ctx.lineTo(p2.x, p2.y + offsetY);
-  ctx.stroke();
-  // Fill
   const props = d.props || {};
-  const bgColor = props.backgroundColor || d.color;
-  const bgOpacity = props.backgroundOpacity ?? 0.08;
-  ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.lineTo(p2.x, p2.y + offsetY);
-  ctx.lineTo(p1.x, p1.y + offsetY);
-  ctx.closePath();
-  ctx.fill();
+  const offsetY = p3.y - p1.y;
+  const extendLeft = props.extendLeft || false;
+  const extendRight = props.extendRight || false;
+
+  // Calculate extended points
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+
+  let lx1 = p1.x, ly1 = p1.y, lx2 = p2.x, ly2 = p2.y;
+  if (extendLeft) { lx1 = p1.x - ux * 5000; ly1 = p1.y - uy * 5000; }
+  if (extendRight) { lx2 = p2.x + ux * 5000; ly2 = p2.y + uy * 5000; }
+
+  setupStroke(ctx, d);
+  // Top line
+  ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
+  // Bottom line
+  ctx.beginPath(); ctx.moveTo(lx1, ly1 + offsetY); ctx.lineTo(lx2, ly2 + offsetY); ctx.stroke();
+
+  // Middle line
+  if (props.showMiddleLine) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1 + offsetY / 2); ctx.lineTo(lx2, ly2 + offsetY / 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Fill
+  if (props.showBackground !== false) {
+    const bgColor = props.backgroundColor || d.color;
+    const bgOpacity = props.backgroundOpacity ?? 0.08;
+    ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2);
+    ctx.lineTo(lx2, ly2 + offsetY); ctx.lineTo(lx1, ly1 + offsetY);
+    ctx.closePath(); ctx.fill();
+  }
 
   // Text
   const text = props.text;
@@ -380,8 +399,8 @@ const renderParallelChannel: Renderer = (ctx, d, coord) => {
     const fontStyle = `${props.textItalic ? 'italic ' : ''}${props.textBold ? 'bold ' : ''}${fontSize}px sans-serif`;
     ctx.font = fontStyle;
     ctx.fillStyle = props.textColor || d.color;
-    const textPos = props.textPosition || 'middle'; // 'top' | 'middle' | 'bottom'
-    const textAlign = props.textAlign || 'center'; // 'left' | 'center' | 'right'
+    const textPos = props.textPosition || 'middle';
+    const textAlign = props.textAlign || 'center';
     ctx.textAlign = textAlign as CanvasTextAlign;
     ctx.textBaseline = 'middle';
     const midX = textAlign === 'left' ? Math.min(p1.x, p2.x) + 8
