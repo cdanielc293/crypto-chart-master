@@ -25,6 +25,7 @@ export default function UserProfileMenu() {
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const [referOpen, setReferOpen] = useState(false);
 
