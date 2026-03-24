@@ -1569,6 +1569,85 @@ const renderXabcd: Renderer = (ctx, d, coord) => {
   ctx.restore();
 };
 
+// ─── Projection ───
+const renderProjection: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 3) return;
+  const pA = toXY(coord, d.points[0].time, d.points[0].price);
+  const pB = toXY(coord, d.points[1].time, d.points[1].price);
+  const pC = toXY(coord, d.points[2].time, d.points[2].price);
+  if (!pA || !pB || !pC) return;
+  const props = d.props || {};
+  setupStroke(ctx, d);
+
+  // Draw legs A→B, B→C
+  ctx.beginPath();
+  ctx.moveTo(pA.x, pA.y);
+  ctx.lineTo(pB.x, pB.y);
+  ctx.lineTo(pC.x, pC.y);
+  ctx.stroke();
+
+  // Calculate projected point D: C + (B - A) ratio
+  const priceAB = d.points[1].price - d.points[0].price;
+  const timeAB = d.points[1].time - d.points[0].time;
+
+  // Fibonacci projection levels from C
+  const levels = props.projectionLevels || [1, 0.618, 1.618, 2.618];
+  const levelColors = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4'];
+
+  for (let i = 0; i < levels.length; i++) {
+    const level = levels[i];
+    const projPrice = d.points[2].price + priceAB * level;
+    const projTime = d.points[2].time + timeAB * level;
+    const pD = toXY(coord, projTime, projPrice);
+    if (!pD) continue;
+
+    // Dashed line from C to projected point
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = levelColors[i % levelColors.length];
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pC.x, pC.y);
+    ctx.lineTo(pD.x, pD.y);
+    ctx.stroke();
+
+    // Horizontal level line at projected price
+    ctx.beginPath();
+    ctx.moveTo(pD.x - 40, pD.y);
+    ctx.lineTo(pD.x + 40, pD.y);
+    ctx.stroke();
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = levelColors[i % levelColors.length];
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${(level * 100).toFixed(1)}% (${projPrice.toFixed(2)})`, pD.x + 6, pD.y + 4);
+  }
+
+  // Background between A-B-C
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y);
+    ctx.lineTo(pB.x, pB.y);
+    ctx.lineTo(pC.x, pC.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Point labels
+  ctx.fillStyle = d.color;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('A', pA.x, pA.y - 8);
+  ctx.fillText('B', pB.x, pB.y - 8);
+  ctx.fillText('C', pC.x, pC.y - 8);
+};
+
 // ─── Anchored VWAP ───
 const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
   if (d.points.length < 1 || !candles || candles.length === 0) return;
