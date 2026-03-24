@@ -114,10 +114,13 @@ export default function Disclaimer() {
           </p>
 
           <h2>Contact</h2>
-          <p>
-            If you have questions about this disclaimer, please contact us at{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>.
-          </p>
+          <p>If you have questions about this disclaimer, please use the form below:</p>
+          <InlineContactForm
+            category="legal"
+            title="Legal Inquiry"
+            placeholder="Describe your question or concern..."
+            buttonLabel="Submit"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">

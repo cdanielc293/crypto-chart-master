@@ -138,10 +138,13 @@ export default function Cookies() {
           </p>
 
           <h2>Contact Us</h2>
-          <p>
-            If you have questions about our use of cookies, please contact us at{' '}
-            <a href="mailto:privacy@vizionx.pro" className="text-cyan-400 hover:underline">privacy@vizionx.pro</a>.
-          </p>
+          <p>If you have questions about our use of cookies, please reach out:</p>
+          <InlineContactForm
+            category="privacy"
+            title="Cookie & Privacy Inquiry"
+            placeholder="Describe your question about cookies or privacy..."
+            buttonLabel="Submit"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">

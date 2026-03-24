@@ -294,9 +294,14 @@ export default function Privacy() {
 
           <h2>Contact Us</h2>
           <p>
-            For questions, concerns, or requests related to this privacy policy or your personal data, please contact us at:{' '}
-            <a href="mailto:privacy@vizionx.pro" className="text-cyan-400 hover:underline">privacy@vizionx.pro</a>
+            For questions, concerns, or requests related to this privacy policy or your personal data, please use the form below:
           </p>
+          <InlineContactForm
+            category="privacy"
+            title="Privacy Inquiry"
+            placeholder="Describe your privacy-related question or data request..."
+            buttonLabel="Submit"
+          />
           <p className="text-white/50">
             VizionX<br />
             Website: <a href="https://www.vizionx.pro" className="text-cyan-400 hover:underline">www.vizionx.pro</a>
