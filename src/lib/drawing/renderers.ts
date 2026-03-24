@@ -343,6 +343,17 @@ const renderTrendAngle: Renderer = (ctx, d, coord) => {
 
 // ─── Channels ───
 
+// Default channel levels: value is fraction of channel height (0=top line, 1=bottom line)
+const DEFAULT_CHANNEL_LEVELS = [
+  { value: -0.25, visible: false, color: '#2962ff', style: 'solid' },
+  { value: 0,     visible: true,  color: '#2962ff', style: 'solid' },
+  { value: 0.25,  visible: false, color: '#2962ff', style: 'solid' },
+  { value: 0.5,   visible: true,  color: '#2962ff', style: 'dashed' },
+  { value: 0.75,  visible: false, color: '#2962ff', style: 'solid' },
+  { value: 1,     visible: true,  color: '#2962ff', style: 'solid' },
+  { value: 1.25,  visible: false, color: '#2962ff', style: 'solid' },
+];
+
 const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 3) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
@@ -350,46 +361,84 @@ const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
   const p3 = toXY(coord, d.points[2].time, d.points[2].price);
   if (!p1 || !p2 || !p3) return;
   const props = d.props || {};
-  const offsetY = p3.y - p1.y;
-  const extendLeft = props.extendLeft || false;
-  const extendRight = props.extendRight || false;
 
-  // Calculate extended points
+  // Channel offset (distance between top and bottom lines)
+  const offsetY = p3.y - p1.y;
+
+  // Direction vector
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;
 
+  // Extend
+  const extendLeft = props.extendLeft || false;
+  const extendRight = props.extendRight || false;
+
+  // Extended base points
   let lx1 = p1.x, ly1 = p1.y, lx2 = p2.x, ly2 = p2.y;
   if (extendLeft) { lx1 = p1.x - ux * 5000; ly1 = p1.y - uy * 5000; }
   if (extendRight) { lx2 = p2.x + ux * 5000; ly2 = p2.y + uy * 5000; }
 
-  setupStroke(ctx, d);
-  // Top line
-  ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
-  // Bottom line
-  ctx.beginPath(); ctx.moveTo(lx1, ly1 + offsetY); ctx.lineTo(lx2, ly2 + offsetY); ctx.stroke();
+  // Get levels configuration
+  const levels: { value: number; visible: boolean; color: string; style: string }[] =
+    props.channelLevels || DEFAULT_CHANNEL_LEVELS;
 
-  // Middle line
-  if (props.showMiddleLine) {
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.globalAlpha = 0.5;
+  // Use one color mode
+  const useOneColor = props.useOneColor || false;
+  const oneColor = useOneColor ? (props.oneColorValue || d.color) : null;
+
+  // Draw each visible level line
+  for (const level of levels) {
+    if (!level.visible) continue;
+    const off = offsetY * level.value;
+    const lineColor = oneColor || level.color || d.color;
+    const lineStyle = level.style || 'solid';
+
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = d.lineWidth;
+    ctx.lineCap = 'round';
+    if (lineStyle === 'dashed') ctx.setLineDash([8, 4]);
+    else if (lineStyle === 'dotted') ctx.setLineDash([3, 3]);
+    else ctx.setLineDash([]);
+
     ctx.beginPath();
-    ctx.moveTo(lx1, ly1 + offsetY / 2); ctx.lineTo(lx2, ly2 + offsetY / 2);
+    ctx.moveTo(lx1, ly1 + off);
+    ctx.lineTo(lx2, ly2 + off);
     ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Background fill between level 0 and level 1
+  if (props.showBackground) {
+    const bgColor = oneColor || props.backgroundColor || d.color;
+    const bgOpacity = props.backgroundOpacity ?? 0.06;
+    ctx.save();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1);
+    ctx.lineTo(lx2, ly2);
+    ctx.lineTo(lx2, ly2 + offsetY);
+    ctx.lineTo(lx1, ly1 + offsetY);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
-  // Fill
-  if (props.showBackground !== false) {
-    const bgColor = props.backgroundColor || d.color;
-    const bgOpacity = props.backgroundOpacity ?? 0.08;
-    ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
-    ctx.beginPath();
-    ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2);
-    ctx.lineTo(lx2, ly2 + offsetY); ctx.lineTo(lx1, ly1 + offsetY);
-    ctx.closePath(); ctx.fill();
+  // Labels for levels
+  if (props.showLabels) {
+    const labelPos = props.labelPosition || 'right';
+    for (const level of levels) {
+      if (!level.visible) continue;
+      const off = offsetY * level.value;
+      const lx = labelPos === 'left' ? lx1 + 4 : lx2 - 4;
+      const ly = labelPos === 'left' ? ly1 + off : ly2 + off;
+      ctx.fillStyle = oneColor || level.color || d.color;
+      ctx.font = '10px monospace';
+      ctx.textAlign = labelPos === 'left' ? 'left' : 'right';
+      ctx.fillText(`${level.value}`, lx, ly - 3);
+    }
   }
 
   // Text
