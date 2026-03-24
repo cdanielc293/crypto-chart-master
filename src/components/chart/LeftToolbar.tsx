@@ -446,7 +446,8 @@ export default function LeftToolbar() {
                     </button>
                   ))}
                 </div>
-              ))}
+              ))
+              )}
             </div>
           )}
         </div>
