@@ -97,7 +97,7 @@ function formatDateFull(ts: number, intervalSec: number): string {
 const C = {
   bg: '#080e1e',
   grid: 'rgba(255,255,255,0.025)',
-  axisText: 'rgba(255,255,255,0.45)',
+  axisText: 'rgba(255,255,255,0.82)',
   axisLine: 'rgba(255,255,255,0.08)',
   axisBg: 'rgba(8,14,30,0.97)',
   bull: '#26a69a', bear: '#ef5350',
@@ -109,8 +109,8 @@ const C = {
   crossText: 'rgba(255,255,255,0.85)',
 };
 
-const PRICE_W = 80;
-const TIME_H = 28;
+const PRICE_W = 108;
+const TIME_H = 32;
 const VOL_RATIO = 0.13;
 const MIN_CW = 1;
 const MAX_CW = 50;
@@ -235,7 +235,7 @@ export default function PriceChartWidget() {
     ctx.clip();
 
     // ─── Grid: horizontal price lines ───
-    ctx.font = '10px Inter, monospace';
+    ctx.font = '12px Inter, monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     const priceStep = calculateNiceStep(totalRange, priceH / 50);
@@ -328,7 +328,7 @@ export default function PriceChartWidget() {
     drawAxes(ctx, w, h, chartW, chartH);
 
     // ─── Price labels on axis ───
-    ctx.font = '10px Inter, monospace';
+    ctx.font = '12px Inter, monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
@@ -358,7 +358,7 @@ export default function PriceChartWidget() {
       ctx.fillStyle = bull ? C.bull : C.bear;
       ctx.fillRect(chartW, ly - labelH / 2, PRICE_W, labelH);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px Inter, monospace';
+      ctx.font = 'bold 12px Inter, monospace';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(formatPrice(last.close), w - 8, ly);
     }
@@ -380,7 +380,7 @@ export default function PriceChartWidget() {
       ctx.strokeStyle = 'rgba(0,200,255,0.3)'; ctx.lineWidth = 0.5;
       ctx.strokeRect(chartW, my - labelH / 2, PRICE_W, labelH);
       ctx.fillStyle = C.crossText;
-      ctx.font = '10px Inter, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.font = '12px Inter, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(formatPrice(yToPrice(my)), w - 8, my);
 
       // Time label on axis
@@ -400,7 +400,7 @@ export default function PriceChartWidget() {
       if (data[hi]) {
         const c = data[hi];
         const col = c.close >= c.open ? C.bull : C.bear;
-        ctx.font = '10px Inter, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.font = '12px Inter, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
         let lx = 8;
         const items = [
           { t: `O ${formatPrice(c.open)}`, c: col },
@@ -761,7 +761,7 @@ export default function PriceChartWidget() {
           <button
             key={tf}
             onClick={() => setTimeframe(tf)}
-            className={`px-1.5 py-0.5 text-[9px] font-mono rounded transition-colors ${
+            className={`px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
               timeframe === tf
                 ? 'bg-white/10 text-white/80'
                 : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
@@ -772,8 +772,8 @@ export default function PriceChartWidget() {
         ))}
       </div>
 
-      <div className="absolute top-1.5 right-[84px] flex items-center gap-2 pointer-events-none">
-        <span className="text-[9px] font-mono text-white/20 tracking-wider uppercase">
+      <div className="absolute top-1.5 right-[112px]' flex items-center gap-2 pointer-events-none">
+        <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">
           BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}
         </span>
       </div>
