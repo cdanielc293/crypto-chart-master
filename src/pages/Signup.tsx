@@ -32,6 +32,8 @@ export default function Signup() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showBetaPass, setShowBetaPass] = useState(false);
   const [signedUpName, setSignedUpName] = useState('');
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
+  const [guestCode, setGuestCode] = useState('');
 
   useEffect(() => {
     if (user && !showBetaPass) navigate('/chart', { replace: true });
