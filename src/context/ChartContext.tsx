@@ -187,6 +187,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [selectedDrawingIds, setSelectedDrawingIds] = useState<Set<string>>(new Set());
   const [indicators, setIndicators] = useState<string[]>([]);
   const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
   const [indicatorConfigs, setIndicatorConfigs] = useState<Map<string, IndicatorInstance>>(new Map());
