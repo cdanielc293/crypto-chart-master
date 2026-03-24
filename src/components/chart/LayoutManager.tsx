@@ -73,8 +73,8 @@ export default function LayoutManager() {
         const panelState = ctx.panelIndicatorStates.get(i);
         panels.push({
           symbol: ctx.syncOptions.symbol ? ctx.symbol : (ctx.panelSymbols[i] || 'BTCUSDT'),
-          interval: ctx.interval,
-          chartType: ctx.chartType,
+          interval: panelState?.interval || ctx.interval,
+          chartType: panelState?.chartType || ctx.chartType,
           indicators: panelState ? [...panelState.indicators] : [],
           indicatorConfigs: panelState ? Object.fromEntries(panelState.indicatorConfigs) : {},
           hiddenIndicators: panelState ? Array.from(panelState.hiddenIndicators) : [],
@@ -124,10 +124,16 @@ export default function LayoutManager() {
         // This will be handled by persistence per symbol
       }
 
-      // Restore multi-panel symbols
+      // Restore multi-panel symbols, intervals, and chart types
       if (grid.count > 1) {
         panels.forEach((panel, i) => {
           ctx.setPanelSymbol(i, panel.symbol || 'BTCUSDT');
+          if (panel.interval) {
+            ctx.setPanelInterval(i, panel.interval as any);
+          }
+          if (panel.chartType) {
+            ctx.setPanelChartType(i, panel.chartType as any);
+          }
         });
       }
     }
