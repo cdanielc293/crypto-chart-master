@@ -1625,6 +1625,10 @@ export default function PriceChartWidget() {
         onSelectTool={handleSelectTool}
         drawingsCount={drawingsCount}
         onDeleteAll={removeAllDrawings}
+        onUndo={undoDrawings}
+        onRedo={redoDrawings}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       {/* Chart area */}
