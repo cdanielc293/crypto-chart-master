@@ -1036,6 +1036,39 @@ const renderXabcd: Renderer = (ctx, d, coord) => {
   ctx.restore();
 };
 
+// ─── Anchored VWAP ───
+const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
+  if (d.points.length < 1 || !candles || candles.length === 0) return;
+  const anchorTime = d.points[0].time;
+  const startIdx = candles.findIndex(c => c.time >= anchorTime);
+  if (startIdx < 0) return;
+  let cumVP = 0, cumV = 0;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = startIdx; i < candles.length; i++) {
+    const c = candles[i];
+    const tp = (c.high + c.low + c.close) / 3;
+    const vol = c.volume || 1;
+    cumVP += tp * vol; cumV += vol;
+    const vwap = cumVP / cumV;
+    const x = coord.timeToX(c.time);
+    const y = coord.priceToY(vwap);
+    if (x !== null && y !== null) pts.push({ x, y });
+  }
+  if (pts.length < 1) return;
+  setupStroke(ctx, d);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+  const last = pts[pts.length - 1];
+  ctx.save();
+  ctx.font = '10px monospace';
+  ctx.fillStyle = d.color;
+  ctx.textAlign = 'left';
+  ctx.fillText('AVWAP', last.x + 5, last.y - 4);
+  ctx.restore();
+};
+
 // ─── Renderer map ───
 
 const RENDERERS: Record<string, Renderer> = {
