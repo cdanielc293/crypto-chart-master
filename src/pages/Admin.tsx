@@ -7,7 +7,7 @@ import {
 import { planLabels } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import vizionLogo from '@/assets/vizion-logo.png';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ArrowLeft, Users, Bug, Lightbulb, MessageSquare, BarChart3, Shield,
   Ban, CheckCircle, Clock, Loader2, ChevronDown,
@@ -85,7 +85,7 @@ export default function Admin() {
           <ArrowLeft size={18} className="text-white/60" />
         </button>
         <div className="flex items-center gap-2">
-          <img src={vizionLogo} alt="Vizion" className="h-6 w-6" />
+          <img src={vizionLogo} alt="VizionX" className="h-6 w-6" />
           <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
             Admin Panel
           </span>

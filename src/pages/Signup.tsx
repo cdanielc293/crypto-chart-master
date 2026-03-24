@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Mail } from 'lucide-react';
-import vizionLogo from '@/assets/vizion-logo.png';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
 
 const tierNames: Record<string, string> = {
-  core: 'Vizion Core',
-  prime: 'Vizion Prime',
-  elite: 'Vizion Elite',
-  zenith: 'Vizion Zenith',
+  core: 'VizionX Core',
+  prime: 'VizionX Prime',
+  elite: 'VizionX Elite',
+  zenith: 'VizionX Zenith',
 };
 
 export default function Signup() {
@@ -19,7 +19,7 @@ export default function Signup() {
   const [searchParams] = useSearchParams();
   const { user, signInWithEmail, signUpWithEmail, signInWithOAuth, signingIn, enterAsGuest } = useAuth();
   const tier = searchParams.get('tier') || 'zenith';
-  const tierLabel = tierNames[tier] || 'Vizion Zenith';
+  const tierLabel = tierNames[tier] || 'VizionX Zenith';
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +46,7 @@ export default function Signup() {
         toast.error('אימות הסיסמה לא תואם.');
         return;
       }
-      await signUpWithEmail(trimmedEmail, password);
+      await signUpWithEmail(trimmedEmail, password, { plan: tier });
       return;
     }
     await signInWithEmail(trimmedEmail, password);
@@ -102,9 +102,9 @@ export default function Signup() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <img src={vizionLogo} alt="Vizion" className="h-8 w-8" />
+          <img src={vizionLogo} alt="VizionX" className="h-8 w-8" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            VIZION
+            VIZIONX
           </span>
         </motion.div>
 
@@ -120,7 +120,7 @@ export default function Signup() {
           <p className="text-sm text-white/40 text-center mb-8">
             Selected plan:{' '}
             <span className="text-cyan-400 font-semibold">{tierLabel}</span>
-            <span className="text-white/20"> · Free during launch</span>
+            <span className="text-white/20"> · Free for Beta Version</span>
           </p>
 
           {/* Primary OAuth buttons */}

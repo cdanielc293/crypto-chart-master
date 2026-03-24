@@ -1,4 +1,4 @@
-import vizionLogo from '@/assets/vizion-logo.png';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
@@ -104,9 +104,9 @@ export default function TopToolbar() {
       <div className="relative flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
         {/* Absolutely centered logo */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-          <img src={vizionLogo} alt="Vizion" className="h-5 w-5" />
+          <img src={vizionLogo} alt="VizionXX" className="h-5 w-5" />
           <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            Vizion
+            VizionX
           </span>
         </div>
         {/* User Profile - leftmost */}

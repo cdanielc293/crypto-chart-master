@@ -73,6 +73,9 @@ export default function UserProfileMenu() {
             }`}>
               {planLabels[plan] || plan}
             </p>
+            <p className="text-[10px] text-cyan-400/60 mt-0.5 font-medium">
+              Free for Beta Version
+            </p>
             {user.email && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>
             )}
