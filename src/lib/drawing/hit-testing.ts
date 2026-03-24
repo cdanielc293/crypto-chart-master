@@ -93,7 +93,8 @@ export function hitTestDrawing(
 
   // Rectangle-like
   if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
-    'gannbox', 'gannsquare', 'gannsquarefixed', 'longposition', 'shortposition'].includes(type)) {
+    'gannbox', 'gannsquare', 'gannsquarefixed', 'longposition', 'shortposition',
+    'fixedrangevolume', 'anchoredvolume'].includes(type)) {
     if (drawing.points.length < 2) return false;
     const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     const p2 = toXY(coord, drawing.points[1].time, drawing.points[1].price);
