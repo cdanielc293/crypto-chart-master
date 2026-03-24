@@ -70,21 +70,27 @@ export default function PriceChartWidget() {
       handleScale: true,
     });
 
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderDownColor: '#ef5350',
-      borderUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-      wickUpColor: '#26a69a',
+    const candleSeries = chart.addSeries({
+      type: 'Candlestick',
+      options: {
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderDownColor: '#ef5350',
+        borderUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+        wickUpColor: '#26a69a',
+      },
     });
 
     const candles = generateMockCandles(200);
     candleSeries.setData(candles as any);
 
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
+    const volumeSeries = chart.addSeries({
+      type: 'Histogram',
+      options: {
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      },
     });
     volumeSeries.priceScale().applyOptions({
       scaleMargins: { top: 0.85, bottom: 0 },
