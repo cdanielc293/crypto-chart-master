@@ -460,6 +460,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addToWatchlist, removeFromWatchlist,
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
+      selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing,
       indicators, addIndicator, removeIndicator, toggleIndicator,
       hiddenIndicators, toggleHiddenIndicator,
       indicatorConfigs, updateIndicatorConfig,
