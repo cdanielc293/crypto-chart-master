@@ -272,8 +272,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const h = container?.clientHeight || 0;
 
     if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
-      // Check anchor of selected
-      if (selectedDrawingId) {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      ctrlKeyRef.current = isCtrl;
+
+      // Check anchor of selected (single select only)
+      if (selectedDrawingId && !isCtrl) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
         if (sel && !sel.locked) {
           const anchorIdx = hitTestAnchors(sel, mx, my, coord);
@@ -293,18 +296,29 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       for (let i = chartDrawings.length - 1; i >= 0; i--) {
         const d = chartDrawings[i];
         if (hitTestDrawing(d, mx, my, coord, w, h)) {
-          setSelectedDrawingId(d.id);
-          if (!d.locked) {
-            isDraggingRef.current = true;
-            dragTypeRef.current = 'move';
-            dragStartRef.current = { mx, my, points: d.points.map(p => ({ ...p })) };
+          if (isCtrl) {
+            // Ctrl+Click: toggle in multi-select
+            toggleSelectedDrawing(d.id);
+            if (selectedDrawingId === d.id) {
+              setSelectedDrawingId(null);
+            } else if (!selectedDrawingId) {
+              setSelectedDrawingId(d.id);
+            }
+          } else {
+            // Normal click: single select (clear multi)
+            setSelectedDrawingIds(new Set());
+            setSelectedDrawingId(d.id);
+            if (!d.locked) {
+              isDraggingRef.current = true;
+              dragTypeRef.current = 'move';
+              dragStartRef.current = { mx, my, points: d.points.map(p => ({ ...p })) };
+            }
           }
-          // Mark selected
+          // Mark selected state on drawing
           for (const dd of drawings) {
-            if (dd.id === d.id && !dd.selected) {
-              updateDrawing(dd.id, { ...dd, selected: true });
-            } else if (dd.id !== d.id && dd.selected) {
-              updateDrawing(dd.id, { ...dd, selected: false });
+            const shouldSelect = dd.id === d.id || (isCtrl && selectedDrawingIds.has(dd.id));
+            if (dd.selected !== shouldSelect) {
+              updateDrawing(dd.id, { ...dd, selected: shouldSelect });
             }
           }
           e.preventDefault();
@@ -313,13 +327,26 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
 
-      // Deselect
+      // Clicked empty area - start area selection or deselect
+      if (!isCtrl) {
+        // Start area selection
+        areaSelectStartRef.current = { x: mx, y: my };
+        areaSelectEndRef.current = { x: mx, y: my };
+      }
+
+      // Deselect all
       if (selectedDrawingId) {
         const prev = drawings.find(d => d.id === selectedDrawingId);
         if (prev) updateDrawing(prev.id, { ...prev, selected: false });
         setSelectedDrawingId(null);
-        setToolbarPos(null);
       }
+      if (selectedDrawingIds.size > 0) {
+        for (const dd of drawings) {
+          if (dd.selected) updateDrawing(dd.id, { ...dd, selected: false });
+        }
+        setSelectedDrawingIds(new Set());
+      }
+      setToolbarPos(null);
       return;
     }
 
