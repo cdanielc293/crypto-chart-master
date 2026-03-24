@@ -110,6 +110,7 @@ function ChartWithShortcuts() {
         <ReplayControls />
         <FeedbackWidgets />
       </div>
+      <FavoritesToolbar />
       <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SessionDisconnectedDialog
         open={disconnected}

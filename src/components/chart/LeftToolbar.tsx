@@ -523,8 +523,9 @@ export default function LeftToolbar() {
                       )}
                       <Star
                         size={11}
-                        className={`ml-1 flex-shrink-0 ${
-                          item.starred
+                        onClick={(e) => handleToggleStar(item.tool, e)}
+                        className={`ml-1 flex-shrink-0 cursor-pointer hover:scale-125 transition-transform ${
+                          starredTools.has(item.tool)
                             ? 'text-yellow-500 fill-yellow-500'
                             : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
                         }`}
