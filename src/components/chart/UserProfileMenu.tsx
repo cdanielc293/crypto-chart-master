@@ -91,6 +91,15 @@ export default function UserProfileMenu() {
             <Users size={15} /> Refer a friend
           </DropdownMenuItem>
 
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin')} className="gap-2 cursor-pointer text-cyan-400">
+                <Shield size={15} /> Admin Panel
+              </DropdownMenuItem>
+            </>
+          )}
+
           <DropdownMenuSeparator />
 
           {/* Theme submenu */}
