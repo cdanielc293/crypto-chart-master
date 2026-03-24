@@ -380,9 +380,8 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Prevent double-placement from double-click firing two mousedowns
-    if (justPlacedRef.current) {
-      justPlacedRef.current = false;
+    // Ignore second click of a double-click for single-point tools (prevents duplicate Text/Note)
+    if (toolPoints === 1 && e.detail > 1) {
       e.preventDefault();
       e.stopPropagation();
       return;
