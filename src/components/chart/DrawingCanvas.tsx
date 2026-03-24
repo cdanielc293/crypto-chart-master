@@ -713,33 +713,46 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      {selectedDrawingId && toolbarPos && (
+      {(selectedDrawingId || selectedDrawingIds.size > 0) && toolbarPos && (
         <FloatingToolbar
           x={toolbarPos.x}
           y={toolbarPos.y}
-          drawing={drawings.find(d => d.id === selectedDrawingId) || null}
+          drawing={selectedDrawingId ? drawings.find(d => d.id === selectedDrawingId) || null : null}
+          selectedCount={Math.max(selectedDrawingIds.size, selectedDrawingId ? 1 : 0)}
           onUpdate={(updates) => {
-            const d = drawings.find(dd => dd.id === selectedDrawingId);
-            if (d) updateDrawing(d.id, { ...d, ...updates });
+            // Apply to all selected drawings
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) {
+              const d = drawings.find(dd => dd.id === id);
+              if (d) updateDrawing(d.id, { ...d, ...updates });
+            }
           }}
           onClone={() => {
-            const d = drawings.find(dd => dd.id === selectedDrawingId);
-            if (d) {
-              const clone: Drawing = {
-                ...d,
-                id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                points: d.points.map(p => ({ ...p })),
-                selected: false,
-              };
-              addDrawing(clone);
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) {
+              const d = drawings.find(dd => dd.id === id);
+              if (d) {
+                const clone: Drawing = {
+                  ...d,
+                  id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  points: d.points.map(p => ({ ...p })),
+                  selected: false,
+                };
+                addDrawing(clone);
+              }
             }
           }}
           onDelete={() => {
-            removeDrawing(selectedDrawingId);
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) removeDrawing(id);
             setSelectedDrawingId(null);
+            setSelectedDrawingIds(new Set());
             setToolbarPos(null);
           }}
-          onOpenSettings={() => setSettingsDrawingId(selectedDrawingId)}
+          onOpenSettings={() => { if (selectedDrawingId) setSettingsDrawingId(selectedDrawingId); }}
         />
       )}
       <DrawingContextMenu
