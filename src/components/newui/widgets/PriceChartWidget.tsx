@@ -1160,24 +1160,24 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Logo watermark (bottom-right of chart area) ───
+    // ─── Logo watermark (center of chart area) ───
     const logoImg = logoImgRef.current;
     if (logoImg) {
-      const logoH = 22;
+      const logoH = Math.min(80, priceH * 0.18);
       const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
-      const logoX = chartW - logoW - 12;
-      const logoY = priceH - logoH - 8;
-      ctx.globalAlpha = 0.12;
+      const logoX = chartW / 2 - logoW / 2;
+      const logoY = priceH / 2 - logoH / 2 - 14;
+      ctx.globalAlpha = 0.08;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 0.06;
+      ctx.font = `bold ${Math.min(28, priceH * 0.06)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#00d4ff';
+      ctx.fillText('VIZIONX', chartW / 2, logoY + logoH + 6);
       ctx.globalAlpha = 1;
-      // Brand text next to logo
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('VIZIONX', logoX - 6, logoY + logoH);
     }
-  }, [createPointFromScreen]);
+  }, [createPointFromScreen, selectedDrawingId]);
 
   function drawPriceAxis(ctx: CanvasRenderingContext2D, chartW: number, chartH: number, cfg: ChartConfig) {
     ctx.fillStyle = cfg.bg;
