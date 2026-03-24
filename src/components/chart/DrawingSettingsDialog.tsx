@@ -23,6 +23,7 @@ type Tab = typeof TABS[number];
 // Tools that support trendline-style features
 const LINE_TOOLS = ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle', 'horizontalray'];
 const SHAPE_TOOLS = ['triangle', 'trianglepattern', 'rectangle', 'rotatedrectangle', 'circle', 'ellipse'];
+const VERTICAL_TOOLS = ['verticalline'];
 
 interface Props {
   open: boolean;
