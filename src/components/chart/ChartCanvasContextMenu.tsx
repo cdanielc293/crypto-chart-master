@@ -29,7 +29,9 @@ export default function ChartCanvasContextMenu({
   onOpenSettings,
   onOpenSymbolSettings,
   onRemoveIndicators,
+  onRemoveDrawings,
   indicatorCount,
+  drawingCount,
   chartTypeLabel,
 }: Props) {
   return (
