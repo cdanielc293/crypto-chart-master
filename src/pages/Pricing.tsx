@@ -152,8 +152,9 @@ export default function Pricing() {
         <button onClick={() => navigate('/')} className="flex items-center gap-2.5">
           <img src={vizionLogo} alt="VizionX" className="h-8 w-8" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            VIZION
+            VIZIONX
           </span>
+          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold tracking-wider rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">Beta</span>
         </button>
         <button
           onClick={() => navigate('/signup?tier=zenith')}
