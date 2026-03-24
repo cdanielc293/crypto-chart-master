@@ -141,9 +141,11 @@ function ChartWithShortcuts() {
 export default function ChartPage() {
   return (
     <ThemeProvider>
-      <ChartProvider>
-        <ChartWithShortcuts />
-      </ChartProvider>
+      <ViewModeProvider>
+        <ChartProvider>
+          <ChartWithShortcuts />
+        </ChartProvider>
+      </ViewModeProvider>
     </ThemeProvider>
   );
 }
