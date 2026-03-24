@@ -382,7 +382,7 @@ export default function PriceChartWidget() {
       ctx.font = '12px Inter, monospace';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      const priceStep = calculateNiceStep(totalRange, priceH / 50);
+      const priceStep = calculateNiceStep(totalRange, priceH);
       for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
         const y = priceToY(p);
         if (y < -10 || y > priceH + 10) continue;
