@@ -1,5 +1,6 @@
 import { ChartProvider, useChart } from '@/context/ChartContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { ViewModeProvider, useViewMode } from '@/context/ViewModeContext';
 import TopToolbar from '@/components/chart/TopToolbar';
 import ReplayControls from '@/components/chart/ReplayControls';
 import LeftToolbar from '@/components/chart/LeftToolbar';
@@ -11,6 +12,7 @@ import KeyboardShortcutsDialog from '@/components/chart/KeyboardShortcutsDialog'
 import SessionDisconnectedDialog from '@/components/chart/SessionDisconnectedDialog';
 import SecurityAlertDialog from '@/components/chart/SecurityAlertDialog';
 import WelcomeOnboardingDialog from '@/components/chart/WelcomeOnboardingDialog';
+import NewUIView from '@/components/chart/NewUIView';
 import { getCellStyle } from '@/types/layout';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSessionEnforcement } from '@/hooks/useSessionEnforcement';
@@ -98,19 +100,27 @@ function ChartWithShortcuts() {
     return () => document.removeEventListener('contextmenu', blockContextMenu);
   }, []);
 
+  const { viewMode } = useViewMode();
+
   return (
     <>
       <div className="flex flex-col h-screen w-full overflow-hidden">
         <TopToolbar />
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          <LeftToolbar />
-          <ChartArea />
-          <RightSidebar />
-        </div>
-        <ReplayControls />
+        {viewMode === 'classic' ? (
+          <div className="flex flex-1 min-h-0 overflow-hidden animate-fade-in">
+            <LeftToolbar />
+            <ChartArea />
+            <RightSidebar />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-hidden animate-fade-in">
+            <NewUIView />
+          </div>
+        )}
+        {viewMode === 'classic' && <ReplayControls />}
         <FeedbackWidgets />
       </div>
-      <FavoritesToolbar />
+      {viewMode === 'classic' && <FavoritesToolbar />}
       <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SessionDisconnectedDialog
         open={disconnected}
@@ -131,9 +141,11 @@ function ChartWithShortcuts() {
 export default function ChartPage() {
   return (
     <ThemeProvider>
-      <ChartProvider>
-        <ChartWithShortcuts />
-      </ChartProvider>
+      <ViewModeProvider>
+        <ChartProvider>
+          <ChartWithShortcuts />
+        </ChartProvider>
+      </ViewModeProvider>
     </ThemeProvider>
   );
 }
