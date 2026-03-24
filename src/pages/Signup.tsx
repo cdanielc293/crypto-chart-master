@@ -27,6 +27,8 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showBetaPass, setShowBetaPass] = useState(false);
+  const [signedUpName, setSignedUpName] = useState('');
 
   useEffect(() => {
     if (user) navigate('/chart', { replace: true });
