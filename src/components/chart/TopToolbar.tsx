@@ -5,7 +5,7 @@ import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen, Keyboard,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
