@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Mail } from 'lucide-react';
+import BetaPassDialog from '@/components/chart/BetaPassDialog';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
 
@@ -26,10 +27,12 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showBetaPass, setShowBetaPass] = useState(false);
+  const [signedUpName, setSignedUpName] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/chart', { replace: true });
-  }, [user, navigate]);
+    if (user && !showBetaPass) navigate('/chart', { replace: true });
+  }, [user, navigate, showBetaPass]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -48,12 +51,22 @@ export default function Signup() {
         return;
       }
       await signUpWithEmail(trimmedEmail, password, { plan: tier });
+      // Show Beta Pass on successful signup (when user appears)
+      setSignedUpName(trimmedEmail.split('@')[0]);
+      setShowBetaPass(true);
       return;
     }
     await signInWithEmail(trimmedEmail, password);
   };
 
   return (
+    <>
+    <BetaPassDialog
+      open={showBetaPass}
+      onClose={() => { setShowBetaPass(false); navigate('/chart', { replace: true }); }}
+      userName={signedUpName}
+      plan={tier}
+    />
     <div className="min-h-screen h-screen flex bg-[#050508] text-white overflow-hidden">
       {/* Left — Hero Image */}
       <motion.div
@@ -275,5 +288,6 @@ export default function Signup() {
         </motion.p>
       </motion.div>
     </div>
+    </>
   );
 }

@@ -17,8 +17,9 @@ import {
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield,
+  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield, Sparkles,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ReferFriendDialog from './ReferFriendDialog';
 
 export default function UserProfileMenu() {
@@ -34,6 +35,7 @@ export default function UserProfileMenu() {
   const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
   const name = profile?.full_name || user.user_metadata?.full_name || user.email || '';
   const plan = profile?.plan || 'core';
+  const hasBadge = profile?.has_shared_beta === true;
   const initials = name
     .split(' ')
     .map((n: string) => n[0])
@@ -53,19 +55,36 @@ export default function UserProfileMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center rounded-full hover:ring-2 hover:ring-primary/40 transition-all">
+          <button className="relative flex items-center rounded-full hover:ring-2 hover:ring-primary/40 transition-all">
             <Avatar className="h-7 w-7">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
               <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
                 {initials || '?'}
               </AvatarFallback>
             </Avatar>
+            {hasBadge && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 ring-2 ring-background">
+                <Sparkles size={8} className="text-white" />
+              </span>
+            )}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60 bg-popover border-border">
           {/* User info with plan */}
           <div className="px-3 py-2.5">
-            <p className="text-sm font-medium text-foreground truncate">{name}</p>
+            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+              {name}
+              {hasBadge && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-teal-500">
+                      <Sparkles size={9} className="text-white" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="text-xs">Beta Pioneer</TooltipContent>
+                </Tooltip>
+              )}
+            </p>
             <p className={`text-xs font-semibold mt-0.5 ${
               plan === 'zenith' ? 'text-emerald-400' :
               plan === 'elite' ? 'text-amber-400' :

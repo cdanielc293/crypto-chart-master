@@ -19,6 +19,7 @@ export interface Profile {
   facebook_profile: string | null;
   instagram_profile: string | null;
   signature: string | null;
+  has_shared_beta: boolean;
   created_at: string;
   updated_at: string;
 }
