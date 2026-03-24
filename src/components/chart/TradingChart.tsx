@@ -1427,7 +1427,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
       loadingOlderRef.current = true;
       try {
-        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, 2500);
+        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, fetchLimit);
         if (cancelled) return;
         if (activeDataKeyRef.current !== cacheKey) return;
 
@@ -1447,7 +1447,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }));
 
         const existing = rawCandlesRef.current;
-        const merged = mergeCandlesByTime(olderCandles, existing);
+        let merged = mergeCandlesByTime(olderCandles, existing);
+
+        // Trim to plan limit (keep most recent bars)
+        if (merged.length > maxBars) {
+          merged = merged.slice(merged.length - maxBars);
+          setBarsLimitReached(true);
+          hasMoreOlderRef.current = false;
+        }
 
         const volumes = merged.map(c => ({
           time: c.time,
@@ -1460,7 +1467,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawCandlesRef.current = merged;
         allCandlesRef.current = merged;
         rawDataRef.current = merged;
-        persistSeriesCache(cacheKey, merged, true);
+        persistSeriesCache(cacheKey, merged, hasMoreOlderRef.current);
 
         const currentRange = chart.timeScale().getVisibleLogicalRange();
         setChartData(series, merged, volumes, volSeries);
