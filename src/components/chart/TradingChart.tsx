@@ -1967,6 +1967,12 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       const clickedTime = toUnixSeconds(param.time as Time);
       if (clickedTime === null) return;
 
+      // Enforce time-based depth limit on replay start
+      if (clickedTime < earliestAllowed) {
+        setBarsLimitReached(true);
+        return;
+      }
+
       const idx = findNearestCandleIndexByTime(allCandles, clickedTime);
       if (idx < 0 || idx >= allCandles.length) return;
 
