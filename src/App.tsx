@@ -18,6 +18,7 @@ import Terms from "./pages/Terms.tsx";
 import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Cookies from "./pages/Cookies.tsx";
+import Accessibility from "./pages/Accessibility.tsx";
 
 const queryClient = new QueryClient();
 
