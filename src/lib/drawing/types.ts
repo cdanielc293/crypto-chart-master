@@ -87,7 +87,7 @@ export const TOOL_POINT_COUNT: Record<string, number> = {
   cypher: 5,
   abcd: 4,
   headshoulders: 7,
-  trianglepattern: 3,
+  trianglepattern: 4,
   threedrives: 7,
   path: -1,        // unlimited (double-click to finish)
   polyline: -1,

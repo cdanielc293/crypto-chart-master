@@ -477,6 +477,122 @@ const renderTriangle: Renderer = (ctx, d, coord) => {
   }
 };
 
+// ─── Triangle Pattern (4-point: A, B, C, D) ───
+
+const renderTrianglePattern: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 4) {
+    // Preview: draw what we have so far as connected lines
+    if (d.points.length >= 2) {
+      const pts = d.points.map(p => toXY(coord, p.time, p.price)).filter(Boolean) as { x: number; y: number }[];
+      if (pts.length >= 2) {
+        setupStroke(ctx, d);
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+
+  const [pA, pB, pC, pD] = d.points.map(p => toXY(coord, p.time, p.price));
+  if (!pA || !pB || !pC || !pD) return;
+
+  const props = d.props || {};
+  const borderColor = props.borderColor || d.color;
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+  const showBg = props.showBackground !== false;
+
+  // Line A→C (upper/lower trendline)
+  setupStroke(ctx, d);
+  ctx.strokeStyle = borderColor;
+
+  // Extend A→C and B→D lines to find apex
+  const acDx = pC.x - pA.x;
+  const acDy = pC.y - pA.y;
+  const bdDx = pD.x - pB.x;
+  const bdDy = pD.y - pB.y;
+
+  // Find intersection (apex) of AC and BD lines
+  let apex: { x: number; y: number } | null = null;
+  const det = acDx * bdDy - acDy * bdDx;
+  if (Math.abs(det) > 0.001) {
+    const t = ((pB.x - pA.x) * bdDy - (pB.y - pA.y) * bdDx) / det;
+    if (t > 0) {
+      apex = { x: pA.x + t * acDx, y: pA.y + t * acDy };
+    }
+  }
+
+  // Draw the zigzag A→B→C→D
+  ctx.beginPath();
+  ctx.moveTo(pA.x, pA.y);
+  ctx.lineTo(pB.x, pB.y);
+  ctx.lineTo(pC.x, pC.y);
+  ctx.lineTo(pD.x, pD.y);
+  ctx.stroke();
+
+  // Draw trendlines A→C and B→D (extended to apex or further)
+  ctx.setLineDash([6, 3]);
+  const extendTarget = apex || { x: Math.max(pC.x, pD.x) + 100, y: (pC.y + pD.y) / 2 };
+
+  // A→C extended
+  ctx.beginPath();
+  ctx.moveTo(pA.x, pA.y);
+  ctx.lineTo(extendTarget.x, pA.y + (extendTarget.x - pA.x) * (acDy / (acDx || 1)));
+  ctx.stroke();
+
+  // B→D extended
+  ctx.beginPath();
+  ctx.moveTo(pB.x, pB.y);
+  ctx.lineTo(extendTarget.x, pB.y + (extendTarget.x - pB.x) * (bdDy / (bdDx || 1)));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Background fill (polygon A→B→C→D)
+  if (showBg) {
+    ctx.save();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y);
+    ctx.lineTo(pB.x, pB.y);
+    ctx.lineTo(pC.x, pC.y);
+    ctx.lineTo(pD.x, pD.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Also fill extended triangle to apex
+    if (apex) {
+      ctx.beginPath();
+      ctx.moveTo(pC.x, pC.y);
+      ctx.lineTo(pD.x, pD.y);
+      ctx.lineTo(apex.x, apex.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Labels (A, B, C, D)
+  const labels = ['A', 'B', 'C', 'D'];
+  const pts = [pA, pB, pC, pD];
+  ctx.save();
+  const fontSize = props.textSize || 12;
+  const bold = props.textBold ? 'bold ' : '';
+  const italic = props.textItalic ? 'italic ' : '';
+  ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+  ctx.fillStyle = props.textColor || borderColor;
+  ctx.textAlign = 'center';
+  pts.forEach((pt, i) => {
+    // Place label above or below depending on position
+    const isHigh = i === 0 || i === 2; // A, C are typically on one side
+    const offsetY = isHigh ? -12 : 18;
+    ctx.fillText(labels[i], pt.x, pt.y + offsetY);
+  });
+  ctx.restore();
+};
+
 // ─── Arrows ───
 
 const renderArrowUp: Renderer = (ctx, d, coord) => {
@@ -754,7 +870,7 @@ const RENDERERS: Record<string, Renderer> = {
   circle: renderCircle,
   ellipse: renderEllipse,
   triangle: renderTriangle,
-  trianglepattern: renderTriangle,
+  trianglepattern: renderTrianglePattern,
   arrowmarkup: renderArrowUp,
   arrowmarkdown: renderArrowDown,
   arrowmarker: renderArrowUp,
