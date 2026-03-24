@@ -221,11 +221,62 @@ const renderVerticalLine: Renderer = (ctx, d, coord, _w, h) => {
   if (d.points.length < 1) return;
   const x = coord.timeToX(d.points[0].time);
   if (x === null) return;
+  const props = d.props || {};
   setupStroke(ctx, d);
   ctx.beginPath();
   ctx.moveTo(x, 0);
   ctx.lineTo(x, h);
   ctx.stroke();
+
+  // Time label at bottom
+  if (props.timeLabel !== false) {
+    const date = new Date(d.points[0].time * 1000);
+    const label = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = d.color;
+    ctx.textAlign = 'center';
+    // Background pill
+    const m = ctx.measureText(label);
+    const pw = m.width + 8;
+    const ph = 16;
+    ctx.fillStyle = 'rgba(19,23,34,0.9)';
+    ctx.fillRect(x - pw / 2, h - ph - 2, pw, ph);
+    ctx.fillStyle = d.color;
+    ctx.fillText(label, x, h - 6);
+    ctx.restore();
+  }
+
+  // Text along the line
+  const text = props.text;
+  if (text && text.trim()) {
+    ctx.save();
+    const fontSize = props.textSize || 12;
+    const bold = props.textBold ? 'bold ' : '';
+    const italic = props.textItalic ? 'italic ' : '';
+    ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+    ctx.fillStyle = props.textColor || d.color;
+
+    const orientation = props.textOrientation || 'horizontal';
+    const vAlign = props.textVAlign || 'top';
+    const hAlign = props.textHAlign || 'left';
+
+    let ty = vAlign === 'top' ? 20 : vAlign === 'bottom' ? h - 20 : h / 2;
+    let tx = hAlign === 'left' ? x + 8 : hAlign === 'right' ? x - 8 : x;
+
+    if (orientation === 'vertical') {
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.textAlign = hAlign === 'right' ? 'right' : 'left';
+      ctx.fillText(text, tx, ty);
+    }
+    ctx.restore();
+  }
 };
 
 const renderCrossLine: Renderer = (ctx, d, coord, w, h) => {
