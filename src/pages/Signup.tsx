@@ -60,6 +60,13 @@ export default function Signup() {
   };
 
   return (
+    <>
+    <BetaPassDialog
+      open={showBetaPass}
+      onClose={() => { setShowBetaPass(false); navigate('/chart', { replace: true }); }}
+      userName={signedUpName}
+      plan={tier}
+    />
     <div className="min-h-screen h-screen flex bg-[#050508] text-white overflow-hidden">
       {/* Left — Hero Image */}
       <motion.div
