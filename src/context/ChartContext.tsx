@@ -18,6 +18,8 @@ export interface PanelIndicatorState {
   indicators: string[];
   indicatorConfigs: Map<string, IndicatorInstance>;
   hiddenIndicators: Set<string>;
+  interval?: Interval;
+  chartType?: ChartType;
 }
 
 const DEFAULT_WATCHLISTS: WatchlistList[] = [
