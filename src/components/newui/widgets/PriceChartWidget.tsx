@@ -675,6 +675,30 @@ export default function PriceChartWidget() {
     rafRef.current = requestAnimationFrame(render);
   }, []);
 
+  const undoDrawings = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    redoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = undoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const redoDrawings = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    undoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = redoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+    scheduleRender();
+  }, [scheduleRender]);
+
   useEffect(() => {
     configRef.current = config;
     localStorage.setItem('newui-chart-config', JSON.stringify(config));
