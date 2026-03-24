@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useChart } from '@/context/ChartContext';
 import { Search, X, Plus, ChevronDown } from 'lucide-react';
 import DraggableDialog from './DraggableDialog';
+import { formatSymbol } from '@/lib/symbolUtils';
 import {
   getAllExchanges,
   getExchangesByCategory,
