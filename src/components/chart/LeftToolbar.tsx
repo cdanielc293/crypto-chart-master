@@ -18,7 +18,7 @@ import {
   Flag, Pencil, ArrowUp, ArrowDown,
   RectangleHorizontal, RotateCw, Route, CircleIcon, Move3D, Pentagon,
   TriangleRight, Undo2, Spline as CurveIcon, Infinity,
-  Type, Smile,
+  Type, Smile, MessageSquare,
   ZoomIn, Magnet, Lock, Eye, Link, Trash2,
   ChevronRight, Star,
 } from 'lucide-react';
