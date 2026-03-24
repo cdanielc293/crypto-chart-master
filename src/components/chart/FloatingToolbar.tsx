@@ -88,11 +88,21 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
         )}
       </div>
 
-      {/* Line width: minus / value / plus */}
+      {/* Size controls: emoji size or line width */}
       <div className="w-px h-5 bg-chart-border mx-0.5" />
-      <button onClick={() => onUpdate({ lineWidth: Math.max(1, drawing.lineWidth - 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thinner"><Minus size={12} /></button>
-      <span className="text-[10px] text-muted-foreground w-6 text-center">{drawing.lineWidth}px</span>
-      <button onClick={() => onUpdate({ lineWidth: Math.min(8, drawing.lineWidth + 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thicker"><Plus size={12} /></button>
+      {isEmoji ? (
+        <>
+          <button onClick={() => updateProps({ emojiSize: Math.max(16, emojiSize - 4) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Smaller"><Minus size={12} /></button>
+          <span className="text-[10px] text-muted-foreground w-6 text-center">{emojiSize}</span>
+          <button onClick={() => updateProps({ emojiSize: Math.min(128, emojiSize + 4) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Bigger"><Plus size={12} /></button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => onUpdate({ lineWidth: Math.max(1, drawing.lineWidth - 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thinner"><Minus size={12} /></button>
+          <span className="text-[10px] text-muted-foreground w-6 text-center">{drawing.lineWidth}px</span>
+          <button onClick={() => onUpdate({ lineWidth: Math.min(8, drawing.lineWidth + 1) })} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors text-muted-foreground hover:text-foreground" title="Thicker"><Plus size={12} /></button>
+        </>
+      )}
 
       {/* Line style dropdown */}
       <div className="relative">
