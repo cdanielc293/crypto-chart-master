@@ -117,7 +117,7 @@ export function useKeyboardShortcuts() {
       e.preventDefault();
       setChartSettings(prev => ({
         ...prev,
-        priceScale: { ...prev.priceScale, inverted: !prev.priceScale.inverted },
+        priceScale: { ...prev.priceScale, invertScale: !prev.priceScale.invertScale },
       }));
       return;
     }
@@ -129,7 +129,7 @@ export function useKeyboardShortcuts() {
         ...prev,
         priceScale: {
           ...prev.priceScale,
-          mode: prev.priceScale.mode === 'logarithmic' ? 'normal' : 'logarithmic',
+          mode: prev.priceScale.mode === 'logarithmic' ? 'regular' : 'logarithmic',
         },
       }));
       return;
@@ -142,7 +142,7 @@ export function useKeyboardShortcuts() {
         ...prev,
         priceScale: {
           ...prev.priceScale,
-          mode: prev.priceScale.mode === 'percentage' ? 'normal' : 'percentage',
+          mode: prev.priceScale.mode === 'percent' ? 'regular' : 'percent',
         },
       }));
       return;
