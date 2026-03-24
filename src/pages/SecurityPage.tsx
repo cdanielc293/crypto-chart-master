@@ -105,24 +105,18 @@ export default function Security() {
               When in doubt, verify through our official accounts listed below. These are the only legitimate VizionX channels.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                { platform: 'Website', handle: 'vizionx.pro', url: 'https://www.vizionx.pro' },
-                { platform: 'Email', handle: 'support@vizionx.pro', url: 'mailto:support@vizionx.pro' },
-              ].map((channel) => (
-                <a
-                  key={channel.platform}
-                  href={channel.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] p-3 hover:border-cyan-500/30 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-white">{channel.platform}</p>
-                    <p className="text-[11px] text-white/40">{channel.handle}</p>
-                  </div>
-                </a>
-              ))}
+              <a
+                href="https://www.vizionx.pro"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] p-3 hover:border-cyan-500/30 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-white">Website</p>
+                  <p className="text-[11px] text-white/40">vizionx.pro</p>
+                </div>
+              </a>
             </div>
           </section>
 
