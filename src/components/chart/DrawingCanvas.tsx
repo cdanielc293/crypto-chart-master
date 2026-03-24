@@ -381,6 +381,14 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
+    // Prevent double-placement from double-click firing two mousedowns
+    if (justPlacedRef.current) {
+      justPlacedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     // Shift-snap for second point on line-type tools
     let pointToAdd = { time, price };
     if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
@@ -392,6 +400,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const defaultTmpl = getDefaultTemplate(drawingTool);
       let drawingProps: Record<string, any> | undefined = drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
            : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
+           : drawingTool === 'note' ? { text: 'Note', fontSize: 12 } 
            : undefined;
       if (defaultTmpl) {
         drawingProps = { ...drawingProps, ...defaultTmpl.props };
@@ -410,6 +419,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      justPlacedRef.current = true;
       // Auto-switch back to cursor after placing a drawing
       setDrawingTool('cursor');
     }
