@@ -2323,7 +2323,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       )}
 
       {/* Beta Notice */}
-      <div className="absolute bottom-2 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-chart-bg/80 border border-chart-border/50 backdrop-blur-sm">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-chart-bg/80 border border-chart-border/50 backdrop-blur-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
         <span className="text-[10px] text-muted-foreground font-medium">Beta — Updates & improvements in progress</span>
       </div>
