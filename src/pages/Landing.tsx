@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import heroBg from '@/assets/hero-bg.jpg';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import { ChevronDown, BarChart3, Search, Zap, Shield, Globe, TrendingUp } from 'lucide-react';
+import PolicyFooter from '@/components/PolicyFooter';
 
 const features = [
   { icon: BarChart3, title: 'Advanced Charting', desc: 'Professional-grade charts with 100+ indicators, drawing tools, and multi-timeframe analysis.' },
@@ -205,20 +206,7 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-white/25">
-          <div className="flex items-center gap-2">
-            <img src={vizionLogo} alt="" className="h-5 w-5 opacity-50" />
-            <span>© 2026 VizionX. All rights reserved.</span>
-          </div>
-          <div className="hidden md:flex gap-6">
-            <span onClick={() => navigate('/terms')} className="hover:text-white/50 transition-colors cursor-pointer">Terms</span>
-            <span onClick={() => navigate('/privacy')} className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
-            <span onClick={() => navigate('/disclaimer')} className="hover:text-white/50 transition-colors cursor-pointer">Disclaimer</span>
-          </div>
-        </div>
-      </footer>
+      <PolicyFooter />
     </div>
   );
 }
