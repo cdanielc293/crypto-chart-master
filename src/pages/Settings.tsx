@@ -486,7 +486,7 @@ function SupportSection({ user }: { user: any }) {
 
   const handleSend = async () => {
     if (!subject.trim() || !message.trim()) {
-      toast.error('נא למלא נושא והודעה');
+      toast.error('Please fill in subject and message');
       return;
     }
     setSending(true);
