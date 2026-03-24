@@ -1,6 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DraggableDialog from './DraggableDialog';
 import type { Drawing } from '@/types/chart';
+import { Save, Trash2 } from 'lucide-react';
+
+// ─── Template helpers ───
+interface DrawingTemplate {
+  name: string;
+  color: string;
+  lineWidth: number;
+  props: Record<string, any>;
+}
+
+function getTemplatesForType(type: string): DrawingTemplate[] {
+  try {
+    const raw = localStorage.getItem(`drawing_templates_${type}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveTemplatesForType(type: string, templates: DrawingTemplate[]) {
+  localStorage.setItem(`drawing_templates_${type}`, JSON.stringify(templates));
+}
+
+// Store default template per type (applied automatically to new drawings)
+export function getDefaultTemplate(type: string): DrawingTemplate | null {
+  try {
+    const raw = localStorage.getItem(`drawing_default_template_${type}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setDefaultTemplate(type: string, template: DrawingTemplate | null) {
+  if (template) {
+    localStorage.setItem(`drawing_default_template_${type}`, JSON.stringify(template));
+  } else {
+    localStorage.removeItem(`drawing_default_template_${type}`);
+  }
+}
 
 const LINE_STYLES = [
   { value: 'solid', label: 'Solid' },
@@ -61,12 +97,17 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   const [localProps, setLocalProps] = useState<Record<string, any>>({});
   const [localColor, setLocalColor] = useState('');
   const [localLineWidth, setLocalLineWidth] = useState(2);
+  const [templates, setTemplates] = useState<DrawingTemplate[]>([]);
+  const [showTemplateSave, setShowTemplateSave] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
 
   useEffect(() => {
     if (open && drawing) {
       setLocalProps({ ...drawing.props });
       setLocalColor(drawing.color);
       setLocalLineWidth(drawing.lineWidth);
+      setTemplates(getTemplatesForType(drawing.type));
+      setShowTemplateSave(false);
     }
   }, [open, drawing?.id]);
 
@@ -87,6 +128,42 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 
   const handleCancel = () => {
     onClose();
+  };
+
+  const handleSaveTemplate = () => {
+    if (!newTemplateName.trim()) return;
+    const tmpl: DrawingTemplate = {
+      name: newTemplateName.trim(),
+      color: localColor,
+      lineWidth: localLineWidth,
+      props: { ...localProps },
+    };
+    const updated = [...templates, tmpl];
+    setTemplates(updated);
+    saveTemplatesForType(drawing.type, updated);
+    setNewTemplateName('');
+    setShowTemplateSave(false);
+  };
+
+  const handleApplyTemplate = (tmpl: DrawingTemplate) => {
+    setLocalColor(tmpl.color);
+    setLocalLineWidth(tmpl.lineWidth);
+    setLocalProps(prev => ({ ...prev, ...tmpl.props }));
+  };
+
+  const handleDeleteTemplate = (idx: number) => {
+    const updated = templates.filter((_, i) => i !== idx);
+    setTemplates(updated);
+    saveTemplatesForType(drawing.type, updated);
+  };
+
+  const handleSetDefault = () => {
+    setDefaultTemplate(drawing.type, {
+      name: 'default',
+      color: localColor,
+      lineWidth: localLineWidth,
+      props: { ...localProps },
+    });
   };
 
   return (
@@ -138,10 +215,70 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-        <select className="bg-muted border border-border rounded px-2 py-1 text-sm text-muted-foreground">
-          <option>Template</option>
-        </select>
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border gap-2">
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          {showTemplateSave ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={newTemplateName}
+                onChange={e => setNewTemplateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+                placeholder="Template name"
+                className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 focus:border-primary focus:outline-none"
+                autoFocus
+              />
+              <button onClick={handleSaveTemplate} className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90">Save</button>
+              <button onClick={() => setShowTemplateSave(false)} className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <select
+                onChange={e => {
+                  const idx = parseInt(e.target.value);
+                  if (!isNaN(idx) && templates[idx]) handleApplyTemplate(templates[idx]);
+                  e.target.value = '';
+                }}
+                className="bg-muted border border-border rounded px-2 py-1 text-sm text-muted-foreground max-w-[120px]"
+                defaultValue=""
+              >
+                <option value="" disabled>Template</option>
+                {templates.map((t, i) => (
+                  <option key={i} value={i}>{t.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowTemplateSave(true)}
+                className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
+                title="Save as template"
+              >
+                <Save size={14} />
+              </button>
+              {templates.length > 0 && (
+                <button
+                  onClick={() => {
+                    const name = prompt('Delete template name:');
+                    if (name) {
+                      const idx = templates.findIndex(t => t.name === name);
+                      if (idx >= 0) handleDeleteTemplate(idx);
+                    }
+                  }}
+                  className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors"
+                  title="Delete template"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+              <button
+                onClick={handleSetDefault}
+                className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 border border-border rounded transition-colors"
+                title="Set current style as default for this tool type"
+              >
+                Set default
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           <button onClick={handleCancel} className="px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded transition-colors">Cancel</button>
           <button onClick={handleOk} className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors">Ok</button>
