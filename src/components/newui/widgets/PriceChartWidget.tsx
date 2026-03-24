@@ -1338,7 +1338,7 @@ export default function PriceChartWidget() {
     if (st.dragMode === 'pan') {
       const dx = e.clientX - st.dragStartX;
       const dy = e.clientY - st.dragStartY;
-      st.offsetX = st.dragStartOffset - (dx * 0.55) / st.candleWidth;
+      st.offsetX = st.dragStartOffset - (dx * 0.75) / st.candleWidth;
       st.panOffsetY = st.dragStartPanY + dy * 0.4;
       st.crosshair = null;
     } else if (st.dragMode === 'price-scale') {
