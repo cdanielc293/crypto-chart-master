@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import { useProfile, planLabels, planColors } from '@/hooks/useProfile';
+import { useIsAdmin } from '@/hooks/useAdmin';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -16,7 +17,7 @@ import {
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home, Palette, Settings, Users, LogOut, ChevronRight,
+  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield,
 } from 'lucide-react';
 import ReferFriendDialog from './ReferFriendDialog';
 
@@ -24,6 +25,7 @@ export default function UserProfileMenu() {
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const [referOpen, setReferOpen] = useState(false);
 
@@ -88,6 +90,15 @@ export default function UserProfileMenu() {
           <DropdownMenuItem onClick={() => setReferOpen(true)} className="gap-2 cursor-pointer">
             <Users size={15} /> Refer a friend
           </DropdownMenuItem>
+
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin')} className="gap-2 cursor-pointer text-cyan-400">
+                <Shield size={15} /> Admin Panel
+              </DropdownMenuItem>
+            </>
+          )}
 
           <DropdownMenuSeparator />
 
