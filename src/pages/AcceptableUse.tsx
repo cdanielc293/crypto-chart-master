@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 export default function AcceptableUse() {
   const navigate = useNavigate();
@@ -74,10 +75,13 @@ export default function AcceptableUse() {
           </p>
 
           <h2>Reporting Violations</h2>
-          <p>
-            If you encounter content or behavior that violates this AUP, please report it to{' '}
-            <a href="mailto:abuse@vizionx.pro" className="text-cyan-400 hover:underline">abuse@vizionx.pro</a>.
-          </p>
+          <p>If you encounter content or behavior that violates this AUP, please report it using the form below:</p>
+          <InlineContactForm
+            category="abuse-report"
+            title="Report a Violation"
+            placeholder="Describe the violation, including relevant details and links..."
+            buttonLabel="Submit Report"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">© {new Date().getFullYear()} VizionX. All rights reserved. | www.vizionx.pro</p>

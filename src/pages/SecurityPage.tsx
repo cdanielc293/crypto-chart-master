@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Lock, KeyRound, AlertTriangle, Wifi, Smartphone, Mail, Phone, MessageSquare, Globe, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Shield, Lock, KeyRound, AlertTriangle, Wifi, Smartphone, Mail, Globe, ExternalLink } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 export default function Security() {
   const navigate = useNavigate();
@@ -103,24 +104,18 @@ export default function Security() {
               When in doubt, verify through our official accounts listed below. These are the only legitimate VizionX channels.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                { platform: 'Website', handle: 'vizionx.pro', url: 'https://www.vizionx.pro' },
-                { platform: 'Email', handle: 'support@vizionx.pro', url: 'mailto:support@vizionx.pro' },
-              ].map((channel) => (
-                <a
-                  key={channel.platform}
-                  href={channel.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] p-3 hover:border-cyan-500/30 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-white">{channel.platform}</p>
-                    <p className="text-[11px] text-white/40">{channel.handle}</p>
-                  </div>
-                </a>
-              ))}
+              <a
+                href="https://www.vizionx.pro"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] p-3 hover:border-cyan-500/30 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-white">Website</p>
+                  <p className="text-[11px] text-white/40">vizionx.pro</p>
+                </div>
+              </a>
             </div>
           </section>
 
@@ -135,9 +130,7 @@ export default function Security() {
                 <Lock className="w-5 h-5 text-cyan-400 mb-3" />
                 <h3 className="font-semibold text-white mb-1">Account Compromised?</h3>
                 <p className="text-sm text-white/50 mb-3">
-                  Change your password immediately and enable 2FA. Contact us at{' '}
-                  <a href="mailto:security@vizionx.pro" className="text-cyan-400 hover:underline">security@vizionx.pro</a>{' '}
-                  — we'll help you recover access.
+                  Change your password immediately and enable 2FA. Use the form below to report the issue — we'll help you recover access.
                 </p>
               </div>
               <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5">
@@ -152,18 +145,17 @@ export default function Security() {
           </section>
 
           {/* Report */}
-          <section className="text-center py-8 border-t border-white/10">
-            <h2 className="text-lg font-bold text-white mb-2">Report a Security Concern</h2>
-            <p className="text-sm text-white/50 mb-4">
+          <section className="py-8 border-t border-white/10">
+            <h2 className="text-lg font-bold text-white mb-2 text-center">Report a Security Concern</h2>
+            <p className="text-sm text-white/50 mb-4 text-center">
               Found a vulnerability or security issue? Help us keep VizionX safe for everyone.
             </p>
-            <a
-              href="mailto:security@vizionx.pro"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/20 transition-colors"
-            >
-              <Mail className="w-4 h-4" />
-              Send a Security Report
-            </a>
+            <InlineContactForm
+              category="security"
+              title="Security Report"
+              placeholder="Describe the security concern or vulnerability in detail..."
+              buttonLabel="Send Security Report"
+            />
           </section>
 
           <div className="border-t border-white/10 pt-8">

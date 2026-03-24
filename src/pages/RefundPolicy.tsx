@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 export default function RefundPolicy() {
   const navigate = useNavigate();
@@ -78,10 +79,13 @@ export default function RefundPolicy() {
           </p>
 
           <h2>Contact</h2>
-          <p>
-            For refund requests or billing inquiries, contact us at{' '}
-            <a href="mailto:billing@vizionx.pro" className="text-cyan-400 hover:underline">billing@vizionx.pro</a>.
-          </p>
+          <p>For refund requests or billing inquiries, please use the form below:</p>
+          <InlineContactForm
+            category="billing"
+            title="Billing Inquiry"
+            placeholder="Describe your refund request or billing question..."
+            buttonLabel="Submit Inquiry"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">© {new Date().getFullYear()} VizionX. All rights reserved. | www.vizionx.pro</p>

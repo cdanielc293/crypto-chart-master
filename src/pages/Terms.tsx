@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 export default function Terms() {
   const navigate = useNavigate();
@@ -327,9 +328,8 @@ export default function Terms() {
             in controversy in U.S. Dollars; and (4) certification that the requesting party will pay applicable filing fees.
           </p>
           <p>
-            Demands should be sent to{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>. 
-            Unless otherwise agreed, arbitration will be conducted in the county of your residence. 
+            Demands should be submitted through the contact form at the bottom of this page.
+            Unless otherwise agreed, arbitration will be conducted in the county of your residence.
             The arbitration shall be conducted in English by a single arbitrator who is either a retired judge or licensed attorney.
           </p>
 
@@ -354,11 +354,10 @@ export default function Terms() {
 
           <h3>25.7 30-Day Opt-Out Right</h3>
           <p>
-            You may opt out of this Arbitration Agreement by sending written notice to{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>{' '}
-            within 30 days of first becoming subject to it. Your notice must include your name, address, 
-            the email address associated with your VizionX account, and a clear statement that you wish to opt out. 
-            Opt-out notices must be sent individually — notices from third parties purporting to act on your behalf are ineffective. 
+            You may opt out of this Arbitration Agreement by sending written notice through the contact form below
+            within 30 days of first becoming subject to it. Your notice must include your name, address,
+            the email address associated with your VizionX account, and a clear statement that you wish to opt out.
+            Opt-out notices must be sent individually — notices from third parties purporting to act on your behalf are ineffective.
             Opting out does not affect any other part of these Terms or any prior arbitration agreements you did not timely opt out of.
           </p>
 
@@ -400,10 +399,13 @@ export default function Terms() {
           </p>
 
           <h2>28. Contact</h2>
-          <p>
-            For questions about these Terms, please contact us at{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>.
-          </p>
+          <p>For questions about these Terms, please use the form below:</p>
+          <InlineContactForm
+            category="legal"
+            title="Legal Inquiry"
+            placeholder="Describe your question or concern about these Terms..."
+            buttonLabel="Submit"
+          />
 
           <div className="border-t border-white/10 pt-8 mt-12">
             <p className="text-xs text-white/30 text-center">

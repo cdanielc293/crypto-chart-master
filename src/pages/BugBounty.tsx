@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bug, Globe, Smartphone, BarChart3, Monitor, AlertTriangle, ShieldCheck, ShieldAlert, Shield, ShieldOff, Mail } from 'lucide-react';
+import { ArrowLeft, Bug, Globe, Smartphone, BarChart3, Monitor, AlertTriangle, ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 const coverageAreas = [
   { icon: Globe, title: 'Website', desc: 'Vulnerabilities on vizionx.pro and its subdomains.' },
@@ -65,13 +66,12 @@ export default function BugBounty() {
           <p className="text-white/50 max-w-xl mx-auto mb-6">
             Found a vulnerability on our platform? Help us keep VizionX secure and get rewarded.
           </p>
-          <a
-            href="mailto:security@vizionx.pro"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/20 transition-colors"
-          >
-            <Mail className="w-4 h-4" />
-            Send a Report
-          </a>
+          <InlineContactForm
+            category="bug-bounty"
+            title="Submit a Security Report"
+            placeholder="Describe the vulnerability, include reproduction steps or a proof-of-concept..."
+            buttonLabel="Send Report"
+          />
         </div>
 
         <div className="space-y-16">
@@ -152,18 +152,17 @@ export default function BugBounty() {
           </section>
 
           {/* CTA */}
-          <section className="text-center py-8 border-t border-white/10">
-            <h2 className="text-lg font-bold text-white mb-2">Ready to Report?</h2>
-            <p className="text-sm text-white/50 mb-4">
+          <section className="py-8 border-t border-white/10">
+            <h2 className="text-lg font-bold text-white mb-2 text-center">Ready to Report?</h2>
+            <p className="text-sm text-white/50 mb-4 text-center">
               Send your findings to our security team. Include all relevant details and reproduction steps.
             </p>
-            <a
-              href="mailto:security@vizionx.pro"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/20 transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Submit a Security Report
-            </a>
+            <InlineContactForm
+              category="bug-bounty"
+              title="Submit Your Finding"
+              placeholder="Describe the vulnerability with detailed reproduction steps..."
+              buttonLabel="Submit Security Report"
+            />
           </section>
 
           <div className="border-t border-white/10 pt-8">

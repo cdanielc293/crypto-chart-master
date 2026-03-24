@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 
 export default function DMCA() {
   const navigate = useNavigate();
@@ -43,10 +44,13 @@ export default function DMCA() {
             <li>A statement, made under penalty of perjury, that the information in the notification is accurate and that you are authorized to act on behalf of the copyright owner</li>
           </ul>
 
-          <p>
-            Submit DMCA notices to:{' '}
-            <a href="mailto:dmca@vizionx.pro" className="text-cyan-400 hover:underline">dmca@vizionx.pro</a>
-          </p>
+          <p>Submit DMCA notices through the form below:</p>
+          <InlineContactForm
+            category="dmca"
+            title="Submit a DMCA Notice"
+            placeholder="Include all required information listed above..."
+            buttonLabel="Submit DMCA Notice"
+          />
 
           <h2>Counter-Notification</h2>
           <p>
