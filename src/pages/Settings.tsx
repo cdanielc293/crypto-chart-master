@@ -503,7 +503,7 @@ function SupportSection({ user }: { user: any }) {
       setMessage('');
       setSent(true);
     } catch {
-      toast.error('שגיאה בשליחה');
+      toast.error('Failed to send');
     } finally {
       setSending(false);
     }
