@@ -268,21 +268,50 @@ export default function Signup() {
             </button>
           </div>
 
-          {/* Guest divider */}
+          {/* Dev access */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-xs text-white/20">or</span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
 
-          {/* Guest */}
-          <button
-            type="button"
-            onClick={() => { enterAsGuest(); navigate('/chart'); }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm text-white/60 hover:text-white/90"
-          >
-            Continue as Guest
-          </button>
+          {!showGuestPassword ? (
+            <button
+              type="button"
+              onClick={() => setShowGuestPassword(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm text-white/40 hover:text-white/60"
+            >
+              🔧 Dev / Test Access Only
+            </button>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-2"
+            >
+              <input
+                type="password"
+                value={guestCode}
+                onChange={(e) => setGuestCode(e.target.value)}
+                placeholder="Enter access code"
+                className="w-full px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/10 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (guestCode === '205731797') {
+                    enterAsGuest();
+                    navigate('/chart');
+                  } else {
+                    toast.error('Invalid access code.');
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-sm text-white/50"
+              >
+                Enter as Guest
+              </button>
+            </motion.div>
+          )
 
           <p className="text-center text-sm text-white/30 mt-6">
             {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
