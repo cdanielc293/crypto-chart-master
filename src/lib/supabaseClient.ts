@@ -7,8 +7,8 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const PRIMARY_URL = 'http://192.168.1.37:8000';
-const FALLBACK_URL = 'http://213.57.181.98:8000';
+const PRIMARY_URL = 'https://api.vizionx.pro';
+const FALLBACK_URL = 'https://api.vizionx.pro';
 
 // Use the anon key from your self-hosted Supabase instance
 // Replace this with your actual anon key after setup
