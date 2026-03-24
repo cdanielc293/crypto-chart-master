@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useChart } from '@/context/ChartContext';
 import type { WatchlistList, WatchlistSection, WatchlistItem } from '@/types/chart';
+import { parseSymbol } from '@/lib/symbolUtils';
 import {
   X, Plus, Star, ChevronDown, ChevronRight, ChevronUp, MoreHorizontal,
   Copy, Trash2, Edit3, FolderPlus, List, Upload, Search, Grid3X3,
