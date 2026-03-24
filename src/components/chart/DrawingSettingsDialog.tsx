@@ -257,6 +257,40 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
           </div>
         </div>
       )}
+
+      {/* Shape-specific: Background */}
+      {isShapeTool && (
+        <div className="pt-2 border-t border-border space-y-3">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">Background</span>
+          <CheckField label="Show background" checked={localProps.showBackground !== false} onChange={v => updateLocal('showBackground', v)} />
+          {localProps.showBackground !== false && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Color</span>
+                <input
+                  type="color"
+                  value={localProps.backgroundColor || localColor}
+                  onChange={e => updateLocal('backgroundColor', e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Opacity</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round((localProps.backgroundOpacity ?? 0.08) * 100)}
+                  onChange={e => updateLocal('backgroundOpacity', Number(e.target.value) / 100)}
+                  className="w-32"
+                />
+                <span className="text-xs text-muted-foreground ml-2 w-8">{Math.round((localProps.backgroundOpacity ?? 0.08) * 100)}%</span>
+              </div>
+            </>
+          )}
+          <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
+        </div>
+      )}
     </>
   );
 }
