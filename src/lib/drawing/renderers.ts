@@ -707,6 +707,20 @@ const renderText: Renderer = (ctx, d, coord) => {
   ctx.fillText(text, p.x, p.y);
 };
 
+// ─── Emoji ───
+
+const renderEmoji: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 1) return;
+  const p = toXY(coord, d.points[0].time, d.points[0].price);
+  if (!p) return;
+  const emoji = d.props?.emoji || '😀';
+  const size = d.props?.emojiSize || 32;
+  ctx.font = `${size}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, p.x, p.y);
+};
+
 // ─── Pitchfork ───
 
 const renderPitchfork: Renderer = (ctx, d, coord) => {
@@ -1048,6 +1062,7 @@ const RENDERERS: Record<string, Renderer> = {
   brush: renderBrush,
   highlighter: renderBrush,
   text: renderText,
+  emoji: renderEmoji,
   pitchfork: renderPitchfork,
   schiffpitchfork: renderPitchfork,
   modifiedschiff: renderPitchfork,

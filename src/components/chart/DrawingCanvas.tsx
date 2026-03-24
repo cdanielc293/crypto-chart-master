@@ -213,6 +213,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const previewPts = [...pendingPointsRef.current];
       if (previewPointRef.current) previewPts.push(previewPointRef.current);
 
+      const previewProps = drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })() : undefined;
       const previewDrawing: ChartDrawing = {
         id: '__preview__',
         type: drawingTool,
@@ -222,6 +223,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         selected: false,
         visible: true,
         locked: false,
+        props: previewProps,
       };
       ctx.globalAlpha = 0.7;
       renderDrawing(ctx, previewDrawing, coord, w, h);
@@ -395,7 +397,9 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         selected: false,
         visible: true,
         locked: false,
-        props: drawingTool === 'text' ? { text: 'Text', fontSize: 14 } : undefined,
+        props: drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
+             : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
+             : undefined,
       };
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
