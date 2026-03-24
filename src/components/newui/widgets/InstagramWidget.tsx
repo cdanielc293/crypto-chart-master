@@ -1,11 +1,12 @@
-import WebBrowserWidget from './WebBrowserWidget';
+import MediaEmbedWidget from './MediaEmbedWidget';
 
 export default function InstagramWidget() {
   return (
-    <WebBrowserWidget
-      defaultUrl="https://www.instagram.com"
-      brandColor="#c084fc"
-      brandName="Instagram"
+    <MediaEmbedWidget
+      platform="instagram"
+      title="Instagram"
+      placeholder="הדבק קישור לפוסט / ריל"
+      helpText="הדבק קישור לפוסט או ריל כדי לצפות בו מתוך הווידג׳ט"
     />
   );
 }

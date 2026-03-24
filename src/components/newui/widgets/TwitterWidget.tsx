@@ -1,11 +1,12 @@
-import WebBrowserWidget from './WebBrowserWidget';
+import MediaEmbedWidget from './MediaEmbedWidget';
 
 export default function TwitterWidget() {
   return (
-    <WebBrowserWidget
-      defaultUrl="https://x.com"
-      brandColor="#38bdf8"
-      brandName="X / Twitter"
+    <MediaEmbedWidget
+      platform="twitter"
+      title="X / Twitter"
+      placeholder="הדבק קישור לפוסט (status)"
+      helpText="הדבק קישור לפוסט ספציפי כדי לצפות בו בתוך הווידג׳ט"
     />
   );
 }
