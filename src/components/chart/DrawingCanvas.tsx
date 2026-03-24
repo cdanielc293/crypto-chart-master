@@ -392,9 +392,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Preview
+    // Preview with Shift-snap
     if (pendingPointsRef.current.length > 0 && drawingTool !== 'cursor') {
-      previewPointRef.current = { time, price };
+      let previewPt = { time, price };
+      if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
+        previewPt = snapAngle45(pendingPointsRef.current[0], previewPt);
+      }
+      previewPointRef.current = previewPt;
     }
 
     // Cursor
