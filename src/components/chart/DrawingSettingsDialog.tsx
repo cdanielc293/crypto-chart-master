@@ -213,6 +213,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             isLineTool={isLineTool}
             isShapeTool={isShapeTool}
             isVerticalTool={isVerticalTool}
+            isChannelTool={isChannelTool}
           />
         )}
         {tab === 'Text' && (
