@@ -18,6 +18,8 @@ export interface PanelIndicatorState {
   indicators: string[];
   indicatorConfigs: Map<string, IndicatorInstance>;
   hiddenIndicators: Set<string>;
+  interval?: Interval;
+  chartType?: ChartType;
 }
 
 const DEFAULT_WATCHLISTS: WatchlistList[] = [
@@ -118,6 +120,8 @@ interface ChartContextType {
   removePanelIndicator: (panelIndex: number, instanceId: string) => void;
   togglePanelHiddenIndicator: (panelIndex: number, instanceId: string) => void;
   updatePanelIndicatorConfig: (panelIndex: number, instanceId: string, config: IndicatorInstance) => void;
+  setPanelInterval: (panelIndex: number, interval: Interval) => void;
+  setPanelChartType: (panelIndex: number, chartType: ChartType) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
@@ -445,6 +449,24 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   }, []);
 
+  const setPanelInterval = useCallback((pi: number, iv: Interval) => {
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi) || { indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set() };
+      next.set(pi, { ...state, interval: iv });
+      return next;
+    });
+  }, []);
+
+  const setPanelChartType = useCallback((pi: number, ct: ChartType) => {
+    setPanelIndicatorStates(prev => {
+      const next = new Map(prev);
+      const state = next.get(pi) || { indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set() };
+      next.set(pi, { ...state, chartType: ct });
+      return next;
+    });
+  }, []);
+
   return (
     <ChartContext.Provider value={{
       symbol, setSymbol,
@@ -477,6 +499,8 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       removePanelIndicator,
       togglePanelHiddenIndicator,
       updatePanelIndicatorConfig,
+      setPanelInterval,
+      setPanelChartType,
     }}>
       {children}
     </ChartContext.Provider>

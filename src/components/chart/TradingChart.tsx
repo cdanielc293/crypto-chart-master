@@ -582,6 +582,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const hiddenIndicators = isMultiPanel ? (panelState?.hiddenIndicators || new Set<string>()) : ctx.hiddenIndicators;
   const indicatorConfigs = isMultiPanel ? (panelState?.indicatorConfigs || new Map()) : ctx.indicatorConfigs;
 
+  // Per-panel interval and chartType
+  const interval = isMultiPanel && panelState?.interval ? panelState.interval : ctx.interval;
+  const chartType = isMultiPanel && panelState?.chartType ? panelState.chartType : ctx.chartType;
+
   const localAddIndicator = isMultiPanel
     ? (defId: string) => ctx.addPanelIndicator(panelIndex!, defId)
     : ctx.addIndicator;
@@ -595,8 +599,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     ? (instId: string, cfg: any) => ctx.updatePanelIndicatorConfig(panelIndex!, instId, cfg)
     : ctx.updateIndicatorConfig;
 
+  const localSetInterval = isMultiPanel
+    ? (iv: any) => ctx.setPanelInterval(panelIndex!, iv)
+    : ctx.setInterval;
+  const localSetChartType = isMultiPanel
+    ? (ct: any) => ctx.setPanelChartType(panelIndex!, ct)
+    : ctx.setChartType;
+
   const {
-    interval, chartType, drawingTool, drawings, removeDrawing,
+    drawingTool, drawings, removeDrawing,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = ctx;
@@ -2252,6 +2263,23 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           ) : (
             <span className="text-foreground font-semibold">{symbolTitle}</span>
           )
+        )}
+        {/* Per-panel interval selector for multi-chart */}
+        {isMultiPanel && (
+          <div className="relative">
+            <select
+              value={interval}
+              onChange={(e) => localSetInterval(e.target.value as any)}
+              className="bg-transparent text-foreground text-xs font-semibold cursor-pointer border-none outline-none appearance-none pr-3 hover:text-primary transition-colors"
+              style={{ WebkitAppearance: 'none' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {['1s','5s','10s','15s','30s','1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'].map(iv => (
+                <option key={iv} value={iv} className="bg-card text-foreground">{iv}</option>
+              ))}
+            </select>
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none text-[8px]">▼</span>
+          </div>
         )}
         {statusLine.showOpenMarketStatus && <span className="text-chart-bull">● Open</span>}
 
