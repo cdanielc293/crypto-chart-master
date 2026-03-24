@@ -275,7 +275,8 @@ export default function Pricing() {
                 <span className="text-white/40 text-sm">{tier.period}</span>
               </div>
               <p className="text-xs text-white/30 mb-1">{tier.billing}</p>
-              <p className="text-xs text-white/20 line-through mb-5">Was {tier.originalPrice}/mo</p>
+              {tier.originalPrice && <p className="text-xs text-white/20 line-through mb-5">Was {tier.originalPrice}/mo</p>}
+              {(tier as any).free && <p className="text-xs text-cyan-400/60 font-medium mb-5">No credit card needed</p>}
 
               <div className="flex-1 space-y-3 mb-6">
                 {tier.features.map((f) => (
