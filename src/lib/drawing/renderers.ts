@@ -461,25 +461,54 @@ const renderFibonacci: Renderer = (ctx, d, coord, w) => {
 
 // ─── Shapes ───
 
-const renderRectangle: Renderer = (ctx, d, coord) => {
+const renderRectangle: Renderer = (ctx, d, coord, w, h) => {
   if (d.points.length < 2) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
   const props = d.props || {};
   setupStroke(ctx, d);
-  const x = Math.min(p1.x, p2.x);
-  const y = Math.min(p1.y, p2.y);
-  const rw = Math.abs(p2.x - p1.x);
-  const rh = Math.abs(p2.y - p1.y);
-  ctx.strokeRect(x, y, rw, rh);
+
+  const top = Math.min(p1.y, p2.y);
+  const bottom = Math.max(p1.y, p2.y);
+  let left = Math.min(p1.x, p2.x);
+  let right = Math.max(p1.x, p2.x);
+
+  // Extend left/right
+  if (props.extendLeft) left = 0;
+  if (props.extendRight) right = w;
+
+  const rw = right - left;
+  const rh = bottom - top;
+
+  // Background fill
   if (props.showBackground !== false) {
     ctx.save();
     ctx.globalAlpha = props.backgroundOpacity ?? 0.08;
     ctx.fillStyle = props.backgroundColor || d.color;
-    ctx.fillRect(x, y, rw, rh);
+    ctx.fillRect(left, top, rw, rh);
     ctx.restore();
   }
+
+  // Border
+  ctx.strokeRect(left, top, rw, rh);
+
+  // Middle line (horizontal)
+  if (props.showMiddleLine) {
+    const midY = (top + bottom) / 2;
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = Math.max(1, d.lineWidth - 1);
+    ctx.strokeStyle = props.middleLineColor || d.color;
+    ctx.beginPath();
+    ctx.moveTo(left, midY);
+    ctx.lineTo(right, midY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Text inside rectangle
+  renderShapeText(ctx, props, d.color, (left + right) / 2, (top + bottom) / 2);
 };
 function renderShapeText(ctx: CanvasRenderingContext2D, props: Record<string, any>, fallbackColor: string, cx: number, cy: number) {
   const text = props.text;
