@@ -368,7 +368,7 @@ const bottomActions = [
 ];
 
 export default function LeftToolbar() {
-  const { drawingTool, setDrawingTool, drawings, removeDrawing } = useChart();
+  const { drawingTool, setDrawingTool, drawings, removeDrawing, undoDrawing, redoDrawing, canUndoDrawing, canRedoDrawing } = useChart();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [starredTools, setStarredToolsState] = useState<Set<string>>(getStarredTools);
   const [toggles, setToggles] = useState<Record<string, boolean>>({
