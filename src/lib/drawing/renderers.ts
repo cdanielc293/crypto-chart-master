@@ -412,15 +412,51 @@ const renderTriangle: Renderer = (ctx, d, coord) => {
   if (d.points.length < 3) return;
   const pts = d.points.map(p => toXY(coord, p.time, p.price)).filter(Boolean) as { x: number; y: number }[];
   if (pts.length < 3) return;
+
+  const props = d.props || {};
+  const borderColor = props.borderColor || d.color;
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+  const showBg = props.showBackground !== false;
+
+  // Border
   setupStroke(ctx, d);
+  ctx.strokeStyle = borderColor;
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
   ctx.lineTo(pts[1].x, pts[1].y);
   ctx.lineTo(pts[2].x, pts[2].y);
   ctx.closePath();
   ctx.stroke();
-  ctx.fillStyle = d.color + '15';
-  ctx.fill();
+
+  // Background fill
+  if (showBg) {
+    ctx.save();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.lineTo(pts[2].x, pts[2].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Price/time labels on axes when selected
+  if (d.selected && props.priceLabels) {
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = borderColor;
+    ctx.textAlign = 'left';
+    d.points.forEach((p, i) => {
+      const pt = pts[i];
+      if (pt) {
+        ctx.fillText(`P${i + 1}: ${p.price.toFixed(2)}`, pt.x + 6, pt.y - 4);
+      }
+    });
+    ctx.restore();
+  }
 };
 
 // ─── Arrows ───
