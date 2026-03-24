@@ -1147,6 +1147,8 @@ export default function PriceChartWidget() {
           lineWidth: 1.5,
         });
         draftPointsRef.current = [];
+        // Auto-switch back to cursor after placing (like Classic)
+        setDrawingTool('none');
         return;
       }
 
