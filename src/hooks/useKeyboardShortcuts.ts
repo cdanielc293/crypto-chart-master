@@ -54,10 +54,12 @@ export function useKeyboardShortcuts() {
 
     // Arrow left/right → Move chart 1 bar
     if (!ctrl && !alt && !shift && key === 'ArrowLeft') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'left' } }));
       return;
     }
     if (!ctrl && !alt && !shift && key === 'ArrowRight') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'right' } }));
       return;
     }
@@ -214,6 +216,7 @@ export function useKeyboardShortcuts() {
         '1': '1m', '2': '2m', '3': '3m', '5': '5m',
       };
       if (intervalMap[key]) {
+        e.preventDefault();
         setInterval(intervalMap[key] as any);
         return;
       }
@@ -221,6 +224,7 @@ export function useKeyboardShortcuts() {
 
     // , (comma) → Open interval selector
     if (!ctrl && !alt && !shift && key === ',') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:open-intervals'));
       return;
     }
@@ -248,6 +252,7 @@ export function useKeyboardShortcuts() {
 
     // Any letter key → Open symbol search (like TradingView)
     if (!ctrl && !alt && !shift && key.length === 1 && /^[a-zA-Z]$/.test(key)) {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:symbol-search', { detail: { initialChar: key } }));
       return;
     }
