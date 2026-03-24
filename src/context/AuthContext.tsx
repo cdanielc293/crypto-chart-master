@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signingIn, setSigningIn] = useState(false);
   const [isGuest, setIsGuest] = useState(() => localStorage.getItem('vizion_guest') === 'true');
 
-  // Bootstrap: listen to Supabase auth state
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -54,19 +53,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     if (signingIn) return;
-    if (!navigator.onLine) { toast.error('אין חיבור אינטרנט כרגע.'); return; }
+    if (!navigator.onLine) { toast.error('No internet connection.'); return; }
     setSigningIn(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast.success('התחברת בהצלחה');
+      toast.success('Signed in successfully');
     } catch (error) {
       console.error('Auth sign-in failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
       if (msg.includes('Invalid login credentials')) {
-        toast.error('אימייל או סיסמה שגויים.');
+        toast.error('Invalid email or password.');
       } else {
-        toast.error('ההתחברות נכשלה. נסה שוב.');
+        toast.error('Sign in failed. Please try again.');
       }
     } finally {
       setSigningIn(false);
@@ -75,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, metadata?: Record<string, any>) => {
     if (signingIn) return;
-    if (!navigator.onLine) { toast.error('אין חיבור אינטרנט כרגע.'); return; }
+    if (!navigator.onLine) { toast.error('No internet connection.'); return; }
     setSigningIn(true);
     try {
       const { error, data } = await supabase.auth.signUp({
@@ -85,17 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (error) throw error;
       if (data.session) {
-        toast.success('ההרשמה הושלמה בהצלחה! מתחבר...');
+        toast.success('Account created successfully! Signing in...');
       } else {
-        toast.success('נשלח אליך מייל אימות. אשר את האימייל ואז התחבר.');
+        toast.success('Verification email sent. Please confirm your email and then sign in.');
       }
     } catch (error) {
       console.error('Auth sign-up failed', error);
       const msg = error instanceof Error ? error.message : 'Unknown error';
       if (msg.includes('already registered') || msg.includes('already been registered')) {
-        toast.error('האימייל כבר קיים במערכת. נסה להתחבר.');
+        toast.error('This email is already registered. Try signing in.');
       } else {
-        toast.error('ההרשמה נכשלה: ' + msg);
+        toast.error('Sign up failed: ' + msg);
       }
     } finally {
       setSigningIn(false);
@@ -111,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) {
       console.error('OAuth error', error);
-      toast.error('ההתחברות נכשלה. נסה שוב.');
+      toast.error('Sign in failed. Please try again.');
     }
   };
 

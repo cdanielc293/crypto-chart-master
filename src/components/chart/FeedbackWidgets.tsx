@@ -20,17 +20,17 @@ function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
 
   const isBug = type === 'bug';
   const mascot = isBug ? bugMascot : featureMascot;
-  const title = isBug ? 'מצאת באג? 🐛' : 'חסר פיצ׳ר? 💡';
+  const title = isBug ? 'Found a bug? 🐛' : 'Missing a feature? 💡';
   const placeholder = isBug
-    ? 'תאר לנו מה קרה, איפה, ומה ציפית שיקרה...'
-    : 'ספר לנו מה היית רוצה שנוסיף...';
+    ? 'Describe what happened, where, and what you expected...'
+    : 'Tell us what you would like us to add...';
   const accent = isBug ? 'from-rose-500/20 to-orange-500/20' : 'from-violet-500/20 to-cyan-500/20';
   const borderAccent = isBug ? 'border-rose-500/30' : 'border-violet-500/30';
   const btnBg = isBug ? 'bg-rose-500 hover:bg-rose-600' : 'bg-violet-500 hover:bg-violet-600';
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      toast.error('כתוב משהו לפני שליחה 😊');
+      toast.error('Please write something before submitting 😊');
       return;
     }
     setSending(true);
@@ -42,12 +42,12 @@ function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
         message: message.trim(),
       });
       if (error) throw error;
-      toast.success(isBug ? 'הדיווח נשלח! תודה רבה 🙏' : 'הבקשה נשלחה! תודה רבה 🙏');
+      toast.success(isBug ? 'Bug report sent! Thank you 🙏' : 'Feature request sent! Thank you 🙏');
       setMessage('');
       onClose();
     } catch (err) {
       console.error('Feedback submit error:', err);
-      toast.error('שגיאה בשליחה, נסה שוב');
+      toast.error('Failed to send, please try again');
     } finally {
       setSending(false);
     }
@@ -83,7 +83,6 @@ function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
               placeholder={placeholder}
               rows={3}
               className="w-full rounded-xl border border-border bg-background/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-              dir="rtl"
             />
             <button
               onClick={handleSubmit}
@@ -91,7 +90,7 @@ function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
               className={`mt-2 w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors ${btnBg} disabled:opacity-50`}
             >
               <Send size={14} />
-              {sending ? 'שולח...' : 'שלח'}
+              {sending ? 'Sending...' : 'Send'}
             </button>
           </div>
         </motion.div>
@@ -113,13 +112,13 @@ export default function FeedbackWidgets() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           className="relative group"
-          title="דיווח על באג"
+          title="Report a bug"
         >
           <div className="w-12 h-12 rounded-full bg-popover/90 border border-border shadow-lg flex items-center justify-center backdrop-blur-sm overflow-hidden transition-shadow hover:shadow-xl hover:border-rose-500/40">
             <img src={bugMascot} alt="Bug report" className="w-9 h-9 object-contain" />
           </div>
           <span className="absolute -top-8 right-1/2 translate-x-1/2 bg-popover border border-border text-foreground text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-            דיווח באג 🐛
+            Report Bug 🐛
           </span>
         </motion.button>
       </div>
@@ -131,13 +130,13 @@ export default function FeedbackWidgets() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           className="relative group"
-          title="בקשת פיצ׳ר"
+          title="Request a feature"
         >
           <div className="w-12 h-12 rounded-full bg-popover/90 border border-border shadow-lg flex items-center justify-center backdrop-blur-sm overflow-hidden transition-shadow hover:shadow-xl hover:border-violet-500/40">
             <img src={featureMascot} alt="Feature request" className="w-9 h-9 object-contain" />
           </div>
           <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover border border-border text-foreground text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-            בקשת פיצ׳ר 💡
+            Feature Request 💡
           </span>
         </motion.button>
       </div>
