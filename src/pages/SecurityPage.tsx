@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield, Lock, KeyRound, AlertTriangle, Wifi, Smartphone, Mail, Phone, MessageSquare, Globe, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Shield, Lock, KeyRound, AlertTriangle, Wifi, Smartphone, Mail, Globe, ExternalLink } from 'lucide-react';
+import vizionLogo from '@/assets/vizionx-logo.png';
+import InlineContactForm from '@/components/InlineContactForm';
 import vizionLogo from '@/assets/vizionx-logo.png';
 
 export default function Security() {
