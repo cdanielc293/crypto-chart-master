@@ -37,6 +37,13 @@ export default function Signup() {
     if (user && !showBetaPass) navigate('/chart', { replace: true });
   }, [user, navigate, showBetaPass]);
 
+  // Redirect to pricing if trying to sign up without selecting a plan
+  useEffect(() => {
+    if (mode === 'signup' && !hasTier && !user) {
+      navigate('/pricing', { replace: true });
+    }
+  }, [mode, hasTier, user, navigate]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedEmail = email.trim();
