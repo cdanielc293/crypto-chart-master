@@ -162,6 +162,7 @@ export default function Admin() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-white/[0.02] text-white/40 text-xs">
+                        <th className="px-4 py-3 text-left">Email</th>
                         <th className="px-4 py-3 text-left">Name</th>
                         <th className="px-4 py-3 text-left">Username</th>
                         <th className="px-4 py-3 text-left">Plan</th>
@@ -174,6 +175,7 @@ export default function Admin() {
                     <tbody>
                       {profiles?.map((p: any) => (
                         <tr key={p.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-3 text-white/50 text-xs">{p.email || '—'}</td>
                           <td className="px-4 py-3 text-white/80">{p.full_name || '—'}</td>
                           <td className="px-4 py-3 text-white/50">{p.username || '—'}</td>
                           <td className="px-4 py-3">

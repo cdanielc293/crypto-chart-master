@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback_tickets: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          message: string
+          status: string
+          type: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       klines: {
         Row: {
           close: number
@@ -167,6 +203,42 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          admin_reply: string | null
+          created_at: string
+          id: string
+          message: string
+          status: string
+          subject: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_reply?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_active_tab: {
         Row: {
           ip_address: string | null
@@ -311,12 +383,40 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       admin_get_activity_stats: { Args: never; Returns: Json }
+      admin_get_all_profiles: { Args: never; Returns: Json }
+      admin_get_stats: { Args: never; Returns: Json }
+      admin_toggle_block: {
+        Args: { p_blocked: boolean; p_user_id: string }
+        Returns: undefined
+      }
+      admin_update_plan: {
+        Args: { p_plan: string; p_user_id: string }
+        Returns: undefined
+      }
       get_user_sessions: {
         Args: { p_user_id: string }
         Returns: {
@@ -330,13 +430,20 @@ export type Database = {
           user_agent: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       revoke_user_session: {
         Args: { p_session_id: string; p_user_id: string }
         Returns: boolean
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -463,6 +570,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
