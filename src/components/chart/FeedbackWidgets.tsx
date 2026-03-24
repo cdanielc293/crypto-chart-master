@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,48 +7,78 @@ import { useAuth } from '@/context/AuthContext';
 import bugMascot from '@/assets/bug-mascot.png';
 import featureMascot from '@/assets/feature-mascot.png';
 
-// ─── Draggable button hook ───
-function useDraggable(initialPos: { x: number; y: number }) {
-  const [pos, setPos] = useState(initialPos);
-  const dragging = useRef(false);
-  const offset = useRef({ x: 0, y: 0 });
-  const hasMoved = useRef(false);
+// ─── Draggable wrapper ───
+function DraggableWidget({ children, initialX, initialY, onClick }: {
+  children: React.ReactNode;
+  initialX: number;
+  initialY: number;
+  onClick: () => void;
+}) {
+  const posRef = useRef({ x: initialX, y: initialY });
+  const [pos, setPos] = useState({ x: initialX, y: initialY });
+  const draggingRef = useRef(false);
+  const startRef = useRef({ mx: 0, my: 0, sx: 0, sy: 0 });
+  const movedRef = useRef(false);
+  const elRef = useRef<HTMLDivElement>(null);
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    dragging.current = true;
-    hasMoved.current = false;
-    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [pos]);
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    draggingRef.current = true;
+    movedRef.current = false;
+    startRef.current = { mx: e.clientX, my: e.clientY, sx: posRef.current.x, sy: posRef.current.y };
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging.current) return;
-    hasMoved.current = true;
-    const size = 48;
-    const nx = Math.max(0, Math.min(window.innerWidth - size, e.clientX - offset.current.x));
-    const ny = Math.max(0, Math.min(window.innerHeight - size, e.clientY - offset.current.y));
-    setPos({ x: nx, y: ny });
-  }, []);
+    const onMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const dx = ev.clientX - startRef.current.mx;
+      const dy = ev.clientY - startRef.current.my;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) movedRef.current = true;
+      const nx = Math.max(0, Math.min(window.innerWidth - 48, startRef.current.sx + dx));
+      const ny = Math.max(0, Math.min(window.innerHeight - 48, startRef.current.sy + dy));
+      posRef.current = { x: nx, y: ny };
+      setPos({ x: nx, y: ny });
+    };
 
-  const onPointerUp = useCallback(() => {
-    dragging.current = false;
-  }, []);
+    const onUp = () => {
+      draggingRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      if (!movedRef.current) onClick();
+    };
 
-  return { pos, onPointerDown, onPointerMove, onPointerUp, hasMoved };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [onClick]);
+
+  return (
+    <div
+      ref={elRef}
+      onMouseDown={onMouseDown}
+      style={{
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        zIndex: 50,
+        userSelect: 'none',
+        cursor: draggingRef.current ? 'grabbing' : 'grab',
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 interface FeedbackPanelProps {
   type: 'bug' | 'feature';
   open: boolean;
   onClose: () => void;
-  anchorPos: { x: number; y: number };
+  anchorX: number;
+  anchorY: number;
 }
 
-function FeedbackPanel({ type, open, onClose, anchorPos }: FeedbackPanelProps) {
+function FeedbackPanel({ type, open, onClose, anchorX, anchorY }: FeedbackPanelProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const { user } = useAuth();
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const isBug = type === 'bug';
   const mascot = isBug ? bugMascot : featureMascot;
@@ -60,11 +90,10 @@ function FeedbackPanel({ type, open, onClose, anchorPos }: FeedbackPanelProps) {
   const borderAccent = isBug ? 'border-rose-500/30' : 'border-violet-500/30';
   const btnBg = isBug ? 'bg-rose-500 hover:bg-rose-600' : 'bg-violet-500 hover:bg-violet-600';
 
-  // Position panel above the button, clamped to screen
   const panelStyle: React.CSSProperties = {
     position: 'fixed',
-    left: Math.max(8, Math.min(anchorPos.x - 120, window.innerWidth - 296)),
-    top: Math.max(8, anchorPos.y - 320),
+    left: Math.max(8, Math.min(anchorX - 120, window.innerWidth - 296)),
+    top: Math.max(8, anchorY - 320),
     zIndex: 60,
   };
 
@@ -97,7 +126,6 @@ function FeedbackPanel({ type, open, onClose, anchorPos }: FeedbackPanelProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          ref={panelRef}
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -144,59 +172,44 @@ function FeedbackPanel({ type, open, onClose, anchorPos }: FeedbackPanelProps) {
 export default function FeedbackWidgets() {
   const [bugOpen, setBugOpen] = useState(false);
   const [featureOpen, setFeatureOpen] = useState(false);
-
-  const bugDrag = useDraggable({ x: window.innerWidth - 60, y: window.innerHeight - 60 });
-  const featureDrag = useDraggable({ x: 12, y: window.innerHeight - 60 });
+  const bugPosRef = useRef({ x: 0, y: 0 });
+  const featurePosRef = useRef({ x: 0, y: 0 });
 
   return (
     <>
       {/* Bug report */}
-      <FeedbackPanel type="bug" open={bugOpen} onClose={() => setBugOpen(false)} anchorPos={bugDrag.pos} />
-      <div
-        style={{ position: 'fixed', left: bugDrag.pos.x, top: bugDrag.pos.y, zIndex: 50, touchAction: 'none' }}
-        onPointerDown={bugDrag.onPointerDown}
-        onPointerMove={bugDrag.onPointerMove}
-        onPointerUp={bugDrag.onPointerUp}
+      <FeedbackPanel type="bug" open={bugOpen} onClose={() => setBugOpen(false)} anchorX={bugPosRef.current.x} anchorY={bugPosRef.current.y} />
+      <DraggableWidget
+        initialX={typeof window !== 'undefined' ? window.innerWidth - 60 : 0}
+        initialY={typeof window !== 'undefined' ? window.innerHeight - 60 : 0}
+        onClick={() => { setBugOpen(v => !v); setFeatureOpen(false); }}
       >
-        <motion.button
-          onClick={() => { if (!bugDrag.hasMoved.current) { setBugOpen(!bugOpen); setFeatureOpen(false); } }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative group cursor-grab active:cursor-grabbing"
-          title="Report a bug"
-        >
+        <div className="relative group">
           <div className="w-12 h-12 rounded-full bg-popover/90 border border-border shadow-lg flex items-center justify-center backdrop-blur-sm overflow-hidden transition-shadow hover:shadow-xl hover:border-rose-500/40">
-            <img src={bugMascot} alt="Bug report" className="w-9 h-9 object-contain" />
+            <img src={bugMascot} alt="Bug report" className="w-9 h-9 object-contain pointer-events-none" />
           </div>
           <span className="absolute -top-8 right-1/2 translate-x-1/2 bg-popover border border-border text-foreground text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
             Report Bug 🐛
           </span>
-        </motion.button>
-      </div>
+        </div>
+      </DraggableWidget>
 
       {/* Feature request */}
-      <FeedbackPanel type="feature" open={featureOpen} onClose={() => setFeatureOpen(false)} anchorPos={featureDrag.pos} />
-      <div
-        style={{ position: 'fixed', left: featureDrag.pos.x, top: featureDrag.pos.y, zIndex: 50, touchAction: 'none' }}
-        onPointerDown={featureDrag.onPointerDown}
-        onPointerMove={featureDrag.onPointerMove}
-        onPointerUp={featureDrag.onPointerUp}
+      <FeedbackPanel type="feature" open={featureOpen} onClose={() => setFeatureOpen(false)} anchorX={featurePosRef.current.x} anchorY={featurePosRef.current.y} />
+      <DraggableWidget
+        initialX={12}
+        initialY={typeof window !== 'undefined' ? window.innerHeight - 60 : 0}
+        onClick={() => { setFeatureOpen(v => !v); setBugOpen(false); }}
       >
-        <motion.button
-          onClick={() => { if (!featureDrag.hasMoved.current) { setFeatureOpen(!featureOpen); setBugOpen(false); } }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative group cursor-grab active:cursor-grabbing"
-          title="Request a feature"
-        >
+        <div className="relative group">
           <div className="w-12 h-12 rounded-full bg-popover/90 border border-border shadow-lg flex items-center justify-center backdrop-blur-sm overflow-hidden transition-shadow hover:shadow-xl hover:border-violet-500/40">
-            <img src={featureMascot} alt="Feature request" className="w-9 h-9 object-contain" />
+            <img src={featureMascot} alt="Feature request" className="w-9 h-9 object-contain pointer-events-none" />
           </div>
           <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover border border-border text-foreground text-[10px] px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
             Feature Request 💡
           </span>
-        </motion.button>
-      </div>
+        </div>
+      </DraggableWidget>
     </>
   );
 }
