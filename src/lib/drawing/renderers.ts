@@ -2031,7 +2031,7 @@ export function renderDrawing(
       ctx.fillText(text, mx, my + offset);
       ctx.restore();
     }
-  } else if (text && text.trim() && drawing.points.length === 1) {
+  } else if (text && text.trim() && drawing.type !== 'text' && drawing.type !== 'note' && drawing.points.length === 1) {
     const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     if (p) {
       const fontSize = drawing.props?.textSize || 14;
