@@ -5,8 +5,8 @@ export default function SpotifyWidget() {
     <MediaEmbedWidget
       platform="spotify"
       title="Spotify"
-      placeholder="הדבק קישור Spotify (track / playlist / album)"
-      helpText="הדבק קישור לשיר/פלייליסט/אלבום כדי לנגן ישירות בווידג׳ט"
+      placeholder="Paste a Spotify link (track / playlist / album)"
+      helpText="Paste a track, playlist, or album link to play directly in the widget"
     />
   );
 }

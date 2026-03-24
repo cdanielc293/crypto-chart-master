@@ -5,8 +5,8 @@ export default function TwitterWidget() {
     <MediaEmbedWidget
       platform="twitter"
       title="X / Twitter"
-      placeholder="הדבק קישור לפוסט (status)"
-      helpText="הדבק קישור לפוסט ספציפי כדי לצפות בו בתוך הווידג׳ט"
+      placeholder="Paste a post link (status URL)"
+      helpText="Paste a specific post link to view it inside the widget"
     />
   );
 }
