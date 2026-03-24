@@ -84,6 +84,11 @@ interface ChartContextType {
   selectedDrawingIds: Set<string>;
   setSelectedDrawingIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   toggleSelectedDrawing: (id: string) => void;
+  // Undo/Redo for drawings
+  undoDrawing: () => void;
+  redoDrawing: () => void;
+  canUndoDrawing: boolean;
+  canRedoDrawing: boolean;
   indicators: string[];
   addIndicator: (definitionId: string) => void;
   removeIndicator: (instanceId: string) => void;
