@@ -67,13 +67,12 @@ export default function BugBounty() {
           <p className="text-white/50 max-w-xl mx-auto mb-6">
             Found a vulnerability on our platform? Help us keep VizionX secure and get rewarded.
           </p>
-          <a
-            href="mailto:security@vizionx.pro"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium hover:bg-cyan-500/20 transition-colors"
-          >
-            <Mail className="w-4 h-4" />
-            Send a Report
-          </a>
+          <InlineContactForm
+            category="bug-bounty"
+            title="Submit a Security Report"
+            placeholder="Describe the vulnerability, include reproduction steps or a proof-of-concept..."
+            buttonLabel="Send Report"
+          />
         </div>
 
         <div className="space-y-16">
