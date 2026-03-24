@@ -343,35 +343,54 @@ const renderTrendAngle: Renderer = (ctx, d, coord) => {
 
 // ─── Channels ───
 
-const renderParallelChannel: Renderer = (ctx, d, coord) => {
+const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 3) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   const p3 = toXY(coord, d.points[2].time, d.points[2].price);
   if (!p1 || !p2 || !p3) return;
-  // p3 defines the offset
-  const offsetY = p3.y - p1.y;
-  setupStroke(ctx, d);
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y + offsetY);
-  ctx.lineTo(p2.x, p2.y + offsetY);
-  ctx.stroke();
-  // Fill
   const props = d.props || {};
-  const bgColor = props.backgroundColor || d.color;
-  const bgOpacity = props.backgroundOpacity ?? 0.08;
-  ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.lineTo(p2.x, p2.y + offsetY);
-  ctx.lineTo(p1.x, p1.y + offsetY);
-  ctx.closePath();
-  ctx.fill();
+  const offsetY = p3.y - p1.y;
+  const extendLeft = props.extendLeft || false;
+  const extendRight = props.extendRight || false;
+
+  // Calculate extended points
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+
+  let lx1 = p1.x, ly1 = p1.y, lx2 = p2.x, ly2 = p2.y;
+  if (extendLeft) { lx1 = p1.x - ux * 5000; ly1 = p1.y - uy * 5000; }
+  if (extendRight) { lx2 = p2.x + ux * 5000; ly2 = p2.y + uy * 5000; }
+
+  setupStroke(ctx, d);
+  // Top line
+  ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke();
+  // Bottom line
+  ctx.beginPath(); ctx.moveTo(lx1, ly1 + offsetY); ctx.lineTo(lx2, ly2 + offsetY); ctx.stroke();
+
+  // Middle line
+  if (props.showMiddleLine) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1 + offsetY / 2); ctx.lineTo(lx2, ly2 + offsetY / 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Fill
+  if (props.showBackground !== false) {
+    const bgColor = props.backgroundColor || d.color;
+    const bgOpacity = props.backgroundOpacity ?? 0.08;
+    ctx.fillStyle = bgColor + Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2);
+    ctx.lineTo(lx2, ly2 + offsetY); ctx.lineTo(lx1, ly1 + offsetY);
+    ctx.closePath(); ctx.fill();
+  }
 
   // Text
   const text = props.text;
@@ -380,8 +399,8 @@ const renderParallelChannel: Renderer = (ctx, d, coord) => {
     const fontStyle = `${props.textItalic ? 'italic ' : ''}${props.textBold ? 'bold ' : ''}${fontSize}px sans-serif`;
     ctx.font = fontStyle;
     ctx.fillStyle = props.textColor || d.color;
-    const textPos = props.textPosition || 'middle'; // 'top' | 'middle' | 'bottom'
-    const textAlign = props.textAlign || 'center'; // 'left' | 'center' | 'right'
+    const textPos = props.textPosition || 'middle';
+    const textAlign = props.textAlign || 'center';
     ctx.textAlign = textAlign as CanvasTextAlign;
     ctx.textBaseline = 'middle';
     const midX = textAlign === 'left' ? Math.min(p1.x, p2.x) + 8
@@ -832,41 +851,331 @@ const renderEmoji: Renderer = (ctx, d, coord) => {
 
 // ─── Pitchfork ───
 
-const renderPitchfork: Renderer = (ctx, d, coord) => {
+const renderPitchfork: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 3) return;
   const p0 = toXY(coord, d.points[0].time, d.points[0].price);
   const p1 = toXY(coord, d.points[1].time, d.points[1].price);
   const p2 = toXY(coord, d.points[2].time, d.points[2].price);
   if (!p0 || !p1 || !p2) return;
+  const props = d.props || {};
   setupStroke(ctx, d);
-  // Median line from p0 to midpoint of p1-p2
+
   const midX = (p1.x + p2.x) / 2;
   const midY = (p1.y + p2.y) / 2;
-  ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(midX + (midX - p0.x) * 5, midY + (midY - p0.y) * 5);
-  ctx.stroke();
-  // Upper line parallel through p1
   const dx = midX - p0.x;
   const dy = midY - p0.y;
+  const extLen = 5;
+
+  // Median line
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(midX + dx * extLen, midY + dy * extLen);
+  ctx.stroke();
+  // Upper line through p1
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p1.x + dx * 5, p1.y + dy * 5);
+  ctx.lineTo(p1.x + dx * extLen, p1.y + dy * extLen);
   ctx.stroke();
-  // Lower line parallel through p2
+  // Lower line through p2
   ctx.beginPath();
   ctx.moveTo(p2.x, p2.y);
-  ctx.lineTo(p2.x + dx * 5, p2.y + dy * 5);
+  ctx.lineTo(p2.x + dx * extLen, p2.y + dy * extLen);
   ctx.stroke();
-  // Connection lines
+
+  // Background fill between upper and lower
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = props.backgroundOpacity ?? 0.06;
+    ctx.fillStyle = props.backgroundColor || d.color;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p1.x + dx * extLen, p1.y + dy * extLen);
+    ctx.lineTo(p2.x + dx * extLen, p2.y + dy * extLen);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Connection lines (dashed)
   ctx.setLineDash([3, 3]);
   ctx.beginPath();
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(p1.x, p1.y);
-  ctx.moveTo(p0.x, p0.y);
-  ctx.lineTo(p2.x, p2.y);
+  ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+  ctx.moveTo(p0.x, p0.y); ctx.lineTo(p2.x, p2.y);
   ctx.stroke();
   ctx.setLineDash([]);
+};
+
+// ─── Pitchfan ───
+
+const PITCHFAN_LEVELS = [0.236, 0.382, 0.5, 0.618, 0.786, 1];
+
+const renderPitchfan: Renderer = (ctx, d, coord, w) => {
+  if (d.points.length < 3) return;
+  const p0 = toXY(coord, d.points[0].time, d.points[0].price);
+  const p1 = toXY(coord, d.points[1].time, d.points[1].price);
+  const p2 = toXY(coord, d.points[2].time, d.points[2].price);
+  if (!p0 || !p1 || !p2) return;
+  const props = d.props || {};
+  setupStroke(ctx, d);
+
+  // Median: p0 to midpoint of p1-p2
+  const midX = (p1.x + p2.x) / 2;
+  const midY = (p1.y + p2.y) / 2;
+  ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(midX + (midX - p0.x) * 5, midY + (midY - p0.y) * 5); ctx.stroke();
+
+  // Fan rays at Fibonacci levels between p1 and p2
+  const prevDash = ctx.getLineDash();
+  for (let i = 0; i < PITCHFAN_LEVELS.length; i++) {
+    const lvl = PITCHFAN_LEVELS[i];
+    const targetX = p1.x + (p2.x - p1.x) * lvl;
+    const targetY = p1.y + (p2.y - p1.y) * lvl;
+    const rdx = targetX - p0.x, rdy = targetY - p0.y;
+    ctx.globalAlpha = lvl === 1 ? 1 : 0.7;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p0.x + rdx * 8, p0.y + rdy * 8);
+    ctx.stroke();
+    // Label
+    ctx.save();
+    ctx.font = '9px monospace';
+    ctx.fillStyle = d.color;
+    ctx.globalAlpha = 0.8;
+    ctx.fillText(`${(lvl * 100).toFixed(1)}%`, p0.x + rdx * 2.5, p0.y + rdy * 2.5 - 6);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  // Background between rays
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = props.backgroundOpacity ?? 0.04;
+    ctx.fillStyle = props.backgroundColor || d.color;
+    for (let i = 0; i < PITCHFAN_LEVELS.length - 1; i++) {
+      const l1 = PITCHFAN_LEVELS[i], l2 = PITCHFAN_LEVELS[i + 1];
+      const t1x = p1.x + (p2.x - p1.x) * l1, t1y = p1.y + (p2.y - p1.y) * l1;
+      const t2x = p1.x + (p2.x - p1.x) * l2, t2y = p1.y + (p2.y - p1.y) * l2;
+      const e1x = p0.x + (t1x - p0.x) * 8, e1y = p0.y + (t1y - p0.y) * 8;
+      const e2x = p0.x + (t2x - p0.x) * 8, e2y = p0.y + (t2y - p0.y) * 8;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y); ctx.lineTo(e1x, e1y); ctx.lineTo(e2x, e2y); ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Connection lines (dashed)
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+  ctx.moveTo(p0.x, p0.y); ctx.lineTo(p2.x, p2.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+};
+
+// ─── Regression Trend ───
+
+const renderRegressionTrend: Renderer = (ctx, d, coord, w, h, candles) => {
+  if (d.points.length < 2 || !candles || candles.length === 0) return;
+  const t1 = Math.min(d.points[0].time, d.points[1].time);
+  const t2 = Math.max(d.points[0].time, d.points[1].time);
+  const props = d.props || {};
+  const upperDev = props.upperDeviation ?? 2;
+  const lowerDev = props.lowerDeviation ?? 2;
+
+  const bars = candles.filter(c => c.time >= t1 && c.time <= t2);
+  if (bars.length < 2) return;
+
+  // Linear regression
+  const n = bars.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    const y = bars[i].close;
+    sumX += i; sumY += y; sumXY += i * y; sumXX += i * i;
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  // Standard deviation from regression line
+  let sumSqDev = 0;
+  for (let i = 0; i < n; i++) {
+    const predicted = intercept + slope * i;
+    sumSqDev += (bars[i].close - predicted) ** 2;
+  }
+  const stdDev = Math.sqrt(sumSqDev / n);
+
+  // Draw
+  const startVal = intercept;
+  const endVal = intercept + slope * (n - 1);
+  const x1 = coord.timeToX(bars[0].time);
+  const x2 = coord.timeToX(bars[n - 1].time);
+  if (x1 === null || x2 === null) return;
+
+  // Base line
+  const y1b = coord.priceToY(startVal);
+  const y2b = coord.priceToY(endVal);
+  if (y1b !== null && y2b !== null) {
+    setupStroke(ctx, d);
+    ctx.beginPath(); ctx.moveTo(x1, y1b); ctx.lineTo(x2, y2b); ctx.stroke();
+  }
+
+  // Upper channel
+  const y1u = coord.priceToY(startVal + stdDev * upperDev);
+  const y2u = coord.priceToY(endVal + stdDev * upperDev);
+  if (y1u !== null && y2u !== null) {
+    ctx.strokeStyle = props.upColor || '#26a69a';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x1, y1u); ctx.lineTo(x2, y2u); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Lower channel
+  const y1l = coord.priceToY(startVal - stdDev * lowerDev);
+  const y2l = coord.priceToY(endVal - stdDev * lowerDev);
+  if (y1l !== null && y2l !== null) {
+    ctx.strokeStyle = props.downColor || '#ef5350';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x1, y1l); ctx.lineTo(x2, y2l); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Fill
+  if (y1u !== null && y2u !== null && y1l !== null && y2l !== null) {
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = props.upColor || '#26a69a';
+    ctx.beginPath(); ctx.moveTo(x1, y1b!); ctx.lineTo(x2, y2b!); ctx.lineTo(x2, y2u); ctx.lineTo(x1, y1u); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = props.downColor || '#ef5350';
+    ctx.beginPath(); ctx.moveTo(x1, y1b!); ctx.lineTo(x2, y2b!); ctx.lineTo(x2, y2l); ctx.lineTo(x1, y1l); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // Pearson's R
+  if (props.showPearsonsR !== false) {
+    const meanY = sumY / n;
+    let ssTot = 0;
+    for (let i = 0; i < n; i++) ssTot += (bars[i].close - meanY) ** 2;
+    const r2 = ssTot > 0 ? 1 - sumSqDev / ssTot : 0;
+    const r = Math.sqrt(Math.abs(r2)) * (slope >= 0 ? 1 : -1);
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = d.color;
+    ctx.textAlign = 'left';
+    ctx.fillText(`R = ${r.toFixed(4)}`, x1 + 5, (y1b ?? 0) - 8);
+    ctx.restore();
+  }
+};
+
+// ─── Fib Extension (3-point trend-based) ───
+
+const FIB_EXT_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2, 2.618];
+
+const renderFibExtension: Renderer = (ctx, d, coord, w) => {
+  if (d.points.length < 3) {
+    // Fall back to 2-point fib for preview
+    if (d.points.length === 2) { renderFibonacci(ctx, d, coord, w, 0); }
+    return;
+  }
+  const p1 = toXY(coord, d.points[0].time, d.points[0].price);
+  const p2 = toXY(coord, d.points[1].time, d.points[1].price);
+  const p3 = toXY(coord, d.points[2].time, d.points[2].price);
+  if (!p1 || !p2 || !p3) return;
+
+  const props = d.props || {};
+  const priceDiff = d.points[1].price - d.points[0].price;
+
+  // Trend line (dashed)
+  ctx.save();
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Extension levels from p3
+  for (let i = 0; i < FIB_EXT_LEVELS.length; i++) {
+    const lvl = FIB_EXT_LEVELS[i];
+    const price = d.points[2].price + priceDiff * lvl;
+    const y = coord.priceToY(price);
+    if (y === null) continue;
+    const color = FIB_COLORS[i % FIB_COLORS.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash(lvl === 0 || lvl === 1 ? [] : [4, 4]);
+    ctx.beginPath(); ctx.moveTo(p3.x, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${(lvl * 100).toFixed(1)}% (${price.toFixed(2)})`, p3.x + 5, y - 3);
+  }
+
+  // Fill between levels
+  for (let i = 0; i < FIB_EXT_LEVELS.length - 1; i++) {
+    const yTop = coord.priceToY(d.points[2].price + priceDiff * FIB_EXT_LEVELS[i]);
+    const yBot = coord.priceToY(d.points[2].price + priceDiff * FIB_EXT_LEVELS[i + 1]);
+    if (yTop === null || yBot === null) continue;
+    ctx.fillStyle = FIB_COLORS[i % FIB_COLORS.length] + '08';
+    ctx.fillRect(p3.x, Math.min(yTop, yBot), w - p3.x, Math.abs(yBot - yTop));
+  }
+};
+
+// ─── Fib Trend Time ───
+
+const renderFibTrendTime: Renderer = (ctx, d, coord, _w, h) => {
+  if (d.points.length < 2) return;
+  const p1 = toXY(coord, d.points[0].time, d.points[0].price);
+  const p2 = toXY(coord, d.points[1].time, d.points[1].price);
+  if (!p1 || !p2) return;
+
+  const timeDiff = d.points[1].time - d.points[0].time;
+  if (timeDiff === 0) return;
+  const startTime = d.points[0].time;
+  const FIB_TIME_LEVELS = [0, 0.382, 0.5, 0.618, 1, 1.618, 2, 2.618, 3, 4.236];
+
+  // Trend line
+  ctx.save();
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  for (let i = 0; i < FIB_TIME_LEVELS.length; i++) {
+    const lvl = FIB_TIME_LEVELS[i];
+    const time = startTime + timeDiff * lvl;
+    const x = coord.timeToX(time);
+    if (x === null) continue;
+    const color = FIB_COLORS[i % FIB_COLORS.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash(lvl === 0 || lvl === 1 ? [] : [4, 4]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = color;
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${lvl}`, x, 12);
+  }
+
+  // Fill between
+  const props = d.props || {};
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = 0.04;
+    for (let i = 0; i < FIB_TIME_LEVELS.length - 1; i++) {
+      const x1 = coord.timeToX(startTime + timeDiff * FIB_TIME_LEVELS[i]);
+      const x2 = coord.timeToX(startTime + timeDiff * FIB_TIME_LEVELS[i + 1]);
+      if (x1 === null || x2 === null) continue;
+      ctx.fillStyle = FIB_COLORS[i % FIB_COLORS.length];
+      ctx.fillRect(Math.min(x1, x2), 0, Math.abs(x2 - x1), h);
+    }
+    ctx.restore();
+  }
 };
 
 // ─── Positions ───
@@ -1380,7 +1689,10 @@ const RENDERERS: Record<string, Renderer> = {
   trendangle: renderTrendAngle,
   parallelchannel: renderParallelChannel,
   fibonacci: renderFibonacci,
-  fibextension: renderFibonacci,
+  fibextension: renderFibExtension,
+  fibtrendtime: renderFibTrendTime,
+  pitchfan: renderPitchfan,
+  regressiontrend: renderRegressionTrend,
   rectangle: renderRectangle,
   rotatedrectangle: renderRectangle,
   circle: renderCircle,
