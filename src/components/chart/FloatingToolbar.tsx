@@ -14,6 +14,7 @@ interface Props {
   x: number;
   y: number;
   drawing: Drawing | null;
+  selectedCount?: number;
   onUpdate: (updates: Partial<Drawing>) => void;
   onClone: () => void;
   onDelete: () => void;
