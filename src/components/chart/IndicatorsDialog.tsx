@@ -61,12 +61,29 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
 
   return (
     <DraggableDialog id="indicators" open={open} onClose={onClose} title="Indicators" className="w-[520px] max-w-[90vw]">
+      {/* Limit banner */}
+      {atLimit && (
+        <div className="mx-4 mt-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <Lock size={14} className="text-amber-400 shrink-0" />
+          <span className="text-xs text-amber-300">
+            Indicator limit reached ({indicators.length}/{limits.indicatorsPerChart}).{' '}
+            <button onClick={() => { onClose(); navigate('/pricing'); }} className="underline hover:text-amber-200 font-medium">
+              Upgrade
+            </button>{' '}
+            to add more.
+          </span>
+        </div>
+      )}
+
       <div className="px-4 py-3">
-        <div className="flex items-center gap-2 bg-muted/30 border border-chart-border rounded-lg px-3 py-2">
-          <Search size={15} className="text-muted-foreground shrink-0" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search indicators..."
-            className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none flex-1" autoFocus />
-          {search && <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 bg-muted/30 border border-chart-border rounded-lg px-3 py-2">
+            <Search size={15} className="text-muted-foreground shrink-0" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search indicators..."
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none flex-1" autoFocus />
+            {search && <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground"><X size={14} /></button>}
+          </div>
+          <span className="text-xs text-muted-foreground shrink-0">{indicators.length}/{limits.indicatorsPerChart}</span>
         </div>
       </div>
 
@@ -96,11 +113,11 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
             </div>
           ) : (
             filtered.map(ind => (
-              <div key={ind.id} className="group flex items-center px-4 py-2.5 hover:bg-toolbar-hover transition-colors cursor-pointer border-b border-chart-border/30">
+              <div key={ind.id} className={`group flex items-center px-4 py-2.5 hover:bg-toolbar-hover transition-colors border-b border-chart-border/30 ${atLimit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                 <button onClick={e => { e.stopPropagation(); toggleFavorite(ind.id); }} className="mr-2.5 shrink-0">
                   <Star size={14} className={favorites.has(ind.id) ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/40 hover:text-amber-400'} />
                 </button>
-                <button onClick={() => handleAdd(ind.id)} className="flex-1 text-left text-[13px] text-foreground hover:text-primary transition-colors">
+                <button onClick={() => handleAdd(ind.id)} disabled={atLimit} className="flex-1 text-left text-[13px] text-foreground hover:text-primary transition-colors disabled:hover:text-foreground">
                   {ind.name}
                   <span className="ml-2 text-muted-foreground text-[11px]">{ind.shortName}</span>
                 </button>
