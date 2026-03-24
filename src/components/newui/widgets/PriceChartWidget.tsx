@@ -624,6 +624,44 @@ export default function PriceChartWidget() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
 
+  // Undo/Redo stacks
+  const undoStackRef = useRef<WidgetDrawing[][]>([]);
+  const redoStackRef = useRef<WidgetDrawing[][]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const pushUndo = useCallback(() => {
+    undoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
+  }, []);
+
+  const undoDrawings = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    redoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = undoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(undoStackRef.current.length > 0);
+    setCanRedo(true);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const redoDrawings = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    undoStackRef.current.push(JSON.parse(JSON.stringify(drawingsRef.current)));
+    drawingsRef.current = redoStackRef.current.pop()!;
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(null);
+    setCanUndo(true);
+    setCanRedo(redoStackRef.current.length > 0);
+    scheduleRender();
+  }, [scheduleRender]);
+
   const dataRef = useRef<Candle[]>([]);
   const stateRef = useRef<ChartState>({
     offsetX: 0, candleWidth: DEFAULT_CW, crosshair: null,
