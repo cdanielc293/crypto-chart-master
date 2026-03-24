@@ -176,9 +176,10 @@ export default function Pricing() {
           <div className="relative flex items-center justify-center gap-3 py-3.5 px-6">
             <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
             <p className="text-sm sm:text-base font-semibold">
-              <span className="text-cyan-400">FREE LAUNCH ACCESS:</span>{' '}
-              <span className="text-white/70">All features currently</span>{' '}
-              <span className="text-cyan-300 font-bold">$0</span>
+              <span className="text-cyan-400">🚀 BETA LAUNCH:</span>{' '}
+              <span className="text-white/70">All Zenith features unlocked —</span>{' '}
+              <span className="text-cyan-300 font-bold">100% FREE</span>{' '}
+              <span className="text-white/50">during Beta</span>
             </p>
             <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
           </div>
