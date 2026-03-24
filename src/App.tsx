@@ -43,6 +43,7 @@ const App = () => (
             <Route path="/accessibility" element={<Accessibility />} />
             <Route path="/security" element={<SecurityPage />} />
             <Route path="/bug-bounty" element={<BugBounty />} />
+            <Route path="/status" element={<Status />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/chart" element={
               <ProtectedRoute>
