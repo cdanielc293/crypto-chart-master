@@ -1216,21 +1216,22 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Logo watermark (center of chart area) ───
+    // ─── Logo watermark (bottom-right of chart area) ───
     const logoImg = logoImgRef.current;
     if (logoImg) {
       const logoH = Math.min(160, priceH * 0.32);
       const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
-      const logoX = chartW / 2 - logoW / 2;
-      const logoY = priceH / 2 - logoH / 2 - 20;
+      const padding = 16;
+      const logoX = chartW - logoW - padding;
+      const logoY = priceH - logoH - padding - 30;
       ctx.globalAlpha = 0.10;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
       ctx.globalAlpha = 0.08;
       ctx.font = `bold ${Math.min(48, priceH * 0.09)}px Inter, sans-serif`;
-      ctx.textAlign = 'center';
+      ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VIZIONX', chartW / 2, logoY + logoH + 10);
+      ctx.fillText('VIZIONX', chartW - padding, logoY + logoH + 10);
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
