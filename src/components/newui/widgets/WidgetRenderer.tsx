@@ -5,6 +5,11 @@ import WhaleBubblesWidget from './WhaleBubblesWidget';
 import SentimentWidget from './SentimentWidget';
 import VolatilityVortexWidget from './VolatilityVortexWidget';
 import PerformanceDNAWidget from './PerformanceDNAWidget';
+import YouTubeWidget from './YouTubeWidget';
+import SpotifyWidget from './SpotifyWidget';
+import TwitterWidget from './TwitterWidget';
+import TikTokWidget from './TikTokWidget';
+import InstagramWidget from './InstagramWidget';
 
 const WIDGET_COMPONENTS: Record<string, React.FC> = {
   'price-chart': PriceChartWidget,
@@ -12,6 +17,11 @@ const WIDGET_COMPONENTS: Record<string, React.FC> = {
   'sentiment-heatmap': SentimentWidget,
   'volatility-vortex': VolatilityVortexWidget,
   'performance-dna': PerformanceDNAWidget,
+  'youtube': YouTubeWidget,
+  'spotify': SpotifyWidget,
+  'twitter': TwitterWidget,
+  'tiktok': TikTokWidget,
+  'instagram': InstagramWidget,
 };
 
 export default function WidgetRenderer({ widget }: { widget: WidgetInstance }) {
