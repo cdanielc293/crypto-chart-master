@@ -119,7 +119,7 @@ interface Props {
 }
 
 export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
-  const { setSymbol, addToWatchlist } = useChart();
+  const { setSymbol, addToWatchlist, watchlists, activeWatchlistId } = useChart();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +127,13 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get all symbols in active watchlist for "in list" indicator
+  const watchlistSymbols = useMemo(() => {
+    const active = watchlists.find(l => l.id === activeWatchlistId) || watchlists[0];
+    if (!active) return new Set<string>();
+    return new Set(active.sections.flatMap(s => s.symbols));
+  }, [watchlists, activeWatchlistId]);
 
   // Fetch all symbols from all exchanges on mount
   useEffect(() => {
