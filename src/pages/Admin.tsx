@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ArrowLeft, Users, Bug, Lightbulb, MessageSquare, BarChart3, Shield,
-  Ban, CheckCircle, Clock, Loader2, ChevronDown,
+  Ban, CheckCircle, Clock, Loader2, ChevronDown, Wifi, Calendar, CalendarDays, CalendarRange,
 } from 'lucide-react';
 
 const tabs = [
