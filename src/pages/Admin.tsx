@@ -50,6 +50,7 @@ export default function Admin() {
   const { data: tickets, isLoading: ticketsLoading } = useAdminTickets();
   const { data: support, isLoading: supportLoading } = useAdminSupport();
   const toggleBlock = useToggleBlock();
+  const updatePlan = useUpdateUserPlan();
   const updateTicket = useUpdateTicketStatus();
   const updateSupport = useUpdateSupportStatus();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
