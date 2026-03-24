@@ -691,6 +691,17 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           setToolbarPos(null);
         }
       }
+      // Ctrl+Z / Ctrl+Y undo/redo for drawings
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoDrawing();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoDrawing();
+        return;
+      }
       // Alt+V shortcut for vertical line
       if (e.altKey && e.key.toLowerCase() === 'v') {
         e.preventDefault();
