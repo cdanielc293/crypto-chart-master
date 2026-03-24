@@ -26,6 +26,9 @@ import {
   Trash2,
   TrendingUp,
   Loader2,
+  Lock,
+  Unlock,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
