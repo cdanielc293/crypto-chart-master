@@ -759,13 +759,14 @@ export default function PriceChartWidget() {
   }, [scheduleRender, pushUndo]);
 
   const removeAllDrawings = useCallback(() => {
+    pushUndo();
     drawingsRef.current = [];
     draftPointsRef.current = [];
     persistDrawings(drawingsRef.current);
     setDrawingsCount(0);
     setSelectedDrawingId(null);
     scheduleRender();
-  }, [scheduleRender]);
+  }, [scheduleRender, pushUndo]);
 
   const removeDrawing = useCallback((id: string) => {
     drawingsRef.current = drawingsRef.current.filter(d => d.id !== id);
