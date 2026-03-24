@@ -570,6 +570,8 @@ interface TradingChartProps {
 
 export default function TradingChart({ panelIndex, overrideSymbol, compact }: TradingChartProps = {}) {
   const ctx = useChart();
+  const { data: profile } = useProfile();
+  const maxBars = getHistoricalBarsLimit(profile?.plan);
   const symbol = overrideSymbol || ctx.symbol;
   const isMultiPanel = panelIndex !== undefined && ctx.gridLayout.count > 1;
 
