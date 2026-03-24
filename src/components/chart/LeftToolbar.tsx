@@ -343,9 +343,14 @@ export default function LeftToolbar() {
     return cat.icon;
   };
 
-  const handleToolSelect = (categoryId: string, tool: DrawingTool) => {
+  const handleToolSelect = (categoryId: string, tool: DrawingTool, extra?: Record<string, any>) => {
     setDrawingTool(tool);
     setSelectedPerCategory(prev => ({ ...prev, [categoryId]: tool }));
+    if (extra) {
+      localStorage.setItem('drawingToolProps', JSON.stringify(extra));
+    } else {
+      localStorage.removeItem('drawingToolProps');
+    }
     setOpenCategory(null);
   };
 
