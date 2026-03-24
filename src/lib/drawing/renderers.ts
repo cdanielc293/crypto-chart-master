@@ -750,6 +750,72 @@ const renderText: Renderer = (ctx, d, coord) => {
   ctx.fillText(text, p.x, p.y);
 };
 
+// ─── Note ───
+
+const renderNote: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 1) return;
+  const p = toXY(coord, d.points[0].time, d.points[0].price);
+  if (!p) return;
+  const props = d.props || {};
+  const text = props.text || 'Note';
+  const fontSize = props.textSize || 12;
+  const bold = props.textBold ? 'bold ' : '';
+  const italic = props.textItalic ? 'italic ' : '';
+  ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+  const lines = text.split('\n');
+  const lineHeight = fontSize + 4;
+  const padding = 8;
+  const maxWidth = Math.max(...lines.map((l: string) => ctx.measureText(l).width), 40);
+  const boxW = maxWidth + padding * 2;
+  const boxH = lines.length * lineHeight + padding * 2;
+  const boxX = p.x + 12;
+  const boxY = p.y - boxH / 2;
+
+  // Connector line from price level to box
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(boxX, p.y);
+  ctx.stroke();
+
+  // Price level dot
+  ctx.fillStyle = d.color;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Box background
+  const bgColor = props.backgroundColor || '#1e222d';
+  const borderColor = d.color;
+  ctx.fillStyle = bgColor;
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  const r = 4;
+  ctx.beginPath();
+  ctx.moveTo(boxX + r, boxY);
+  ctx.lineTo(boxX + boxW - r, boxY);
+  ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+  ctx.lineTo(boxX + boxW, boxY + boxH - r);
+  ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+  ctx.lineTo(boxX + r, boxY + boxH);
+  ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+  ctx.lineTo(boxX, boxY + r);
+  ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Text
+  ctx.fillStyle = props.textColor || d.color;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], boxX + padding, boxY + padding + i * lineHeight);
+  }
+};
+
 // ─── Emoji ───
 
 const renderEmoji: Renderer = (ctx, d, coord) => {

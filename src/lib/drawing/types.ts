@@ -51,6 +51,7 @@ export const TOOL_POINT_COUNT: Record<string, number> = {
   arrowmarkdown: 1,
   arrowmarker: 1,
   text: 1,
+  note: 1,
   emoji: 1,
   // Two-point
   trendline: 2,

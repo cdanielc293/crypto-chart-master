@@ -211,6 +211,7 @@ const categories: ToolCategory[] = [
       label: '',
       items: [
         { tool: 'text', label: 'Text', icon: <Type size={16} /> },
+        { tool: 'note' as any, label: 'Note', icon: <MessageSquare size={16} /> },
       ],
     }],
   },
