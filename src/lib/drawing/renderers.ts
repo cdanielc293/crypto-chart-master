@@ -420,7 +420,9 @@ const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
   for (const level of levels) {
     if (!level.visible) continue;
     const off = offsetY * level.value;
-    const lineColor = oneColor || level.color || d.color;
+    // If no custom channelLevels were set, always use d.color (the drawing's main color)
+    const hasCustomLevels = !!props.channelLevels;
+    const lineColor = oneColor || (hasCustomLevels ? level.color : d.color) || d.color;
     const lineStyle = level.style || 'solid';
 
     ctx.strokeStyle = lineColor;
