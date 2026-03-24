@@ -1124,50 +1124,6 @@ const RENDERERS: Record<string, Renderer> = {
   anchoredvwap: renderAnchoredVwap,
 };
 
-  if (d.points.length < 1 || !candles || candles.length === 0) return;
-  const anchorTime = d.points[0].time;
-  
-  // Find candles from anchor point forward
-  const startIdx = candles.findIndex(c => c.time >= anchorTime);
-  if (startIdx < 0) return;
-  
-  let cumVolumePrice = 0;
-  let cumVolume = 0;
-  const vwapPoints: { x: number; y: number }[] = [];
-  
-  for (let i = startIdx; i < candles.length; i++) {
-    const c = candles[i];
-    const typicalPrice = (c.high + c.low + c.close) / 3;
-    const vol = c.volume || 1;
-    cumVolumePrice += typicalPrice * vol;
-    cumVolume += vol;
-    const vwap = cumVolumePrice / cumVolume;
-    const x = coord.timeToX(c.time);
-    const y = coord.priceToY(vwap);
-    if (x !== null && y !== null) {
-      vwapPoints.push({ x, y });
-    }
-  }
-  
-  if (vwapPoints.length < 1) return;
-  
-  setupStroke(ctx, d);
-  ctx.beginPath();
-  ctx.moveTo(vwapPoints[0].x, vwapPoints[0].y);
-  for (let i = 1; i < vwapPoints.length; i++) {
-    ctx.lineTo(vwapPoints[i].x, vwapPoints[i].y);
-  }
-  ctx.stroke();
-  
-  // Label
-  const last = vwapPoints[vwapPoints.length - 1];
-  ctx.save();
-  ctx.font = '10px monospace';
-  ctx.fillStyle = d.color;
-  ctx.textAlign = 'left';
-  ctx.fillText('AVWAP', last.x + 5, last.y - 4);
-  ctx.restore();
-};
 
 export function renderDrawing(
   ctx: CanvasRenderingContext2D,
