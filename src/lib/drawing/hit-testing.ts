@@ -59,11 +59,44 @@ export function hitTestDrawing(
     return Math.abs(mx - p.x) <= HIT_RADIUS || Math.abs(my - p.y) <= HIT_RADIUS;
   }
 
-  if (['arrowmarkup', 'arrowmarkdown', 'arrowmarker', 'text', 'emoji'].includes(type)) {
+  if (['arrowmarkup', 'arrowmarkdown', 'arrowmarker', 'emoji'].includes(type)) {
     if (drawing.points.length < 1) return false;
     const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     if (!p) return false;
     return Math.hypot(mx - p.x, my - p.y) <= 15;
+  }
+
+  // Text: hit test the rendered text area (extends right from anchor)
+  if (type === 'text') {
+    if (drawing.points.length < 1) return false;
+    const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    if (!p) return false;
+    const text = drawing.props?.text || 'Text';
+    const fontSize = drawing.props?.fontSize || 14;
+    const estWidth = text.length * fontSize * 0.6;
+    return mx >= p.x - 5 && mx <= p.x + estWidth + 5 && my >= p.y - 5 && my <= p.y + fontSize + 5;
+  }
+
+  // Note: hit test the dot + box area
+  if (type === 'note') {
+    if (drawing.points.length < 1) return false;
+    const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    if (!p) return false;
+    const props = drawing.props || {};
+    const text = props.text || 'Note';
+    const fontSize = props.textSize || 12;
+    const lines = text.split('\n');
+    const lineHeight = fontSize + 4;
+    const padding = 8;
+    const estMaxWidth = Math.max(...lines.map((l: string) => l.length * fontSize * 0.6), 40);
+    const boxW = estMaxWidth + padding * 2;
+    const boxH = lines.length * lineHeight + padding * 2;
+    const boxX = p.x + 12;
+    const boxY = p.y - boxH / 2;
+    // Hit the dot or the box
+    if (Math.hypot(mx - p.x, my - p.y) <= 8) return true;
+    if (mx >= boxX && mx <= boxX + boxW && my >= boxY && my <= boxY + boxH) return true;
+    return false;
   }
 
   // Two-point line types
