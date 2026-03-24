@@ -238,7 +238,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
     }
-  }, [chartDrawings, selectedDrawingId, drawingTool, getCoordHelper, containerRef]);
+  }, [chartDrawings, selectedDrawingId, selectedDrawingIds, drawingTool, getCoordHelper, containerRef]);
 
   useEffect(() => {
     let running = true;
