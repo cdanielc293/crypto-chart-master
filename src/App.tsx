@@ -19,6 +19,7 @@ import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Cookies from "./pages/Cookies.tsx";
 import Accessibility from "./pages/Accessibility.tsx";
+import SecurityPage from "./pages/SecurityPage.tsx";
 
 const queryClient = new QueryClient();
 
