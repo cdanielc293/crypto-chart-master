@@ -545,6 +545,82 @@ export default function Watchlist() {
     return sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />;
   };
 
+  // ─── Drag and drop ───
+  const [dragItem, setDragItem] = useState<{ sym: string; sectionId: string } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<{ sym: string; sectionId: string; position: 'above' | 'below' } | null>(null);
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent, sym: string, sectionId: string) => {
+    setDragItem({ sym, sectionId });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', sym);
+    // Make the drag image subtle
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = '0.5';
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+    setDragItem(null);
+    setDragOverTarget(null);
+    setDragOverSection(null);
+  }, []);
+
+  const handleDragOverSymbol = useCallback((e: React.DragEvent, sym: string, sectionId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const position = e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+    setDragOverTarget({ sym, sectionId, position });
+    setDragOverSection(null);
+  }, []);
+
+  const handleDragOverSection = useCallback((e: React.DragEvent, sectionId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverSection(sectionId);
+    setDragOverTarget(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragItem) return;
+
+    setWatchlists(prev => prev.map(list => {
+      if (list.id !== activeWatchlistId) return list;
+
+      // Remove from source section
+      let sections = list.sections.map(s => {
+        if (s.id !== dragItem.sectionId) return s;
+        return { ...s, symbols: s.symbols.filter(sym => sym !== dragItem.sym) };
+      });
+
+      // Add to target
+      if (dragOverTarget) {
+        sections = sections.map(s => {
+          if (s.id !== dragOverTarget.sectionId) return s;
+          const idx = s.symbols.indexOf(dragOverTarget.sym);
+          if (idx === -1) return { ...s, symbols: [...s.symbols, dragItem.sym] };
+          const newSyms = [...s.symbols];
+          const insertIdx = dragOverTarget.position === 'above' ? idx : idx + 1;
+          newSyms.splice(insertIdx, 0, dragItem.sym);
+          return { ...s, symbols: newSyms };
+        });
+      } else if (dragOverSection) {
+        sections = sections.map(s => {
+          if (s.id !== dragOverSection) return s;
+          return { ...s, symbols: [...s.symbols, dragItem.sym] };
+        });
+      }
+
+      return { ...list, sections };
+    }));
+
+    setDragItem(null);
+    setDragOverTarget(null);
+    setDragOverSection(null);
+  }, [dragItem, dragOverTarget, dragOverSection, activeWatchlistId, setWatchlists]);
+
   return (
     <>
       <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
