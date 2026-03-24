@@ -1,11 +1,12 @@
-import type { ChartDrawing, CoordHelper, AnchorPoint } from './types';
+import type { ChartDrawing, CoordHelper, AnchorPoint, CandleData } from './types';
 
 type Renderer = (
   ctx: CanvasRenderingContext2D,
   drawing: ChartDrawing,
   coord: CoordHelper,
   w: number,
-  h: number
+  h: number,
+  candles?: CandleData[]
 ) => void;
 
 function toXY(coord: CoordHelper, time: number, price: number): { x: number; y: number } | null {
