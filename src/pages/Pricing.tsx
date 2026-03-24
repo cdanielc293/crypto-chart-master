@@ -243,7 +243,7 @@ export default function Pricing() {
 
       {/* Pricing Tiers */}
       <section className="px-6 pb-24">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.name}
