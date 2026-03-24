@@ -131,9 +131,7 @@ export default function Security() {
                 <Lock className="w-5 h-5 text-cyan-400 mb-3" />
                 <h3 className="font-semibold text-white mb-1">Account Compromised?</h3>
                 <p className="text-sm text-white/50 mb-3">
-                  Change your password immediately and enable 2FA. Contact us at{' '}
-                  <a href="mailto:security@vizionx.pro" className="text-cyan-400 hover:underline">security@vizionx.pro</a>{' '}
-                  — we'll help you recover access.
+                  Change your password immediately and enable 2FA. Use the form below to report the issue — we'll help you recover access.
                 </p>
               </div>
               <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5">
