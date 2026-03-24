@@ -808,12 +808,24 @@ export default function PriceChartWidget() {
         scheduleRender();
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
         removeDrawing(selectedDrawingId);
+      }
+      // Ctrl+Z / Ctrl+Y undo/redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoDrawings();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoDrawings();
+        return;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [scheduleRender, selectedDrawingId, removeDrawing]);
+  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings]);
 
   // ─── Data fetch ───
   useEffect(() => {
