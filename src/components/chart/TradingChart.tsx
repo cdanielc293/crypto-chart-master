@@ -615,6 +615,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
+  const [barsLimitReached, setBarsLimitReached] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
