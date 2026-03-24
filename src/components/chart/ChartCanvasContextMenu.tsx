@@ -1,4 +1,4 @@
-import { RotateCcw, Settings, Trash2, BarChart3 } from 'lucide-react';
+import { RotateCcw, Settings, Trash2, BarChart3, Pencil } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -16,7 +16,9 @@ interface Props {
   onOpenSettings: () => void;
   onOpenSymbolSettings: () => void;
   onRemoveIndicators: () => void;
+  onRemoveDrawings: () => void;
   indicatorCount: number;
+  drawingCount: number;
   chartTypeLabel?: string;
 }
 
