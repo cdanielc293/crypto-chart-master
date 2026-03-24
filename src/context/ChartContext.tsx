@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Interval, DrawingTool, ChartType, WatchlistItem, WatchlistList, Drawing } from '@/types/chart';
 import { DEFAULT_FAVORITE_INTERVALS } from '@/types/chart';
 import type { ChartSettings } from '@/types/chartSettings';
