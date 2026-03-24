@@ -65,6 +65,13 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
         <GripVertical size={12} />
       </div>
 
+      {/* Multi-select count badge */}
+      {selectedCount > 1 && (
+        <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-medium min-w-[18px] text-center">
+          {selectedCount}
+        </span>
+      )}
+
       {/* Color picker */}
       <div className="relative">
         <button onClick={() => { setShowColors(!showColors); setShowLineStyles(false); setShowMore(false); }} className="w-7 h-7 flex items-center justify-center rounded hover:bg-toolbar-hover transition-colors" title="Color">
