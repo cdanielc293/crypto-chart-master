@@ -75,6 +75,7 @@ export default function DraggableDialog({
     // Only drag from the header area
     if ((e.target as HTMLElement).closest('button, input, select, textarea')) return;
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
 
     const rect = dialogRef.current?.getBoundingClientRect();
