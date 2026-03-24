@@ -1067,6 +1067,11 @@ const RENDERERS: Record<string, Renderer> = {
   arc: renderArc,
   curve: renderArc,
   doublecurve: renderArc,
+  xabcd: renderXabcd,
+  cypher: renderXabcd,
+  abcd: renderXabcd,
+  headshoulders: renderXabcd,
+  threedrives: renderXabcd,
 };
 
 export function renderDrawing(
