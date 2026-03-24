@@ -1,6 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DraggableDialog from './DraggableDialog';
 import type { Drawing } from '@/types/chart';
+import { Save, Trash2 } from 'lucide-react';
+
+// ─── Template helpers ───
+interface DrawingTemplate {
+  name: string;
+  color: string;
+  lineWidth: number;
+  props: Record<string, any>;
+}
+
+function getTemplatesForType(type: string): DrawingTemplate[] {
+  try {
+    const raw = localStorage.getItem(`drawing_templates_${type}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveTemplatesForType(type: string, templates: DrawingTemplate[]) {
+  localStorage.setItem(`drawing_templates_${type}`, JSON.stringify(templates));
+}
+
+// Store default template per type (applied automatically to new drawings)
+export function getDefaultTemplate(type: string): DrawingTemplate | null {
+  try {
+    const raw = localStorage.getItem(`drawing_default_template_${type}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setDefaultTemplate(type: string, template: DrawingTemplate | null) {
+  if (template) {
+    localStorage.setItem(`drawing_default_template_${type}`, JSON.stringify(template));
+  } else {
+    localStorage.removeItem(`drawing_default_template_${type}`);
+  }
+}
 
 const LINE_STYLES = [
   { value: 'solid', label: 'Solid' },
