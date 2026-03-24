@@ -89,6 +89,30 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     };
   }, [chart, series, candles]);
 
+  // Snap angle to 45-degree increments when Shift is held
+  const snapAngle45 = useCallback((basePoint: DrawingPoint, rawPoint: DrawingPoint): DrawingPoint => {
+    if (!shiftKeyRef.current) return rawPoint;
+    const coord = getCoordHelper();
+    if (!coord) return rawPoint;
+    const bx = coord.timeToX(basePoint.time);
+    const by = coord.priceToY(basePoint.price);
+    const rx = coord.timeToX(rawPoint.time);
+    const ry = coord.priceToY(rawPoint.price);
+    if (bx === null || by === null || rx === null || ry === null) return rawPoint;
+    const dx = rx - bx;
+    const dy = ry - by;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return rawPoint;
+    const angle = Math.atan2(dy, dx);
+    const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+    const nx = bx + dist * Math.cos(snapped);
+    const ny = by + dist * Math.sin(snapped);
+    const newTime = coord.xToTime(nx);
+    const newPrice = coord.yToPrice(ny);
+    if (newTime === null || newPrice === null) return rawPoint;
+    return { time: newTime, price: newPrice };
+  }, [getCoordHelper]);
+
   const getMouseCoords = useCallback((e: MouseEvent | React.MouseEvent): { mx: number; my: number; time: number; price: number } | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
