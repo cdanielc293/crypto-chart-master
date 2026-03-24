@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useAdminStats, useAdminProfiles, useAdminTickets, useAdminSupport,
   useToggleBlock, useUpdateTicketStatus, useUpdateSupportStatus,
-  useAdminActivityStats,
+  useAdminActivityStats, useUpdateUserPlan,
 } from '@/hooks/useAdmin';
 import { planLabels } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ export default function Admin() {
   const { data: tickets, isLoading: ticketsLoading } = useAdminTickets();
   const { data: support, isLoading: supportLoading } = useAdminSupport();
   const toggleBlock = useToggleBlock();
+  const updatePlan = useUpdateUserPlan();
   const updateTicket = useUpdateTicketStatus();
   const updateSupport = useUpdateSupportStatus();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -164,6 +165,7 @@ export default function Admin() {
                         <th className="px-4 py-3 text-left">Name</th>
                         <th className="px-4 py-3 text-left">Username</th>
                         <th className="px-4 py-3 text-left">Plan</th>
+                        <th className="px-4 py-3 text-left">Change Plan</th>
                         <th className="px-4 py-3 text-left">Joined</th>
                         <th className="px-4 py-3 text-left">Status</th>
                         <th className="px-4 py-3 text-left">Actions</th>
@@ -180,6 +182,24 @@ export default function Admin() {
                             }`}>
                               {planLabels[p.plan] || p.plan}
                             </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={p.plan}
+                              onChange={async (e) => {
+                                try {
+                                  await updatePlan.mutateAsync({ userId: p.id, plan: e.target.value });
+                                  toast.success(`Plan updated to ${planLabels[e.target.value] || e.target.value}`);
+                                } catch { toast.error('Failed to update plan'); }
+                              }}
+                              className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white/80 focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+                            >
+                              {['start', 'core', 'prime', 'elite', 'zenith'].map((pl) => (
+                                <option key={pl} value={pl} className="bg-[#0a0a0f] text-white">
+                                  {planLabels[pl]}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                           <td className="px-4 py-3 text-white/40 text-xs">{formatDate(p.created_at)}</td>
                           <td className="px-4 py-3">
