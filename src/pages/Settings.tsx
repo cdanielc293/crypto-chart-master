@@ -466,6 +466,10 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {activeSection === 'support' && (
+            <SupportSection user={user} />
+          )}
         </main>
       </div>
     </div>
