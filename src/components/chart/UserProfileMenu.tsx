@@ -55,13 +55,18 @@ export default function UserProfileMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center rounded-full hover:ring-2 hover:ring-primary/40 transition-all">
+          <button className="relative flex items-center rounded-full hover:ring-2 hover:ring-primary/40 transition-all">
             <Avatar className="h-7 w-7">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
               <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
                 {initials || '?'}
               </AvatarFallback>
             </Avatar>
+            {hasBadge && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-teal-500 ring-2 ring-background">
+                <Sparkles size={8} className="text-white" />
+              </span>
+            )}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60 bg-popover border-border">
