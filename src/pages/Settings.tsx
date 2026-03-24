@@ -511,16 +511,16 @@ function SupportSection({ user }: { user: any }) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-6">צור קשר עם התמיכה</h2>
+      <h2 className="text-xl font-bold mb-6">Contact Support</h2>
       {sent ? (
         <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-8 text-center">
-          <p className="text-green-400 font-medium mb-2">ההודעה נשלחה בהצלחה! ✅</p>
-          <p className="text-white/40 text-sm">נחזור אליך בהקדם האפשרי.</p>
+          <p className="text-green-400 font-medium mb-2">Message sent successfully! ✅</p>
+          <p className="text-white/40 text-sm">We will get back to you as soon as possible.</p>
           <button
             onClick={() => setSent(false)}
             className="mt-4 text-sm text-cyan-400 hover:underline"
           >
-            שלח הודעה נוספת
+            Send another message
           </button>
         </div>
       ) : (
