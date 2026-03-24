@@ -714,7 +714,9 @@ export async function getKlines(
   interval: Interval,
   options: GetKlinesOptions = {},
 ): Promise<RawKline[]> {
-  const normalizedSymbol = symbol.trim().toUpperCase();
+  // Strip exchange suffix — klineCache always uses the raw symbol for Binance/Supabase
+  const { raw } = parseSymbol(symbol);
+  const normalizedSymbol = raw.trim().toUpperCase();
   if (!normalizedSymbol) return [];
 
   const replayEndTimeSec = options.replayEndTimeSec;
