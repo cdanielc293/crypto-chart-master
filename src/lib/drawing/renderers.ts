@@ -900,6 +900,126 @@ const renderGeneric: Renderer = (ctx, d, coord) => {
   }
   renderPolyline(ctx, d, coord, 0, 0);
 };
+// ─── XABCD Pattern ───
+
+const renderXabcd: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 2) return;
+  const props = d.props || {};
+  const pts = d.points.map(p => toXY(coord, p.time, p.price)).filter(Boolean) as { x: number; y: number }[];
+  if (pts.length < 2) return;
+
+  const borderColor = props.borderColor || d.color;
+  const showBg = props.showBackground !== false;
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+
+  setupStroke(ctx, d);
+  ctx.strokeStyle = borderColor;
+
+  // Draw zigzag path X→A→B→C→D
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i].x, pts[i].y);
+  }
+  ctx.stroke();
+
+  // Draw connecting lines XB, XD, AC, BD (dashed) for pattern visualization
+  if (pts.length >= 5) {
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.globalAlpha = 0.5;
+    // X→B
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[2].x, pts[2].y); ctx.stroke();
+    // A→C
+    ctx.beginPath(); ctx.moveTo(pts[1].x, pts[1].y); ctx.lineTo(pts[3].x, pts[3].y); ctx.stroke();
+    // X→D
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[4].x, pts[4].y); ctx.stroke();
+    // B→D
+    ctx.beginPath(); ctx.moveTo(pts[2].x, pts[2].y); ctx.lineTo(pts[4].x, pts[4].y); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Background fill - two triangles: XAB and BCD
+  if (showBg && pts.length >= 5) {
+    ctx.save();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgColor;
+    // Triangle XAB
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.lineTo(pts[2].x, pts[2].y);
+    ctx.closePath();
+    ctx.fill();
+    // Triangle BCD
+    ctx.beginPath();
+    ctx.moveTo(pts[2].x, pts[2].y);
+    ctx.lineTo(pts[3].x, pts[3].y);
+    ctx.lineTo(pts[4].x, pts[4].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Fibonacci ratio labels on legs
+  if (pts.length >= 5) {
+    ctx.save();
+    const ratioFont = `${props.textSize || 11}px sans-serif`;
+    ctx.font = ratioFont;
+    ctx.fillStyle = props.textColor || borderColor;
+    ctx.textAlign = 'center';
+
+    // AB/XA ratio
+    const xaRange = Math.abs(d.points[1].price - d.points[0].price);
+    const abRange = Math.abs(d.points[2].price - d.points[1].price);
+    if (xaRange > 0) {
+      const abRatio = (abRange / xaRange).toFixed(3);
+      const mx1 = (pts[1].x + pts[2].x) / 2;
+      const my1 = (pts[1].y + pts[2].y) / 2;
+      ctx.fillText(abRatio, mx1, my1 - 8);
+    }
+
+    // BC/AB ratio
+    const bcRange = Math.abs(d.points[3].price - d.points[2].price);
+    if (abRange > 0) {
+      const bcRatio = (bcRange / abRange).toFixed(3);
+      const mx2 = (pts[2].x + pts[3].x) / 2;
+      const my2 = (pts[2].y + pts[3].y) / 2;
+      ctx.fillText(bcRatio, mx2, my2 - 8);
+    }
+
+    // CD/BC ratio
+    const cdRange = Math.abs(d.points[4].price - d.points[3].price);
+    if (bcRange > 0) {
+      const cdRatio = (cdRange / bcRange).toFixed(3);
+      const mx3 = (pts[3].x + pts[4].x) / 2;
+      const my3 = (pts[3].y + pts[4].y) / 2;
+      ctx.fillText(cdRatio, mx3, my3 - 8);
+    }
+
+    ctx.restore();
+  }
+
+  // Point labels (X, A, B, C, D)
+  const labels = ['X', 'A', 'B', 'C', 'D'];
+  ctx.save();
+  const fontSize = props.textSize || 12;
+  const bold = props.textBold ? 'bold ' : '';
+  const italic = props.textItalic ? 'italic ' : '';
+  ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+  ctx.fillStyle = props.textColor || borderColor;
+  ctx.textAlign = 'center';
+  pts.forEach((pt, i) => {
+    if (i >= labels.length) return;
+    // Place above highs, below lows
+    const prev = i > 0 ? pts[i - 1] : null;
+    const isHigh = prev ? pt.y < prev.y : true;
+    const offsetY = isHigh ? -(fontSize + 4) : (fontSize + 8);
+    ctx.fillText(labels[i], pt.x, pt.y + offsetY);
+  });
+  ctx.restore();
+};
 
 // ─── Renderer map ───
 
