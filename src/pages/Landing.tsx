@@ -214,8 +214,8 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex gap-6">
             <span onClick={() => navigate('/terms')} className="hover:text-white/50 transition-colors cursor-pointer">Terms</span>
-            <span onClick={() => navigate('/terms')} className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Contact</span>
+            <span onClick={() => navigate('/privacy')} className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
+            <span onClick={() => navigate('/disclaimer')} className="hover:text-white/50 transition-colors cursor-pointer">Disclaimer</span>
           </div>
         </div>
       </footer>
