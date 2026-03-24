@@ -2146,6 +2146,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     high: c.high,
     low: c.low,
     close: c.close,
+    volume: (c as any).volume ?? 0,
   }));
 
   const isPositive = ohlc.c >= ohlc.o;
