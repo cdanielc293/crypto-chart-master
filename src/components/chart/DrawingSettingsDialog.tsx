@@ -75,6 +75,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   const toolLabel = drawing.type.charAt(0).toUpperCase() + drawing.type.slice(1).replace(/([A-Z])/g, ' $1');
   const isLineTool = LINE_TOOLS.includes(drawing.type);
   const isShapeTool = SHAPE_TOOLS.includes(drawing.type);
+  const isVerticalTool = VERTICAL_TOOLS.includes(drawing.type);
   const updateLocal = (key: string, value: any) => {
     setLocalProps(prev => ({ ...prev, [key]: value }));
   };
