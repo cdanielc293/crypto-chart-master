@@ -43,6 +43,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const dragStartRef = useRef<{ mx: number; my: number; points: DrawingPoint[] } | null>(null);
   const isBrushingRef = useRef(false);
   const brushDrawingIdRef = useRef<string | null>(null);
+  const shiftKeyRef = useRef(false);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
