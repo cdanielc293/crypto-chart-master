@@ -618,6 +618,8 @@ export default function PriceChartWidget() {
   const drawingsRef = useRef<WidgetDrawing[]>(initialDrawingsRef.current);
   const draftPointsRef = useRef<DrawingPoint[]>([]);
   const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
 
   const dataRef = useRef<Candle[]>([]);
   const stateRef = useRef<ChartState>({
