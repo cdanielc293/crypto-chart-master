@@ -4,15 +4,13 @@ import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeri
 
 // Generate realistic-looking mock OHLCV data
 function generateMockCandles(count = 200) {
-  const candles: { time: string; open: number; high: number; low: number; close: number; }[] = [];
+  const candles: { time: number; open: number; high: number; low: number; close: number; }[] = [];
   let price = 42000 + Math.random() * 3000;
-  const baseDate = new Date('2024-01-01');
+  // Use unix timestamps (seconds) — one day apart, guaranteed unique & ordered
+  const startTime = Math.floor(new Date('2024-01-01').getTime() / 1000);
+  const DAY = 86400;
 
   for (let i = 0; i < count; i++) {
-    const date = new Date(baseDate);
-    date.setDate(date.getDate() + i);
-    const dateStr = date.toISOString().split('T')[0];
-
     const volatility = 200 + Math.random() * 600;
     const open = price;
     const direction = Math.random() > 0.48 ? 1 : -1;
@@ -21,7 +19,7 @@ function generateMockCandles(count = 200) {
     const high = Math.max(open, close) + Math.random() * volatility * 0.5;
     const low = Math.min(open, close) - Math.random() * volatility * 0.5;
 
-    candles.push({ time: dateStr, open, high, low, close });
+    candles.push({ time: startTime + i * DAY, open, high, low, close });
     price = close;
   }
   return candles;
