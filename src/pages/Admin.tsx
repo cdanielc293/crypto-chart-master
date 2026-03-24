@@ -165,6 +165,7 @@ export default function Admin() {
                         <th className="px-4 py-3 text-left">Name</th>
                         <th className="px-4 py-3 text-left">Username</th>
                         <th className="px-4 py-3 text-left">Plan</th>
+                        <th className="px-4 py-3 text-left">Change Plan</th>
                         <th className="px-4 py-3 text-left">Joined</th>
                         <th className="px-4 py-3 text-left">Status</th>
                         <th className="px-4 py-3 text-left">Actions</th>
