@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useAdminStats, useAdminProfiles, useAdminTickets, useAdminSupport,
   useToggleBlock, useUpdateTicketStatus, useUpdateSupportStatus,
-  useAdminActivityStats,
+  useAdminActivityStats, useUpdateUserPlan,
 } from '@/hooks/useAdmin';
 import { planLabels } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';

@@ -115,6 +115,23 @@ export function useToggleBlock() {
   });
 }
 
+export function useUpdateUserPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, plan }: { userId: string; plan: string }) => {
+      const { error } = await supabase.rpc('admin_update_plan', {
+        p_user_id: userId,
+        p_plan: plan,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-profiles'] });
+      qc.invalidateQueries({ queryKey: ['admin-stats'] });
+    },
+  });
+}
+
 export function useUpdateTicketStatus() {
   const qc = useQueryClient();
   return useMutation({
