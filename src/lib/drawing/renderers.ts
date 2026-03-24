@@ -870,7 +870,7 @@ const RENDERERS: Record<string, Renderer> = {
   circle: renderCircle,
   ellipse: renderEllipse,
   triangle: renderTriangle,
-  trianglepattern: renderTriangle,
+  trianglepattern: renderTrianglePattern,
   arrowmarkup: renderArrowUp,
   arrowmarkdown: renderArrowDown,
   arrowmarker: renderArrowUp,
