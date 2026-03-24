@@ -406,7 +406,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     e.preventDefault();
     e.stopPropagation();
-  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, containerRef]);
+  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, selectedDrawingIds, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, toggleSelectedDrawing, containerRef, snapAngle45]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const coords = getMouseCoords(e as unknown as MouseEvent);
