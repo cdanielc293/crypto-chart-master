@@ -54,10 +54,12 @@ export function useKeyboardShortcuts() {
 
     // Arrow left/right → Move chart 1 bar
     if (!ctrl && !alt && !shift && key === 'ArrowLeft') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'left' } }));
       return;
     }
     if (!ctrl && !alt && !shift && key === 'ArrowRight') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'right' } }));
       return;
     }
