@@ -45,6 +45,8 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
 
   if (!drawing) return null;
 
+  const isEmoji = drawing.type === 'emoji';
+  const emojiSize = drawing.props?.emojiSize || 32;
   const lineStyle = drawing.props?.lineStyle || 'solid';
   const currentStyleIcon = LINE_STYLES.find(s => s.value === lineStyle)?.icon || LINE_STYLES[0].icon;
   const hasText = drawing.props?.text && drawing.props.text.trim().length > 0;
