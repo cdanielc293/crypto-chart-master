@@ -85,6 +85,18 @@ function ChartWithShortcuts() {
     navigate('/settings');
   };
 
+  // Block native browser context menu on the entire chart page
+  useEffect(() => {
+    const blockContextMenu = (e: MouseEvent) => {
+      // Allow context menu on actual input/textarea elements
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', blockContextMenu);
+    return () => document.removeEventListener('contextmenu', blockContextMenu);
+  }, []);
+
   return (
     <>
       <div className="flex flex-col h-screen w-full overflow-hidden">
