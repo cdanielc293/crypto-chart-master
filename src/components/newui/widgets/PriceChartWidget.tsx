@@ -98,11 +98,12 @@ function formatDateFull(ts: number, intervalSec: number): string {
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
 
-function calculateNiceStep(range: number, minPx: number): number {
-  const rough = range / (minPx > 0 ? (range / minPx) : 5);
+function calculateNiceStep(range: number, availablePx: number, minGapPx = 60): number {
+  const maxTicks = Math.max(2, Math.floor(availablePx / minGapPx));
+  const rough = range / maxTicks;
   const mag = Math.pow(10, Math.floor(Math.log10(rough)));
   const r = rough / mag;
-  return (r <= 1.5 ? 1 : r <= 3 ? 2 : r <= 7 ? 5 : 10) * mag;
+  return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * mag;
 }
 
 // ─── Constants ───
