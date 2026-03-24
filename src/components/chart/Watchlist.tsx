@@ -340,7 +340,7 @@ function SymbolDetailsPanel({ symbol, price }: { symbol: string; price: Watchlis
 
 // ─── Main Watchlist ───
 
-export default function Watchlist() {
+export default function Watchlist({ panelWidth }: { panelWidth?: number }) {
   const {
     symbol, setSymbol, removeFromWatchlist, addToWatchlist,
     watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId,
