@@ -120,7 +120,7 @@ export default function Signup() {
           <p className="text-sm text-white/40 text-center mb-8">
             Selected plan:{' '}
             <span className="text-cyan-400 font-semibold">{tierLabel}</span>
-            <span className="text-white/20"> · Free during launch</span>
+            <span className="text-white/20"> · Free for Beta Version</span>
           </p>
 
           {/* Primary OAuth buttons */}
