@@ -120,6 +120,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             localProps={localProps}
             updateLocal={updateLocal}
             isLineTool={isLineTool}
+            isShapeTool={isShapeTool}
           />
         )}
         {tab === 'Text' && (
