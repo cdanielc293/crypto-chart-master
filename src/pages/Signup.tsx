@@ -288,5 +288,6 @@ export default function Signup() {
         </motion.p>
       </motion.div>
     </div>
+    </>
   );
 }

@@ -72,7 +72,19 @@ export default function UserProfileMenu() {
         <DropdownMenuContent align="end" className="w-60 bg-popover border-border">
           {/* User info with plan */}
           <div className="px-3 py-2.5">
-            <p className="text-sm font-medium text-foreground truncate">{name}</p>
+            <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+              {name}
+              {hasBadge && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-teal-500">
+                      <Sparkles size={9} className="text-white" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="text-xs">Beta Pioneer</TooltipContent>
+                </Tooltip>
+              )}
+            </p>
             <p className={`text-xs font-semibold mt-0.5 ${
               plan === 'zenith' ? 'text-emerald-400' :
               plan === 'elite' ? 'text-amber-400' :
