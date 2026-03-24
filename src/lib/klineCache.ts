@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { ALL_INTERVALS } from '@/types/chart';
 import type { Interval } from '@/types/chart';
+import { parseSymbol } from '@/lib/symbolUtils';
 import {
   aggregateCandlesToInterval,
   getBinanceSourceInterval,
