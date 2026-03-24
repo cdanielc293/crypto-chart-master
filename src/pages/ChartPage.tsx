@@ -5,6 +5,7 @@ import ReplayControls from '@/components/chart/ReplayControls';
 import LeftToolbar from '@/components/chart/LeftToolbar';
 import TradingChart from '@/components/chart/TradingChart';
 import RightSidebar from '@/components/chart/RightSidebar';
+import FavoritesToolbar from '@/components/chart/FavoritesToolbar';
 import FeedbackWidgets from '@/components/chart/FeedbackWidgets';
 import KeyboardShortcutsDialog from '@/components/chart/KeyboardShortcutsDialog';
 import SessionDisconnectedDialog from '@/components/chart/SessionDisconnectedDialog';
