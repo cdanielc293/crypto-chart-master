@@ -1,4 +1,5 @@
 TradingView-style charting app with Binance data, dark theme, Hebrew-speaking user.
+- Brand: VizionX (not Vizion). Logo at src/assets/vizionx-logo.png
 - Drawing engine: Canvas overlay in src/lib/drawing/ (types, math, renderers, hit-testing, snap)
 - DrawingCanvas component handles all mouse interaction, selection, dragging
 - FloatingToolbar shows for selected drawings (color, width, lock, clone, delete)
@@ -19,3 +20,6 @@ TradingView-style charting app with Binance data, dark theme, Hebrew-speaking us
 - user_exchange_keys table for secure API key storage per user per exchange
 - SymbolSearch redesigned TradingView-style with category tabs, source/type filters, exchange logos
 - Per-panel indicator states for multi-chart layouts
+- Self-hosted Supabase with fallback: primary http://192.168.1.37:8000, fallback http://213.57.181.98:8000
+- Plans: All free for beta version, user's selected tier stored in profile
+- Keyboard shortcuts system in src/hooks/useKeyboardShortcuts.ts
