@@ -455,6 +455,7 @@ const renderCircle: Renderer = (ctx, d, coord) => {
     ctx.fill();
     ctx.restore();
   }
+  renderShapeText(ctx, props, d.color, p1.x, p1.y);
 };
 
 const renderEllipse: Renderer = (ctx, d, coord) => {
