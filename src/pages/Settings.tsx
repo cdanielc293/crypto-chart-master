@@ -498,7 +498,7 @@ function SupportSection({ user }: { user: any }) {
         message: message.trim(),
       });
       if (error) throw error;
-      toast.success('ההודעה נשלחה! נחזור אליך בהקדם 🙏');
+      toast.success('Message sent! We will get back to you soon 🙏');
       setSubject('');
       setMessage('');
       setSent(true);
