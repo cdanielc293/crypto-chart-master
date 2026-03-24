@@ -477,6 +477,8 @@ const renderEllipse: Renderer = (ctx, d, coord) => {
     ctx.fill();
     ctx.restore();
   }
+  renderShapeText(ctx, props, d.color, p1.x, p1.y);
+};
 };
 
 const renderTriangle: Renderer = (ctx, d, coord) => {
