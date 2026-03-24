@@ -21,7 +21,7 @@ interface Props {
   onOpenSettings?: () => void;
 }
 
-export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
+export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
   const [showColors, setShowColors] = useState(false);
   const [showLineStyles, setShowLineStyles] = useState(false);
   const [showMore, setShowMore] = useState(false);
