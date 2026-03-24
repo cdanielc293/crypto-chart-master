@@ -768,15 +768,21 @@ export default function Watchlist() {
                 const isDetailSelected = sym === selectedSymbol;
                 const ticker = sym.replace('USDT', '');
                 const symColor = getSymbolColor(sym);
+                const isDragOver = dragOverTarget?.sym === sym && dragOverTarget?.sectionId === section.id;
 
                 return (
                   <div
-                    key={sym}
+                    key={`${section.id}-${sym}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, sym, section.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOverSymbol(e, sym, section.id)}
+                    onDrop={handleDrop}
                     onClick={() => handleSymbolClick(sym)}
                     onDoubleClick={() => setSelectedSymbol(prev => prev === sym ? null : sym)}
-                    className={`flex items-center px-3 py-2 cursor-pointer text-[13px] transition-colors group ${
+                    className={`flex items-center px-3 py-2 cursor-grab text-[13px] transition-colors group ${
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
-                    }`}
+                    } ${isDragOver && dragOverTarget?.position === 'above' ? 'border-t-2 border-primary' : ''}${isDragOver && dragOverTarget?.position === 'below' ? 'border-b-2 border-primary' : ''}`}
                   >
                     {/* Colored symbol icon */}
                     <div
