@@ -316,6 +316,21 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const removeDrawing = useCallback((id: string) => {
     setDrawings(prev => prev.filter(d => d.id !== id));
     setSelectedDrawingId(prev => prev === id ? null : prev);
+    setSelectedDrawingIds(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectedDrawing = useCallback((id: string) => {
+    setSelectedDrawingIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
   const addIndicator = useCallback((definitionId: string) => {
