@@ -159,6 +159,26 @@ export function hitTestDrawing(
     return distToPolyline(mx, my, pts) <= (type === 'highlighter' ? 15 : HIT_RADIUS);
   }
 
+  // Multi-point patterns (XABCD, cypher, abcd, headshoulders, threedrives)
+  if (['xabcd', 'cypher', 'abcd', 'headshoulders', 'threedrives'].includes(type)) {
+    if (drawing.points.length < 2) return false;
+    const pts = drawing.points
+      .map(p => toXY(coord, p.time, p.price))
+      .filter(Boolean) as { x: number; y: number }[];
+    // Check zigzag segments
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (distToSegment(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) <= HIT_RADIUS) return true;
+    }
+    // Check cross-lines (XB, AC, XD, BD)
+    if (pts.length >= 5) {
+      if (distToSegment(mx, my, pts[0].x, pts[0].y, pts[2].x, pts[2].y) <= HIT_RADIUS) return true;
+      if (distToSegment(mx, my, pts[1].x, pts[1].y, pts[3].x, pts[3].y) <= HIT_RADIUS) return true;
+      if (distToSegment(mx, my, pts[0].x, pts[0].y, pts[4].x, pts[4].y) <= HIT_RADIUS) return true;
+      if (distToSegment(mx, my, pts[2].x, pts[2].y, pts[4].x, pts[4].y) <= HIT_RADIUS) return true;
+    }
+    return false;
+  }
+
   // Triangle and 3-point shapes
   if (['triangle', 'trianglepattern', 'parallelchannel', 'pitchfork',
     'schiffpitchfork', 'modifiedschiff', 'insidepitchfork', 'arc', 'curve'].includes(type)) {
@@ -166,11 +186,9 @@ export function hitTestDrawing(
     const pts = drawing.points
       .map(p => toXY(coord, p.time, p.price))
       .filter(Boolean) as { x: number; y: number }[];
-    // Check proximity to any segment
     for (let i = 0; i < pts.length - 1; i++) {
       if (distToSegment(mx, my, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y) <= HIT_RADIUS) return true;
     }
-    // Close the shape for triangle
     if (['triangle', 'trianglepattern'].includes(type) && pts.length >= 3) {
       if (distToSegment(mx, my, pts[pts.length - 1].x, pts[pts.length - 1].y, pts[0].x, pts[0].y) <= HIT_RADIUS) return true;
     }
