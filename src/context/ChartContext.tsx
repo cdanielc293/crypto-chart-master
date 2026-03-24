@@ -276,8 +276,6 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addToWatchlist = useCallback((sym: string) => {
     setWatchlists(prev => prev.map(list => {
       if (list.id !== activeWatchlistId) return list;
-      const allSyms = list.sections.flatMap(s => s.symbols);
-      if (allSyms.includes(sym)) return list;
       const sections = [...list.sections];
       if (sections.length === 0) {
         sections.push({ id: 'default', name: 'DEFAULT', collapsed: false, symbols: [sym] });
