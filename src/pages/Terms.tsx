@@ -354,11 +354,10 @@ export default function Terms() {
 
           <h3>25.7 30-Day Opt-Out Right</h3>
           <p>
-            You may opt out of this Arbitration Agreement by sending written notice to{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>{' '}
-            within 30 days of first becoming subject to it. Your notice must include your name, address, 
-            the email address associated with your VizionX account, and a clear statement that you wish to opt out. 
-            Opt-out notices must be sent individually — notices from third parties purporting to act on your behalf are ineffective. 
+            You may opt out of this Arbitration Agreement by sending written notice through the contact form below
+            within 30 days of first becoming subject to it. Your notice must include your name, address,
+            the email address associated with your VizionX account, and a clear statement that you wish to opt out.
+            Opt-out notices must be sent individually — notices from third parties purporting to act on your behalf are ineffective.
             Opting out does not affect any other part of these Terms or any prior arbitration agreements you did not timely opt out of.
           </p>
 
