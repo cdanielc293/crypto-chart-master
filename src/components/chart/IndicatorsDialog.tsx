@@ -12,7 +12,7 @@ interface Props { open: boolean; onClose: () => void; }
 export default function IndicatorsDialog({ open, onClose }: Props) {
   const ctx = useChart();
   const { activePanelIndex, gridLayout, addIndicator, addPanelIndicator, indicators } = ctx;
-  const { profile } = useProfile();
+  const { data: profile } = useProfile();
   const limits = getPlanLimits(profile?.plan);
   const navigate = useNavigate();
   const atLimit = indicators.length >= limits.indicatorsPerChart;
