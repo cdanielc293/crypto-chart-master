@@ -154,4 +154,13 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultSize: { colSpan: 1, rowSpan: 2 },
     previewColor: '#c084fc',
   },
+  {
+    type: 'web-browser',
+    label: 'Web Browser',
+    description: 'Open any website in a mini browser widget. Browse freely while trading.',
+    category: 'media',
+    icon: 'globe',
+    defaultSize: { colSpan: 2, rowSpan: 2 },
+    previewColor: '#60a5fa',
+  },
 ];

@@ -10,6 +10,7 @@ import SpotifyWidget from './SpotifyWidget';
 import TwitterWidget from './TwitterWidget';
 import TikTokWidget from './TikTokWidget';
 import InstagramWidget from './InstagramWidget';
+import WebBrowserWidget from './WebBrowserWidget';
 
 const WIDGET_COMPONENTS: Record<string, React.FC> = {
   'price-chart': PriceChartWidget,
@@ -22,6 +23,7 @@ const WIDGET_COMPONENTS: Record<string, React.FC> = {
   'twitter': TwitterWidget,
   'tiktok': TikTokWidget,
   'instagram': InstagramWidget,
+  'web-browser': WebBrowserWidget,
 };
 
 export default function WidgetRenderer({ widget }: { widget: WidgetInstance }) {
