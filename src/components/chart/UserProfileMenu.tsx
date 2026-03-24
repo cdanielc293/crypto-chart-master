@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import { useProfile, planLabels, planColors } from '@/hooks/useProfile';
+import { useIsAdmin } from '@/hooks/useAdmin';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -16,7 +17,7 @@ import {
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home, Palette, Settings, Users, LogOut, ChevronRight,
+  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield,
 } from 'lucide-react';
 import ReferFriendDialog from './ReferFriendDialog';
 

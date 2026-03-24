@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/context/AuthContext';
 import bugMascot from '@/assets/bug-mascot.png';
 import featureMascot from '@/assets/feature-mascot.png';
 
@@ -14,6 +16,7 @@ interface FeedbackPanelProps {
 function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const { user } = useAuth();
 
   const isBug = type === 'bug';
   const mascot = isBug ? bugMascot : featureMascot;
@@ -31,11 +34,23 @@ function FeedbackPanel({ type, open, onClose }: FeedbackPanelProps) {
       return;
     }
     setSending(true);
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success(isBug ? 'הדיווח נשלח! תודה רבה 🙏' : 'הבקשה נשלחה! תודה רבה 🙏');
-    setMessage('');
-    setSending(false);
-    onClose();
+    try {
+      const { error } = await supabase.from('feedback_tickets').insert({
+        user_id: user?.id || null,
+        user_email: user?.email || null,
+        type: isBug ? 'bug' : 'feature',
+        message: message.trim(),
+      });
+      if (error) throw error;
+      toast.success(isBug ? 'הדיווח נשלח! תודה רבה 🙏' : 'הבקשה נשלחה! תודה רבה 🙏');
+      setMessage('');
+      onClose();
+    } catch (err) {
+      console.error('Feedback submit error:', err);
+      toast.error('שגיאה בשליחה, נסה שוב');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
