@@ -1435,6 +1435,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
 
+      // Mark that user has scrolled back (first call with range.from <= 50 after initial load)
+      userScrolledBackRef.current = true;
+
       // Enforce plan-based time depth + bar count limit
       const currentBarCount = rawCandlesRef.current.length;
       const oldestLoadedTime = rawCandlesRef.current[0] ? Number(rawCandlesRef.current[0].time) : 0;
