@@ -309,6 +309,15 @@ export default function TopToolbar() {
           <Fullscreen size={16} />
         </button>
 
+        {/* Keyboard shortcuts */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('shortcut:show-shortcuts'))}
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Keyboard shortcuts (?)"
+        >
+          <Keyboard size={16} />
+        </button>
+
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
