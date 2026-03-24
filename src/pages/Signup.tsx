@@ -271,7 +271,14 @@ export default function Signup() {
             {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               type="button"
-              onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
+              onClick={() => {
+                if (mode === 'signin') {
+                  // When switching to signup, redirect to pricing to pick a plan
+                  navigate('/pricing');
+                } else {
+                  setMode('signin');
+                }
+              }}
               className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
             >
               {mode === 'signup' ? 'Sign In' : 'Sign Up'}
