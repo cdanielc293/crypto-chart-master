@@ -1577,8 +1577,17 @@ export default function PriceChartWidget() {
       {/* Chart area */}
       <div ref={containerRef} className="flex-1 h-full relative">
         <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <div className="absolute inset-0">
+           <ContextMenuTrigger asChild>
+            <div className="absolute inset-0" onContextMenu={(e) => {
+              // Auto-select drawing under right-click
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (rect) {
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const hit = findDrawingAtPoint(x, y);
+                setSelectedDrawingId(hit ? hit.id : null);
+              }
+            }}>
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0"
@@ -1593,6 +1602,33 @@ export default function PriceChartWidget() {
           </ContextMenuTrigger>
 
           <ContextMenuContent className="w-64 bg-[#0a1628]/95 backdrop-blur-md border-white/[0.08]">
+            {/* Selected drawing actions */}
+            {selectedDrawingId && (() => {
+              const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
+              if (!selDrawing) return null;
+              const toolLabel = selDrawing.type.charAt(0).toUpperCase() + selDrawing.type.slice(1).replace(/([A-Z])/g, ' $1');
+              return (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-white/70 flex items-center gap-2">
+                    <Pencil size={12} className="text-white/40" />
+                    {toolLabel}
+                  </div>
+                  <ContextMenuItem onClick={() => {
+                    updateDrawing(selectedDrawingId, { locked: !selDrawing.locked });
+                  }} className="gap-2 text-xs">
+                    {selDrawing.locked ? <Lock size={14} className="text-cyan-400" /> : <Unlock size={14} className="text-white/40" />}
+                    {selDrawing.locked ? 'Unlock' : 'Lock'}
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => removeDrawing(selectedDrawingId)} className="gap-2 text-xs text-red-400">
+                    <Trash2 size={14} />
+                    Delete drawing
+                    <span className="ml-auto text-[10px] text-white/30">Del</span>
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                </>
+              );
+            })()}
+
             <ContextMenuItem className="gap-2 text-xs" onClick={() => setSettingsOpen(true)}>
               <BarChart3 size={14} className="text-white/40" />
               BTC/USDT settings…
