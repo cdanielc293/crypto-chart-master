@@ -1,11 +1,12 @@
-import WebBrowserWidget from './WebBrowserWidget';
+import MediaEmbedWidget from './MediaEmbedWidget';
 
 export default function TikTokWidget() {
   return (
-    <WebBrowserWidget
-      defaultUrl="https://www.tiktok.com"
-      brandColor="#ec4899"
-      brandName="TikTok"
+    <MediaEmbedWidget
+      platform="tiktok"
+      title="TikTok"
+      placeholder="הדבק קישור לוידאו ב-TikTok"
+      helpText="הדבק קישור לוידאו ספציפי כדי לצפות בו מתוך הווידג׳ט"
     />
   );
 }
