@@ -25,7 +25,7 @@ export default function ReferFriendDialog({ open, onClose }: Props) {
   };
 
   const shareVia = (method: 'email' | 'facebook' | 'x') => {
-    const text = 'Check out Vizion — the ultimate charting platform!';
+    const text = 'Check out VizionX — the ultimate charting platform!';
     const urls: Record<string, string> = {
       email: `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(referralLink)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,

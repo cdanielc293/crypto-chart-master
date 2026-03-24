@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import heroBg from '@/assets/hero-bg.jpg';
-import vizionLogo from '@/assets/vizion-logo.png';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import { ChevronDown, BarChart3, Search, Zap, Shield, Globe, TrendingUp } from 'lucide-react';
 
 const features = [
@@ -32,9 +32,9 @@ export default function Landing() {
         className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between backdrop-blur-md bg-[#050508]/60 border-b border-white/5"
       >
         <div className="flex items-center gap-2.5">
-          <img src={vizionLogo} alt="Vizion" className="h-8 w-8" />
+          <img src={vizionLogo} alt="VizionX" className="h-8 w-8" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            VIZION
+            VIZIONX
           </span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-white/60">

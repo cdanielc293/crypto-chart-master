@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Zap, Crown, Star, Gem, ChevronDown } from 'lucide-react';
-import vizionLogo from '@/assets/vizion-logo.png';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   Accordion,
   AccordionContent,
@@ -11,7 +11,7 @@ import {
 
 const tiers = [
   {
-    name: 'Vizion Core',
+    name: 'VizionX Core',
     price: '$6.50',
     originalPrice: '$12.95',
     period: '/mo',
@@ -29,7 +29,7 @@ const tiers = [
     ],
   },
   {
-    name: 'Vizion Prime',
+    name: 'VizionX Prime',
     price: '$14.15',
     originalPrice: '$28.30',
     period: '/mo',
@@ -49,7 +49,7 @@ const tiers = [
     ],
   },
   {
-    name: 'Vizion Elite',
+    name: 'VizionX Elite',
     price: '$28.25',
     originalPrice: '$56.50',
     period: '/mo',
@@ -68,7 +68,7 @@ const tiers = [
     ],
   },
   {
-    name: 'Vizion Zenith',
+    name: 'VizionX Zenith',
     price: '$99.95',
     originalPrice: '$199.90',
     period: '/mo',
