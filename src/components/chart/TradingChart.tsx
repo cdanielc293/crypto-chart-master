@@ -2140,7 +2140,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   }, [interval, chartSettings.scalesAndLines.countdownToBarClose, replayState]);
 
   // Prepare candle data for drawing engine
-  const candleDataForDrawing: CandleData[] = rawCandlesRef.current.map(c => ({
+  // During replay, use only the visible (sliced) candles so coordinate
+  // extrapolation anchors from the last visible bar — allowing users
+  // to draw into the "future" empty area of the chart.
+  const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
+  const drawingSourceCandles = isReplayActive
+    ? allCandlesRef.current.slice(0, Math.min(replayBarIndex + 1, allCandlesRef.current.length))
+    : rawCandlesRef.current;
+  const candleDataForDrawing: CandleData[] = drawingSourceCandles.map(c => ({
     time: c.time as number,
     open: c.open,
     high: c.high,
