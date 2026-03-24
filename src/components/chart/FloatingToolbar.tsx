@@ -39,10 +39,19 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   // Reset toolbar placement when selected drawing changes
+  // Reset toolbar and auto-open text input for text drawings
   useEffect(() => {
     setIsPinned(false);
     setPosition(getDefaultPosition(x, y));
-  }, [drawing?.id, x, y]);
+    // Auto-open text input for text/note drawings
+    if (drawing && (drawing.type === 'text' || drawing.type === 'note')) {
+      setTextValue(drawing.props?.text || (drawing.type === 'text' ? 'Text' : 'Note'));
+      setShowTextInput(true);
+      setTimeout(() => textInputRef.current?.select(), 80);
+    } else {
+      setShowTextInput(false);
+    }
+  }, [drawing?.id]);
 
   // Follow auto position unless user dragged it manually
   useEffect(() => {
