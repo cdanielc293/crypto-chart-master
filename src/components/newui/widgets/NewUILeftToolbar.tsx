@@ -235,9 +235,13 @@ interface Props {
   onSelectTool: (tool: NewUIDrawingTool) => void;
   drawingsCount: number;
   onDeleteAll: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-export default function NewUILeftToolbar({ activeTool, onSelectTool, drawingsCount, onDeleteAll }: Props) {
+export default function NewUILeftToolbar({ activeTool, onSelectTool, drawingsCount, onDeleteAll, onUndo, onRedo, canUndo, canRedo }: Props) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [selectedPerCategory, setSelectedPerCategory] = useState<Record<string, NewUIDrawingTool>>({
