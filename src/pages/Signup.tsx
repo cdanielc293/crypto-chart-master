@@ -51,6 +51,9 @@ export default function Signup() {
         return;
       }
       await signUpWithEmail(trimmedEmail, password, { plan: tier });
+      // Show Beta Pass on successful signup (when user appears)
+      setSignedUpName(trimmedEmail.split('@')[0]);
+      setShowBetaPass(true);
       return;
     }
     await signInWithEmail(trimmedEmail, password);
