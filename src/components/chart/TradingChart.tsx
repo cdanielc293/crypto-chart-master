@@ -1284,8 +1284,12 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const nextCandles = mergeCandlesByTime(baseCandles, candles);
         let finalCandles = nextCandles.length > 0 ? nextCandles : candles;
 
-        // Enforce plan-based historical bars limit
-        if (finalCandles.length > maxBars) {
+        // Enforce plan-based historical depth limit (time-based)
+        const timeFiltered = finalCandles.filter(c => Number(c.time) >= earliestAllowed);
+        if (timeFiltered.length < finalCandles.length) {
+          finalCandles = timeFiltered;
+          setBarsLimitReached(true);
+        } else if (finalCandles.length > maxBars) {
           finalCandles = finalCandles.slice(finalCandles.length - maxBars);
           setBarsLimitReached(true);
         } else {
