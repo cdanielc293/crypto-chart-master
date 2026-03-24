@@ -73,12 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string) => {
+  const signUpWithEmail = async (email: string, password: string, metadata?: Record<string, any>) => {
     if (signingIn) return;
     if (!navigator.onLine) { toast.error('אין חיבור אינטרנט כרגע.'); return; }
     setSigningIn(true);
     try {
-      const { error, data } = await supabase.auth.signUp({ email, password });
+      const { error, data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: metadata ? { data: metadata } : undefined,
+      });
       if (error) throw error;
       if (data.session) {
         toast.success('ההרשמה הושלמה בהצלחה! מתחבר...');
