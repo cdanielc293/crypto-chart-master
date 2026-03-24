@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChart } from '@/context/ChartContext';
+import { getStarredTools, toggleStarredTool } from '@/lib/drawingToolCategories';
 import type { DrawingTool } from '@/types/chart';
 import {
   Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation,
@@ -369,12 +370,20 @@ const bottomActions = [
 export default function LeftToolbar() {
   const { drawingTool, setDrawingTool, drawings, removeDrawing } = useChart();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [starredTools, setStarredToolsState] = useState<Set<string>>(getStarredTools);
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     magnet: false,
     lock: false,
     visibility: true,
   });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleStar = useCallback((tool: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = toggleStarredTool(tool);
+    setStarredToolsState(new Set(updated));
+    window.dispatchEvent(new Event('starred-tools-changed'));
+  }, []);
 
   // Track which tool was selected per category
   const [selectedPerCategory, setSelectedPerCategory] = useState<Record<string, DrawingTool>>({
@@ -514,8 +523,9 @@ export default function LeftToolbar() {
                       )}
                       <Star
                         size={11}
-                        className={`ml-1 flex-shrink-0 ${
-                          item.starred
+                        onClick={(e) => handleToggleStar(item.tool, e)}
+                        className={`ml-1 flex-shrink-0 cursor-pointer hover:scale-125 transition-transform ${
+                          starredTools.has(item.tool)
                             ? 'text-yellow-500 fill-yellow-500'
                             : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
                         }`}
