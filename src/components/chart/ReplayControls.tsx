@@ -16,7 +16,7 @@ export default function ReplayControls() {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-toolbar-bg border-b border-chart-border text-xs select-none">
         <Rewind size={14} className="text-primary" />
-        <span className="text-muted-foreground">לחץ על הגרף כדי לבחור נקודת התחלה לריפליי</span>
+        <span className="text-muted-foreground">Click on the chart to select a replay starting point</span>
         <button
           onClick={() => setReplayState('off')}
           className="ml-auto p-1 rounded hover:bg-toolbar-hover text-muted-foreground hover:text-foreground"

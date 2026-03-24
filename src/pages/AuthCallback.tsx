@@ -29,7 +29,7 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#050508] text-white">
-      <p className="text-sm text-white/40 animate-pulse">מאמת... מתחבר...</p>
+      <p className="text-sm text-white/40 animate-pulse">Verifying... Signing in...</p>
     </div>
   );
 }

@@ -524,22 +524,22 @@ function SupportSection({ user }: { user: any }) {
           </button>
         </div>
       ) : (
-        <div className="max-w-lg space-y-4" dir="rtl">
+        <div className="max-w-lg space-y-4">
           <div>
-            <label className="text-xs text-white/40 mb-1 block">נושא</label>
+            <label className="text-xs text-white/40 mb-1 block">Subject</label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="במה אפשר לעזור?"
+              placeholder="How can we help?"
               className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none focus:ring-1 focus:ring-cyan-400/30"
             />
           </div>
           <div>
-            <label className="text-xs text-white/40 mb-1 block">הודעה</label>
+            <label className="text-xs text-white/40 mb-1 block">Message</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="תאר את הבעיה או השאלה שלך..."
+              placeholder="Describe your issue or question..."
               rows={5}
               className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none resize-none focus:ring-1 focus:ring-cyan-400/30"
             />
@@ -550,7 +550,7 @@ function SupportSection({ user }: { user: any }) {
             className="bg-cyan-500 hover:bg-cyan-600 text-white"
           >
             {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-            שלח הודעה
+            Send Message
           </Button>
         </div>
       )}
