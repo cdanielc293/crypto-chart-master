@@ -50,6 +50,7 @@ export default function IndicatorsDialog({ open, onClose }: Props) {
   }, [activeCategory, search, favorites, allIndicators, byCategory]);
 
   const handleAdd = (defId: string) => {
+    if (atLimit) return;
     if (gridLayout.count > 1 && activePanelIndex !== null) {
       addPanelIndicator(activePanelIndex, defId);
     } else {
