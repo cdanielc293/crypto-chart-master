@@ -2299,18 +2299,25 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         </div>
       )}
 
-      {/* Historical bars limit overlay */}
+      {/* Historical depth limit overlay */}
       {barsLimitReached && (
-        <div className="absolute top-1/2 left-4 z-[15] -translate-y-1/2 max-w-[220px] rounded-lg border border-chart-border bg-toolbar-bg/95 backdrop-blur-sm px-4 py-3 shadow-lg">
-          <p className="text-xs font-semibold text-foreground mb-1">Historical limit reached</p>
-          <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
-            Your plan allows up to {maxBars.toLocaleString()} historical bars. Upgrade for more history.
+        <div className="absolute top-1/2 left-4 z-[15] -translate-y-1/2 max-w-[260px] rounded-xl border border-amber-500/30 bg-toolbar-bg/95 backdrop-blur-md px-5 py-4 shadow-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400">
+                <path d="M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p className="text-xs font-bold text-foreground">Historical Limit Reached</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+            Your plan allows up to <span className="font-semibold text-foreground">{maxBars.toLocaleString()}</span> historical bars per interval. To access deeper market history, upgrade your account.
           </p>
           <a
             href="/pricing"
-            className="inline-block text-[10px] font-medium text-primary hover:underline"
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-black text-xs font-semibold hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
           >
-            Upgrade Plan →
+            Upgrade Now
           </a>
         </div>
       )}
