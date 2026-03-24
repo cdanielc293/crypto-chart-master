@@ -35,6 +35,7 @@ export default function UserProfileMenu() {
   const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
   const name = profile?.full_name || user.user_metadata?.full_name || user.email || '';
   const plan = profile?.plan || 'core';
+  const hasBadge = profile?.has_shared_beta === true;
   const initials = name
     .split(' ')
     .map((n: string) => n[0])
