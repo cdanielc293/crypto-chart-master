@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Settings from "./pages/Settings.tsx";
 import Admin from "./pages/Admin.tsx";
 import Terms from "./pages/Terms.tsx";
+import Disclaimer from "./pages/Disclaimer.tsx";
 
 const queryClient = new QueryClient();
 
