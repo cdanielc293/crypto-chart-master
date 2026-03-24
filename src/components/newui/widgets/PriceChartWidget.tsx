@@ -1219,18 +1219,18 @@ export default function PriceChartWidget() {
     // ─── Logo watermark (center of chart area) ───
     const logoImg = logoImgRef.current;
     if (logoImg) {
-      const logoH = Math.min(80, priceH * 0.18);
+      const logoH = Math.min(160, priceH * 0.32);
       const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
       const logoX = chartW / 2 - logoW / 2;
-      const logoY = priceH / 2 - logoH / 2 - 14;
-      ctx.globalAlpha = 0.08;
+      const logoY = priceH / 2 - logoH / 2 - 20;
+      ctx.globalAlpha = 0.10;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
-      ctx.globalAlpha = 0.06;
-      ctx.font = `bold ${Math.min(28, priceH * 0.06)}px Inter, sans-serif`;
+      ctx.globalAlpha = 0.08;
+      ctx.font = `bold ${Math.min(48, priceH * 0.09)}px Inter, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VIZIONX', chartW / 2, logoY + logoH + 6);
+      ctx.fillText('VIZIONX', chartW / 2, logoY + logoH + 10);
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
