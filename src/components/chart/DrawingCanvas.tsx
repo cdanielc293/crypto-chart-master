@@ -672,7 +672,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     };
   }, [isCursorMode, selectedDrawingId, chartDrawings, getCoordHelper, containerRef]);
 
-  const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || isHoveringDrawing;
+  const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || selectedDrawingIds.size > 0 || isHoveringDrawing;
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     const coord = getCoordHelper();
