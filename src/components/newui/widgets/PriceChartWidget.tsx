@@ -721,6 +721,21 @@ export default function PriceChartWidget() {
     draftPointsRef.current = [];
     persistDrawings(drawingsRef.current);
     setDrawingsCount(0);
+    setSelectedDrawingId(null);
+    scheduleRender();
+  }, [scheduleRender]);
+
+  const removeDrawing = useCallback((id: string) => {
+    drawingsRef.current = drawingsRef.current.filter(d => d.id !== id);
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    if (selectedDrawingId === id) setSelectedDrawingId(null);
+    scheduleRender();
+  }, [scheduleRender, selectedDrawingId]);
+
+  const updateDrawing = useCallback((id: string, updates: Partial<WidgetDrawing>) => {
+    drawingsRef.current = drawingsRef.current.map(d => d.id === id ? { ...d, ...updates } : d);
+    persistDrawings(drawingsRef.current);
     scheduleRender();
   }, [scheduleRender]);
 
