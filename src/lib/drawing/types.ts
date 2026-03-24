@@ -78,6 +78,9 @@ export const TOOL_POINT_COUNT: Record<string, number> = {
   anchoredvolume: 1,
   gannbox: 2,
   gannfan: 2,
+  regressiontrend: 2,
+  pitchfan: 3,
+  projection: 3,
   // Three-point
   parallelchannel: 3,
   triangle: 3,
