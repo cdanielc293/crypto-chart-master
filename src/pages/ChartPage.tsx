@@ -1,5 +1,6 @@
 import { ChartProvider, useChart } from '@/context/ChartContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { ViewModeProvider, useViewMode } from '@/context/ViewModeContext';
 import TopToolbar from '@/components/chart/TopToolbar';
 import ReplayControls from '@/components/chart/ReplayControls';
 import LeftToolbar from '@/components/chart/LeftToolbar';
@@ -11,6 +12,7 @@ import KeyboardShortcutsDialog from '@/components/chart/KeyboardShortcutsDialog'
 import SessionDisconnectedDialog from '@/components/chart/SessionDisconnectedDialog';
 import SecurityAlertDialog from '@/components/chart/SecurityAlertDialog';
 import WelcomeOnboardingDialog from '@/components/chart/WelcomeOnboardingDialog';
+import NewUIView from '@/components/chart/NewUIView';
 import { getCellStyle } from '@/types/layout';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSessionEnforcement } from '@/hooks/useSessionEnforcement';
