@@ -1410,8 +1410,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
 
+      // Enforce plan-based historical bars limit
+      const currentBarCount = rawCandlesRef.current.length;
+      if (currentBarCount >= maxBars) {
+        setBarsLimitReached(true);
+        hasMoreOlderRef.current = false;
+        return;
+      }
+
       const oldestLoaded = rawCandlesRef.current[0];
       if (!oldestLoaded) return;
+
+      // Only request up to the remaining quota
+      const remaining = maxBars - currentBarCount;
+      const fetchLimit = Math.min(2500, remaining);
 
       loadingOlderRef.current = true;
       try {
