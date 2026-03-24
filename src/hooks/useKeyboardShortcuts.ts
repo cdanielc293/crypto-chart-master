@@ -1,109 +1,110 @@
 import { useEffect, useCallback } from 'react';
 import { useChart } from '@/context/ChartContext';
-import type { DrawingTool } from '@/types/chart';
 
 export function useKeyboardShortcuts() {
   const ctx = useChart();
-  const {
-    setDrawingTool, drawings, removeDrawing,
-    setSymbol, setInterval, chartSettings, setChartSettings,
-    replayState, setReplayState, replayBarIndex, setReplayBarIndex,
-  } = ctx;
+  const { setDrawingTool, drawings, setInterval, setChartSettings } = ctx;
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Skip if user is typing in an input/textarea
-    const tag = (e.target as HTMLElement)?.tagName;
+    const target = e.target as HTMLElement | null;
+    const tag = target?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-    if ((e.target as HTMLElement)?.isContentEditable) return;
+    if (target?.isContentEditable) return;
 
     const ctrl = e.ctrlKey || e.metaKey;
     const alt = e.altKey;
     const shift = e.shiftKey;
     const key = e.key;
+    const code = e.code;
+
+    const consume = () => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
 
     // ─── Chart Navigation ───
 
     // Ctrl+K → Quick search (symbol search)
-    if (ctrl && key.toLowerCase() === 'k') {
-      e.preventDefault();
-      // Dispatch custom event for symbol search
+    if (ctrl && code === 'KeyK' && !alt && !shift) {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:symbol-search'));
       return;
     }
 
     // / → Open indicators dialog
-    if (!ctrl && !alt && !shift && key === '/') {
-      e.preventDefault();
+    if (!ctrl && !alt && !shift && code === 'Slash') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:open-indicators'));
       return;
     }
 
     // Alt+R → Reset chart view
-    if (alt && key.toLowerCase() === 'r') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyR') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:reset-chart'));
       return;
     }
 
     // Ctrl+S → Save chart layout
-    if (ctrl && !alt && !shift && key.toLowerCase() === 's') {
-      e.preventDefault();
+    if (ctrl && !alt && !shift && code === 'KeyS') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:save-layout'));
       return;
     }
 
     // Arrow left/right → Move chart 1 bar
-    if (!ctrl && !alt && !shift && key === 'ArrowLeft') {
-      e.preventDefault();
+    if (!ctrl && !alt && !shift && code === 'ArrowLeft') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'left' } }));
       return;
     }
-    if (!ctrl && !alt && !shift && key === 'ArrowRight') {
-      e.preventDefault();
+    if (!ctrl && !alt && !shift && code === 'ArrowRight') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'right' } }));
       return;
     }
 
     // Ctrl+Arrow → Move further
-    if (ctrl && !alt && !shift && key === 'ArrowLeft') {
-      e.preventDefault();
+    if (ctrl && !alt && !shift && code === 'ArrowLeft') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'far-left' } }));
       return;
     }
-    if (ctrl && !alt && !shift && key === 'ArrowRight') {
-      e.preventDefault();
+    if (ctrl && !alt && !shift && code === 'ArrowRight') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'far-right' } }));
       return;
     }
 
     // Ctrl+Up/Down → Zoom in/out
-    if (ctrl && !alt && key === 'ArrowUp') {
-      e.preventDefault();
+    if (ctrl && !alt && code === 'ArrowUp') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:zoom', { detail: { direction: 'in' } }));
       return;
     }
-    if (ctrl && !alt && key === 'ArrowDown') {
-      e.preventDefault();
+    if (ctrl && !alt && code === 'ArrowDown') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:zoom', { detail: { direction: 'out' } }));
       return;
     }
 
     // Alt+Shift+Left → Move to first bar
-    if (alt && shift && key === 'ArrowLeft') {
-      e.preventDefault();
+    if (alt && shift && code === 'ArrowLeft') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'start' } }));
       return;
     }
     // Alt+Shift+Right → Move to last bar
-    if (alt && shift && key === 'ArrowRight') {
-      e.preventDefault();
+    if (alt && shift && code === 'ArrowRight') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:move-chart', { detail: { direction: 'end' } }));
       return;
     }
 
     // Shift+F → Fullscreen mode
-    if (shift && !ctrl && !alt && key.toLowerCase() === 'f') {
-      e.preventDefault();
+    if (shift && !ctrl && !alt && code === 'KeyF') {
+      consume();
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
@@ -115,8 +116,8 @@ export function useKeyboardShortcuts() {
     // ─── Scale shortcuts ───
 
     // Alt+I → Invert series scale
-    if (alt && !ctrl && key.toLowerCase() === 'i') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyI') {
+      consume();
       setChartSettings(prev => ({
         ...prev,
         priceScale: { ...prev.priceScale, invertScale: !prev.priceScale.invertScale },
@@ -125,8 +126,8 @@ export function useKeyboardShortcuts() {
     }
 
     // Alt+L → Toggle logarithmic scale
-    if (alt && !ctrl && key.toLowerCase() === 'l') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyL') {
+      consume();
       setChartSettings(prev => ({
         ...prev,
         priceScale: {
@@ -138,8 +139,8 @@ export function useKeyboardShortcuts() {
     }
 
     // Alt+P → Toggle percent scale
-    if (alt && !ctrl && key.toLowerCase() === 'p') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyP') {
+      consume();
       setChartSettings(prev => ({
         ...prev,
         priceScale: {
@@ -153,57 +154,57 @@ export function useKeyboardShortcuts() {
     // ─── Drawing shortcuts ───
 
     // Alt+T → Trendline
-    if (alt && !ctrl && key.toLowerCase() === 't') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyT') {
+      consume();
       setDrawingTool('trendline');
       return;
     }
 
     // Alt+H → Horizontal line
-    if (alt && !ctrl && key.toLowerCase() === 'h') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyH') {
+      consume();
       setDrawingTool('horizontalline');
       return;
     }
 
     // Alt+J → Horizontal ray
-    if (alt && !ctrl && key.toLowerCase() === 'j') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyJ') {
+      consume();
       setDrawingTool('horizontalray');
       return;
     }
 
-    // Alt+V → Vertical line (already in DrawingCanvas, but keep here too)
-    if (alt && !ctrl && key.toLowerCase() === 'v') {
-      e.preventDefault();
+    // Alt+V → Vertical line
+    if (alt && !ctrl && code === 'KeyV') {
+      consume();
       setDrawingTool('verticalline');
       return;
     }
 
     // Alt+C → Cross line
-    if (alt && !ctrl && key.toLowerCase() === 'c') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyC') {
+      consume();
       setDrawingTool('crossline');
       return;
     }
 
     // Alt+F → Fibonacci retracement
-    if (alt && !ctrl && key.toLowerCase() === 'f') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyF') {
+      consume();
       setDrawingTool('fibonacci');
       return;
     }
 
     // Shift+Alt+R → Rectangle
-    if (shift && alt && !ctrl && key.toLowerCase() === 'r') {
-      e.preventDefault();
+    if (shift && alt && !ctrl && code === 'KeyR') {
+      consume();
       setDrawingTool('rectangle');
       return;
     }
 
-    // Ctrl+Alt+H → Hide all drawings
-    if (ctrl && alt && key.toLowerCase() === 'h') {
-      e.preventDefault();
+    // Ctrl+H (also Ctrl+Alt+H) → Hide/show all drawings
+    if (ctrl && code === 'KeyH') {
+      consume();
       drawings.forEach(d => {
         ctx.updateDrawing(d.id, { ...d, visible: !d.visible });
       });
@@ -213,54 +214,62 @@ export function useKeyboardShortcuts() {
     // ─── Interval shortcuts (number keys) ───
     if (!ctrl && !alt && !shift) {
       const intervalMap: Record<string, string> = {
-        '1': '1m', '2': '2m', '3': '3m', '5': '5m',
+        Digit1: '1m',
+        Digit2: '2m',
+        Digit3: '3m',
+        Digit5: '5m',
+        Numpad1: '1m',
+        Numpad2: '2m',
+        Numpad3: '3m',
+        Numpad5: '5m',
       };
-      if (intervalMap[key]) {
-        e.preventDefault();
-        setInterval(intervalMap[key] as any);
+      if (intervalMap[code]) {
+        consume();
+        setInterval(intervalMap[code] as any);
         return;
       }
     }
 
     // , (comma) → Open interval selector
-    if (!ctrl && !alt && !shift && key === ',') {
-      e.preventDefault();
+    if (!ctrl && !alt && !shift && code === 'Comma') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:open-intervals'));
       return;
     }
 
     // Alt+A → Add alert
-    if (alt && !ctrl && key.toLowerCase() === 'a') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyA') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:add-alert'));
       return;
     }
 
     // Alt+G → Go to date
-    if (alt && !ctrl && key.toLowerCase() === 'g') {
-      e.preventDefault();
+    if (alt && !ctrl && code === 'KeyG') {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:go-to-date'));
       return;
     }
 
     // ? → Open keyboard shortcuts dialog
-    if (!ctrl && !alt && key === '?') {
-      e.preventDefault();
+    if (!ctrl && !alt && (key === '?' || (shift && code === 'Slash'))) {
+      consume();
       window.dispatchEvent(new CustomEvent('shortcut:show-shortcuts'));
       return;
     }
 
-    // Any letter key → Open symbol search (like TradingView)
-    if (!ctrl && !alt && !shift && key.length === 1 && /^[a-zA-Z]$/.test(key)) {
-      e.preventDefault();
-      window.dispatchEvent(new CustomEvent('shortcut:symbol-search', { detail: { initialChar: key } }));
+    // Any letter key → Open symbol search (layout-independent)
+    if (!ctrl && !alt && !shift && /^Key[A-Z]$/.test(code)) {
+      consume();
+      const initialChar = code.slice(3).toLowerCase();
+      window.dispatchEvent(new CustomEvent('shortcut:symbol-search', { detail: { initialChar } }));
       return;
     }
   }, [drawings, setDrawingTool, setInterval, setChartSettings, ctx]);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [handleKeyDown]);
 }
 
@@ -311,7 +320,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { label: 'Copy selected object', keys: ['Ctrl', 'C'] },
       { label: 'Paste object', keys: ['Ctrl', 'V'] },
       { label: 'Remove object', keys: ['Delete'] },
-      { label: 'Hide all drawings', keys: ['Ctrl', 'Alt', 'H'] },
+      { label: 'Hide all drawings', keys: ['Ctrl', 'H'] },
       { label: 'Drawings multiselect', keys: ['Ctrl', 'Click'] },
       { label: 'Move selected drawing left', keys: ['←'] },
       { label: 'Move selected drawing right', keys: ['→'] },
