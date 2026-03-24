@@ -3,9 +3,9 @@ import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
-  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen,
+  Search, ChevronDown, BarChart3, CandlestickChart, Star, Rewind, Settings, Palette, Camera, Fullscreen, Keyboard,
 } from 'lucide-react';
 import SymbolSearch from './SymbolSearch';
 import ChartSettingsDialog from './ChartSettingsDialog';
@@ -59,6 +59,21 @@ export default function TopToolbar() {
   const [intervalDropdownOpen, setIntervalDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+
+  // Listen for keyboard shortcut events
+  useEffect(() => {
+    const onSymbolSearch = () => setSearchOpen(true);
+    const onOpenIndicators = () => setIndicatorOpen(true);
+    const onOpenIntervals = () => setIntervalDropdownOpen(true);
+    window.addEventListener('shortcut:symbol-search', onSymbolSearch);
+    window.addEventListener('shortcut:open-indicators', onOpenIndicators);
+    window.addEventListener('shortcut:open-intervals', onOpenIntervals);
+    return () => {
+      window.removeEventListener('shortcut:symbol-search', onSymbolSearch);
+      window.removeEventListener('shortcut:open-indicators', onOpenIndicators);
+      window.removeEventListener('shortcut:open-intervals', onOpenIntervals);
+    };
+  }, []);
 
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
@@ -307,6 +322,15 @@ export default function TopToolbar() {
           title="Fullscreen"
         >
           <Fullscreen size={16} />
+        </button>
+
+        {/* Keyboard shortcuts */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('shortcut:show-shortcuts'))}
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-muted-foreground hover:bg-toolbar-hover hover:text-foreground text-[13px]"
+          title="Keyboard shortcuts (?)"
+        >
+          <Keyboard size={16} />
         </button>
 
         {/* Settings */}

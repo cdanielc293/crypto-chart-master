@@ -6,7 +6,10 @@ import LeftToolbar from '@/components/chart/LeftToolbar';
 import TradingChart from '@/components/chart/TradingChart';
 import RightSidebar from '@/components/chart/RightSidebar';
 import FeedbackWidgets from '@/components/chart/FeedbackWidgets';
+import KeyboardShortcutsDialog from '@/components/chart/KeyboardShortcutsDialog';
 import { getCellStyle } from '@/types/layout';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useState, useEffect } from 'react';
 
 function ChartArea() {
   const { gridLayout, panelSymbols, setPanelSymbol, syncOptions, symbol } = useChart();
@@ -45,20 +48,38 @@ function ChartArea() {
   );
 }
 
+function ChartWithShortcuts() {
+  useKeyboardShortcuts();
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setShowShortcuts(true);
+    window.addEventListener('shortcut:show-shortcuts', handler);
+    return () => window.removeEventListener('shortcut:show-shortcuts', handler);
+  }, []);
+
+  return (
+    <>
+      <div className="flex flex-col h-screen w-full overflow-hidden">
+        <TopToolbar />
+        <ReplayControls />
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <LeftToolbar />
+          <ChartArea />
+          <RightSidebar />
+        </div>
+        <FeedbackWidgets />
+      </div>
+      <KeyboardShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+    </>
+  );
+}
+
 export default function ChartPage() {
   return (
     <ThemeProvider>
       <ChartProvider>
-        <div className="flex flex-col h-screen w-full overflow-hidden">
-          <TopToolbar />
-          <ReplayControls />
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            <LeftToolbar />
-            <ChartArea />
-            <RightSidebar />
-          </div>
-          <FeedbackWidgets />
-        </div>
+        <ChartWithShortcuts />
       </ChartProvider>
     </ThemeProvider>
   );
