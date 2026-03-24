@@ -577,13 +577,19 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       shiftKeyRef.current = e.shiftKey;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
-        // Don't delete if focused on an input
+      ctrlKeyRef.current = e.ctrlKey || e.metaKey;
+      if ((e.key === 'Delete' || e.key === 'Backspace')) {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-        const sel = drawings.find(d => d.id === selectedDrawingId);
-        if (sel && !sel.locked) {
-          removeDrawing(selectedDrawingId);
+        // Delete all selected (multi + single)
+        const allSelected = new Set(selectedDrawingIds);
+        if (selectedDrawingId) allSelected.add(selectedDrawingId);
+        if (allSelected.size > 0) {
+          for (const id of allSelected) {
+            const d = drawings.find(dd => dd.id === id);
+            if (d && !d.locked) removeDrawing(id);
+          }
           setSelectedDrawingId(null);
+          setSelectedDrawingIds(new Set());
           setToolbarPos(null);
         }
       }
@@ -592,19 +598,21 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           pendingPointsRef.current = [];
           previewPointRef.current = null;
         }
-        if (selectedDrawingId) {
-          const sel = drawings.find(d => d.id === selectedDrawingId);
-          if (sel) updateDrawing(sel.id, { ...sel, selected: false });
+        if (selectedDrawingId || selectedDrawingIds.size > 0) {
+          for (const dd of drawings) {
+            if (dd.selected) updateDrawing(dd.id, { ...dd, selected: false });
+          }
           setSelectedDrawingId(null);
+          setSelectedDrawingIds(new Set());
           setToolbarPos(null);
         }
       }
     };
-    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; };
+    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; ctrlKeyRef.current = e.ctrlKey || e.metaKey; };
     window.addEventListener('keydown', handler);
     window.addEventListener('keyup', upHandler);
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
-  }, [selectedDrawingId, drawings, removeDrawing, setSelectedDrawingId, updateDrawing]);
+  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing]);
 
   useEffect(() => {
     pendingPointsRef.current = [];
