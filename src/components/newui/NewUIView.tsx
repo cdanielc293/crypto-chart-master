@@ -49,7 +49,7 @@ export default function NewUIView() {
         <div
           ref={workspaceRef}
           className="relative h-full w-full rounded-lg border border-white/[0.05] bg-black/10 overflow-hidden"
-          onWheelCapture={(e) => e.preventDefault()}
+          
         >
           <button
             className="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-white/60 hover:text-white/80 transition-colors text-[10px] uppercase tracking-wider font-mono"
