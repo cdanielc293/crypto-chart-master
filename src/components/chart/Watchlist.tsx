@@ -767,8 +767,9 @@ export default function Watchlist({ panelWidth }: { panelWidth?: number }) {
                 const isPositive = (price?.priceChangePercent ?? 0) >= 0;
                 const isSelected = sym === activeSymbol;
                 const isDetailSelected = sym === selectedSymbol;
-                const ticker = sym.replace('USDT', '');
-                const symColor = getSymbolColor(sym);
+                const parsedSym = parseSymbol(sym);
+                const ticker = parsedSym.raw.replace('USDT', '').replace('USD', '');
+                const symColor = getSymbolColor(parsedSym.raw);
                 const isDragOver = dragOverTarget?.sym === sym && dragOverTarget?.sectionId === section.id;
 
                 return (
@@ -796,7 +797,7 @@ export default function Watchlist({ panelWidth }: { panelWidth?: number }) {
                       <span className="font-medium text-foreground truncate block leading-tight">
                         {ticker}
                       </span>
-                      <span className="text-[9px] text-muted-foreground leading-tight">SPOT</span>
+                      <span className="text-[9px] text-muted-foreground leading-tight">{parsedSym.exchangeLabel}</span>
                     </div>
                     {viewMode === 'table' ? (
                       <>
