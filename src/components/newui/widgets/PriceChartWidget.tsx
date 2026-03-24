@@ -526,6 +526,14 @@ export default function PriceChartWidget() {
 
   useEffect(() => { drawingToolRef.current = drawingTool; }, [drawingTool]);
 
+  // Load logo image for watermark
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const img = new Image();
+    img.src = vizionLogo;
+    img.onload = () => { logoImgRef.current = img; scheduleRender(); };
+  }, []);
+
   const scheduleRender = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(render);
