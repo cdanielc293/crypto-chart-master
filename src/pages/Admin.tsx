@@ -183,7 +183,24 @@ export default function Admin() {
                               {planLabels[p.plan] || p.plan}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-white/40 text-xs">{formatDate(p.created_at)}</td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={p.plan}
+                              onChange={async (e) => {
+                                try {
+                                  await updatePlan.mutateAsync({ userId: p.id, plan: e.target.value });
+                                  toast.success(`Plan updated to ${planLabels[e.target.value] || e.target.value}`);
+                                } catch { toast.error('Failed to update plan'); }
+                              }}
+                              className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-xs text-white/80 focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+                            >
+                              {['start', 'core', 'prime', 'elite', 'zenith'].map((pl) => (
+                                <option key={pl} value={pl} className="bg-[#0a0a0f] text-white">
+                                  {planLabels[pl]}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
                           <td className="px-4 py-3">
                             {p.is_blocked ? (
                               <span className="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">Blocked</span>
