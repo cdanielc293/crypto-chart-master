@@ -5,8 +5,8 @@ export default function TikTokWidget() {
     <MediaEmbedWidget
       platform="tiktok"
       title="TikTok"
-      placeholder="הדבק קישור לוידאו ב-TikTok"
-      helpText="הדבק קישור לוידאו ספציפי כדי לצפות בו מתוך הווידג׳ט"
+      placeholder="Paste a TikTok video link"
+      helpText="Paste a specific video link to watch it inside the widget"
     />
   );
 }

@@ -5,8 +5,8 @@ export default function InstagramWidget() {
     <MediaEmbedWidget
       platform="instagram"
       title="Instagram"
-      placeholder="הדבק קישור לפוסט / ריל"
-      helpText="הדבק קישור לפוסט או ריל כדי לצפות בו מתוך הווידג׳ט"
+      placeholder="Paste a post or reel link"
+      helpText="Paste a post or reel link to view it inside the widget"
     />
   );
 }

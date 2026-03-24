@@ -197,7 +197,7 @@ export default function MediaEmbedWidget({
           spellCheck={false}
         />
         <Button type="submit" size="sm" className="h-8 px-3 text-xs">
-          פתח
+          Open
         </Button>
       </form>
 
@@ -214,7 +214,7 @@ export default function MediaEmbedWidget({
           {loadError && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/95 p-4 text-center">
               <p className="text-xs text-muted-foreground">
-                התוכן הזה לא ניתן להטמעה דרך {title}. נסה קישור אחר.
+                This content cannot be embedded via {title}. Try a different link.
               </p>
               {externalUrl && (
                 <Button
@@ -224,7 +224,7 @@ export default function MediaEmbedWidget({
                   onClick={() => window.open(externalUrl, '_blank', 'noopener,noreferrer')}
                 >
                   <ExternalLink size={14} />
-                  פתח בחלון חדש
+                  Open in new tab
                 </Button>
               )}
             </div>

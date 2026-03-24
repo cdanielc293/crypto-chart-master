@@ -5,8 +5,8 @@ export default function YouTubeWidget() {
     <MediaEmbedWidget
       platform="youtube"
       title="YouTube"
-      placeholder="הדבק קישור YouTube (watch / shorts / playlist)"
-      helpText="הדבק קישור לווידאו/פלייליסט כדי לצפות ישירות בתוך הווידג׳ט"
+      placeholder="Paste a YouTube link (watch / shorts / playlist)"
+      helpText="Paste a video or playlist link to watch directly inside the widget"
     />
   );
 }
