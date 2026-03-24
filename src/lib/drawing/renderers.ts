@@ -864,21 +864,26 @@ const renderDatePriceRange: Renderer = (ctx, d, coord) => {
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
+  const props = d.props || {};
   const x = Math.min(p1.x, p2.x);
   const y = Math.min(p1.y, p2.y);
   const rw = Math.abs(p2.x - p1.x);
   const rh = Math.abs(p2.y - p1.y);
-  ctx.fillStyle = 'rgba(41, 98, 255, 0.08)';
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+  ctx.save();
+  ctx.globalAlpha = bgOpacity;
+  ctx.fillStyle = bgColor;
   ctx.fillRect(x, y, rw, rh);
-  ctx.strokeStyle = '#2962ff';
-  ctx.lineWidth = 1;
+  ctx.restore();
+  setupStroke(ctx, d);
   ctx.setLineDash([3, 3]);
   ctx.strokeRect(x, y, rw, rh);
   ctx.setLineDash([]);
-  // Labels
+  // Stats label
   const priceDiff = d.points[1].price - d.points[0].price;
   const pctDiff = ((priceDiff / d.points[0].price) * 100).toFixed(2);
-  ctx.fillStyle = '#d1d4dc';
+  ctx.fillStyle = props.textColor || d.color;
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(
@@ -886,6 +891,17 @@ const renderDatePriceRange: Renderer = (ctx, d, coord) => {
     x + rw / 2,
     y + rh / 2
   );
+  // User text
+  const text = props.text;
+  if (text && text.trim()) {
+    const fontSize = props.textSize || 12;
+    const bold = props.textBold ? 'bold ' : '';
+    const italic = props.textItalic ? 'italic ' : '';
+    ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+    ctx.fillStyle = props.textColor || d.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, x + rw / 2, y + rh / 2 + 16);
+  }
 };
 
 // ─── Polyline / Path / ArrowDraw ───
