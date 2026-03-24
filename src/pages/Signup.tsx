@@ -22,7 +22,8 @@ export default function Signup() {
   const { user, signInWithEmail, signUpWithEmail, signInWithOAuth, signingIn, enterAsGuest } = useAuth();
   const tier = searchParams.get('tier') || 'zenith';
   const tierLabel = tierNames[tier] || 'VizionX Zenith';
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+  const initialMode = searchParams.get('mode') === 'login' ? 'signin' : 'signup';
+  const [mode, setMode] = useState<'signup' | 'signin'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
