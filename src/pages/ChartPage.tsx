@@ -9,6 +9,7 @@ import FeedbackWidgets from '@/components/chart/FeedbackWidgets';
 import KeyboardShortcutsDialog from '@/components/chart/KeyboardShortcutsDialog';
 import SessionDisconnectedDialog from '@/components/chart/SessionDisconnectedDialog';
 import SecurityAlertDialog from '@/components/chart/SecurityAlertDialog';
+import WelcomeOnboardingDialog from '@/components/chart/WelcomeOnboardingDialog';
 import { getCellStyle } from '@/types/layout';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useSessionEnforcement } from '@/hooks/useSessionEnforcement';
