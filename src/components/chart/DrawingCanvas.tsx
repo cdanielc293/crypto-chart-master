@@ -814,7 +814,18 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             if (selectedDrawingId) allIds.add(selectedDrawingId);
             for (const id of allIds) {
               const d = drawings.find(dd => dd.id === id);
-              if (d) updateDrawing(d.id, { ...d, ...updates });
+              if (d) {
+                const finalUpdates = { ...updates };
+                // When color changes on a channel tool, also update channel level colors
+                if (finalUpdates.color && d.type === 'parallelchannel' && d.props?.channelLevels) {
+                  finalUpdates.props = {
+                    ...d.props,
+                    ...finalUpdates.props,
+                    channelLevels: d.props.channelLevels.map((l: any) => ({ ...l, color: finalUpdates.color })),
+                  };
+                }
+                updateDrawing(d.id, { ...d, ...finalUpdates });
+              }
             }
           }}
           onClone={() => {
@@ -850,7 +861,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         drawing={ctxDrawing}
         onClose={() => setDrawingCtxMenu(null)}
         onUpdate={(updates) => {
-          if (ctxDrawing) updateDrawing(ctxDrawing.id, { ...ctxDrawing, ...updates });
+          if (ctxDrawing) {
+            const fu = { ...updates };
+            if (fu.color && ctxDrawing.type === 'parallelchannel' && ctxDrawing.props?.channelLevels) {
+              fu.props = { ...ctxDrawing.props, ...fu.props, channelLevels: ctxDrawing.props.channelLevels.map((l: any) => ({ ...l, color: fu.color })) };
+            }
+            updateDrawing(ctxDrawing.id, { ...ctxDrawing, ...fu });
+          }
         }}
         onClone={() => {
           if (ctxDrawing) {

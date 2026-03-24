@@ -186,6 +186,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
       title={toolLabel}
       className="w-[400px]"
       zClass="z-[200]"
+      backdrop={false}
     >
       {/* Tabs */}
       <div className="flex gap-4 px-4 pt-3 border-b border-border">
