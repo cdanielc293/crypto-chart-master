@@ -1104,9 +1104,10 @@ const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
 // ─── Fixed Range Volume Profile ───
 
 const renderFixedRangeVolume: Renderer = (ctx, d, coord, w, h, candles) => {
-  if (d.points.length < 2 || !candles || candles.length === 0) return;
-  const t1 = Math.min(d.points[0].time, d.points[1].time);
-  const t2 = Math.max(d.points[0].time, d.points[1].time);
+  if (d.points.length < 1 || !candles || candles.length === 0) return;
+  const isAnchored = d.type === 'anchoredvolume' || d.points.length === 1;
+  const t1 = isAnchored ? d.points[0].time : Math.min(d.points[0].time, d.points[1].time);
+  const t2 = isAnchored ? candles[candles.length - 1].time : Math.max(d.points[0].time, d.points[1].time);
   const props = d.props || {};
   const numRows = props.rowSize || 24;
   const volumeMode = props.volumeMode || 'total'; // 'total' | 'updown' | 'delta'
