@@ -1489,7 +1489,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       cancelled = true;
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(loadOlderBars);
     };
-  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache, maxBars]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
