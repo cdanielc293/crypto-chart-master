@@ -11,7 +11,25 @@ import {
 
 const tiers = [
   {
-    name: 'VizionXX Core',
+    name: 'VizionX Start',
+    price: '$0',
+    originalPrice: null,
+    period: '/mo',
+    billing: 'Free Forever',
+    desc: 'The perfect entry into professional analysis.',
+    icon: Star,
+    free: true,
+    features: [
+      '1 chart per tab',
+      '4 indicators per chart',
+      '6K historical bars',
+      '5 price & technical alerts',
+      'Bar Replay (Daily)',
+      'Web, Desktop, and Mobile sync',
+    ],
+  },
+  {
+    name: 'VizionX Core',
     price: '$6.50',
     originalPrice: '$12.95',
     period: '/mo',
@@ -29,7 +47,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Prime',
+    name: 'VizionX Prime',
     price: '$14.15',
     originalPrice: '$28.30',
     period: '/mo',
@@ -49,7 +67,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Elite',
+    name: 'VizionX Elite',
     price: '$28.25',
     originalPrice: '$56.50',
     period: '/mo',
@@ -68,7 +86,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Zenith',
+    name: 'VizionX Zenith',
     price: '$99.95',
     originalPrice: '$199.90',
     period: '/mo',
