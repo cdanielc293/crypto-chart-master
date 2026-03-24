@@ -313,7 +313,7 @@ export default function Signup() {
                 Enter as Guest
               </button>
             </motion.div>
-          )
+          )}
 
           <p className="text-center text-sm text-white/30 mt-6">
             {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
