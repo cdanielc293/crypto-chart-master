@@ -25,7 +25,7 @@ export interface WidgetDefinition {
   previewColor: string;
 }
 
-export type WidgetCategory = 'charts' | 'analytics' | 'social' | 'trading' | 'data';
+export type WidgetCategory = 'charts' | 'analytics' | 'social' | 'trading' | 'data' | 'media';
 
 export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string }[] = [
   { id: 'charts', label: 'Charts' },
@@ -33,6 +33,7 @@ export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string }[] = [
   { id: 'social', label: 'Sentiment' },
   { id: 'trading', label: 'Trading' },
   { id: 'data', label: 'Data Feeds' },
+  { id: 'media', label: 'Media & Social' },
 ];
 
 export const WIDGET_REGISTRY: WidgetDefinition[] = [
