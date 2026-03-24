@@ -1834,6 +1834,7 @@ const RENDERERS: Record<string, Renderer> = {
   anchoredvwap: renderAnchoredVwap,
   fixedrangevolume: renderFixedRangeVolume,
   anchoredvolume: renderFixedRangeVolume,
+  projection: renderProjection,
 };
 
 
