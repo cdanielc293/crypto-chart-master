@@ -475,3 +475,83 @@ export default function Settings() {
     </div>
   );
 }
+
+function SupportSection({ user }: { user: any }) {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSend = async () => {
+    if (!subject.trim() || !message.trim()) {
+      toast.error('נא למלא נושא והודעה');
+      return;
+    }
+    setSending(true);
+    try {
+      const { error } = await supabase.from('support_messages').insert({
+        user_id: user.id,
+        user_email: user.email,
+        subject: subject.trim(),
+        message: message.trim(),
+      });
+      if (error) throw error;
+      toast.success('ההודעה נשלחה! נחזור אליך בהקדם 🙏');
+      setSubject('');
+      setMessage('');
+      setSent(true);
+    } catch {
+      toast.error('שגיאה בשליחה');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-6">צור קשר עם התמיכה</h2>
+      {sent ? (
+        <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-8 text-center">
+          <p className="text-green-400 font-medium mb-2">ההודעה נשלחה בהצלחה! ✅</p>
+          <p className="text-white/40 text-sm">נחזור אליך בהקדם האפשרי.</p>
+          <button
+            onClick={() => setSent(false)}
+            className="mt-4 text-sm text-cyan-400 hover:underline"
+          >
+            שלח הודעה נוספת
+          </button>
+        </div>
+      ) : (
+        <div className="max-w-lg space-y-4" dir="rtl">
+          <div>
+            <label className="text-xs text-white/40 mb-1 block">נושא</label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="במה אפשר לעזור?"
+              className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none focus:ring-1 focus:ring-cyan-400/30"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-white/40 mb-1 block">הודעה</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="תאר את הבעיה או השאלה שלך..."
+              rows={5}
+              className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 outline-none resize-none focus:ring-1 focus:ring-cyan-400/30"
+            />
+          </div>
+          <Button
+            onClick={handleSend}
+            disabled={sending}
+            className="bg-cyan-500 hover:bg-cyan-600 text-white"
+          >
+            {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            שלח הודעה
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
