@@ -60,6 +60,17 @@ type Tab = typeof TABS[number];
 const LINE_TOOLS = ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle', 'horizontalray'];
 const SHAPE_TOOLS = ['triangle', 'trianglepattern', 'rectangle', 'rotatedrectangle', 'circle', 'ellipse', 'xabcd', 'cypher', 'abcd', 'headshoulders', 'threedrives'];
 const VERTICAL_TOOLS = ['verticalline'];
+const CHANNEL_TOOLS = ['parallelchannel'];
+
+const DEFAULT_CHANNEL_LEVELS = [
+  { value: -0.25, visible: false, color: '#2962ff', style: 'solid' },
+  { value: 0,     visible: true,  color: '#2962ff', style: 'solid' },
+  { value: 0.25,  visible: false, color: '#2962ff', style: 'solid' },
+  { value: 0.5,   visible: true,  color: '#2962ff', style: 'dashed' },
+  { value: 0.75,  visible: false, color: '#2962ff', style: 'solid' },
+  { value: 1,     visible: true,  color: '#2962ff', style: 'solid' },
+  { value: 1.25,  visible: false, color: '#2962ff', style: 'solid' },
+];
 
 interface Props {
   open: boolean;
