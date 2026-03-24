@@ -717,10 +717,14 @@ export default function Watchlist() {
         <div className="flex-1 overflow-y-auto">
           {activeList?.sections.map(section => (
             <div key={section.id}>
-              {/* Section header */}
+              {/* Section header - drop zone */}
               <div
-                className="flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-toolbar-hover group"
+                className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-toolbar-hover group ${
+                  dragOverSection === section.id ? 'bg-primary/10 border-b-2 border-primary' : ''
+                }`}
                 onClick={() => toggleSectionCollapse(section.id)}
+                onDragOver={(e) => handleDragOverSection(e, section.id)}
+                onDrop={handleDrop}
               >
                 {section.collapsed ? <ChevronRight size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
                 {renamingSectionId === section.id ? (
