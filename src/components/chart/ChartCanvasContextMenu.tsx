@@ -1,4 +1,4 @@
-import { RotateCcw, Settings, Trash2, BarChart3 } from 'lucide-react';
+import { RotateCcw, Settings, Trash2, BarChart3, Pencil } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -16,7 +16,9 @@ interface Props {
   onOpenSettings: () => void;
   onOpenSymbolSettings: () => void;
   onRemoveIndicators: () => void;
+  onRemoveDrawings: () => void;
   indicatorCount: number;
+  drawingCount: number;
   chartTypeLabel?: string;
 }
 
@@ -27,7 +29,9 @@ export default function ChartCanvasContextMenu({
   onOpenSettings,
   onOpenSymbolSettings,
   onRemoveIndicators,
+  onRemoveDrawings,
   indicatorCount,
+  drawingCount,
   chartTypeLabel,
 }: Props) {
   return (
@@ -65,6 +69,15 @@ export default function ChartCanvasContextMenu({
         >
           <Trash2 size={14} className="text-muted-foreground" />
           {indicatorCount > 0 ? `Remove ${indicatorCount} indicator${indicatorCount > 1 ? 's' : ''}` : 'No indicators to remove'}
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          onClick={onRemoveDrawings}
+          disabled={drawingCount === 0}
+          className="gap-2"
+        >
+          <Pencil size={14} className="text-muted-foreground" />
+          {drawingCount > 0 ? `Remove ${drawingCount} drawing${drawingCount > 1 ? 's' : ''}` : 'No drawings to remove'}
         </ContextMenuItem>
 
         <ContextMenuSeparator />

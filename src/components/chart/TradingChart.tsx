@@ -591,7 +591,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     : ctx.updateIndicatorConfig;
 
   const {
-    interval, chartType, drawingTool, drawings,
+    interval, chartType, drawingTool, drawings, removeDrawing,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = ctx;
@@ -2263,7 +2263,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           onOpenSettings={() => { setSettingsDefaultTab(undefined); setSettingsOpen(true); }}
           onOpenSymbolSettings={() => { setSettingsDefaultTab('symbol'); setSettingsOpen(true); }}
           onRemoveIndicators={removeAllIndicators}
+          onRemoveDrawings={() => drawings.forEach(d => removeDrawing(d.id))}
           indicatorCount={indicators.length}
+          drawingCount={drawings.length}
           chartTypeLabel={chartType === 'point_figure' ? 'Point & Figure' : chartType === 'heikin_ashi' ? 'Heikin Ashi' : chartType === 'renko' ? 'Renko' : chartType === 'kagi' ? 'Kagi' : chartType === 'line_break' ? 'Line Break' : 'Candles'}
         >
           <div ref={containerRef} className="flex-1 min-w-0 relative overflow-hidden">
