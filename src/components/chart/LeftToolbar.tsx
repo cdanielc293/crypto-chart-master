@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChart } from '@/context/ChartContext';
+import { getStarredTools, toggleStarredTool } from '@/lib/drawingToolCategories';
 import type { DrawingTool } from '@/types/chart';
 import {
   Crosshair, MousePointer2, CircleDot, ArrowUpRight, Presentation,
