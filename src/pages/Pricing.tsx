@@ -89,10 +89,10 @@ const tiers = [
 ];
 
 const comparisonRows = [
-  { feature: 'Price', vizion: '50% Lower', competition: 'Industry Standard' },
-  { feature: 'P&F Charts', vizion: 'Included in Elite', competition: 'Locked in Premium' },
-  { feature: 'Backtesting', vizion: 'High-Performance Engine', competition: 'Standard Scripting' },
-  { feature: 'UX/UI', vizion: 'Modern & Ultra-Fast', competition: 'Heavy & Cluttered' },
+  { feature: 'Price', vizionx: '50% Lower', competition: 'Industry Standard' },
+  { feature: 'P&F Charts', vizionx: 'Included in Elite', competition: 'Locked in Premium' },
+  { feature: 'Backtesting', vizionx: 'High-Performance Engine', competition: 'Standard Scripting' },
+  { feature: 'UX/UI', vizionx: 'Modern & Ultra-Fast', competition: 'Heavy & Cluttered' },
 ];
 
 const faqs = [
@@ -316,7 +316,7 @@ export default function Pricing() {
                 className={`grid grid-cols-3 ${i < comparisonRows.length - 1 ? 'border-b border-white/5' : ''}`}
               >
                 <div className="p-4 text-sm text-white/70">{row.feature}</div>
-                <div className="p-4 text-sm text-cyan-300 font-medium">{row.vizion}</div>
+                <div className="p-4 text-sm text-cyan-300 font-medium">{row.vizionx}</div>
                 <div className="p-4 text-sm text-white/25">{row.competition}</div>
               </div>
             ))}
