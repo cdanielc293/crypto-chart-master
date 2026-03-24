@@ -290,6 +290,7 @@ export default function Settings() {
                   }`}>
                     {planLabels[plan] || plan}
                   </span>
+                  <p className="text-[10px] text-cyan-400/60 mt-0.5 font-medium">Free for Beta Version</p>
                 </div>
               </section>
 
