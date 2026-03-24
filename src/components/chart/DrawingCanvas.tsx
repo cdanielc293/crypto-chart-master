@@ -30,7 +30,7 @@ function toDrawing(d: ChartDrawing): Drawing {
 }
 
 export default function DrawingCanvas({ chart, series, candles, containerRef, magnetMode, priceScaleWidth = 55 }: Props) {
-  const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId } = useChart();
+  const { drawingTool, setDrawingTool, drawings, addDrawing, updateDrawing, removeDrawing, selectedDrawingId, setSelectedDrawingId, selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing } = useChart();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
 
@@ -44,6 +44,9 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const isBrushingRef = useRef(false);
   const brushDrawingIdRef = useRef<string | null>(null);
   const shiftKeyRef = useRef(false);
+  const ctrlKeyRef = useRef(false);
+  const areaSelectStartRef = useRef<{ x: number; y: number } | null>(null);
+  const areaSelectEndRef = useRef<{ x: number; y: number } | null>(null);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
@@ -158,21 +161,51 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     for (const d of chartDrawings) {
       renderDrawing(ctx, d, coord, w, h);
-      if (d.id === selectedDrawingId && d.selected) {
+      const isSelected = d.id === selectedDrawingId || selectedDrawingIds.has(d.id);
+      if (isSelected) {
         const anchors = getAnchors(d, coord);
         renderAnchors(ctx, anchors);
-        if (anchors.length > 0 && !isDraggingRef.current) {
-          const minY = Math.min(...anchors.map(a => a.y));
-          const avgX = anchors.reduce((s, a) => s + a.x, 0) / anchors.length;
-            const next = { x: avgX, y: Math.max(minY - 45, 5) };
-            setToolbarPos(prev => {
-              if (prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5) {
-                return prev;
-              }
-              return next;
-            });
+      }
+    }
+
+    // Toolbar position for primary selected or multi-select
+    const allSelectedIds = new Set(selectedDrawingIds);
+    if (selectedDrawingId) allSelectedIds.add(selectedDrawingId);
+    if (allSelectedIds.size > 0 && !isDraggingRef.current) {
+      const allAnchors: { x: number; y: number }[] = [];
+      for (const d of chartDrawings) {
+        if (allSelectedIds.has(d.id)) {
+          const anchors = getAnchors(d, coord);
+          allAnchors.push(...anchors);
         }
       }
+      if (allAnchors.length > 0) {
+        const minY = Math.min(...allAnchors.map(a => a.y));
+        const avgX = allAnchors.reduce((s, a) => s + a.x, 0) / allAnchors.length;
+        const next = { x: avgX, y: Math.max(minY - 45, 5) };
+        setToolbarPos(prev => {
+          if (prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5) return prev;
+          return next;
+        });
+      }
+    }
+
+    // Area selection rectangle
+    if (areaSelectStartRef.current && areaSelectEndRef.current) {
+      const s = areaSelectStartRef.current;
+      const e = areaSelectEndRef.current;
+      ctx.save();
+      ctx.strokeStyle = '#2962ff';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.fillStyle = 'rgba(41, 98, 255, 0.08)';
+      const rx = Math.min(s.x, e.x);
+      const ry = Math.min(s.y, e.y);
+      const rw = Math.abs(e.x - s.x);
+      const rh = Math.abs(e.y - s.y);
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+      ctx.restore();
     }
 
     // Preview
@@ -205,7 +238,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
     }
-  }, [chartDrawings, selectedDrawingId, drawingTool, getCoordHelper, containerRef]);
+  }, [chartDrawings, selectedDrawingId, selectedDrawingIds, drawingTool, getCoordHelper, containerRef]);
 
   useEffect(() => {
     let running = true;
@@ -239,8 +272,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const h = container?.clientHeight || 0;
 
     if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
-      // Check anchor of selected
-      if (selectedDrawingId) {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      ctrlKeyRef.current = isCtrl;
+
+      // Check anchor of selected (single select only)
+      if (selectedDrawingId && !isCtrl) {
         const sel = chartDrawings.find(d => d.id === selectedDrawingId);
         if (sel && !sel.locked) {
           const anchorIdx = hitTestAnchors(sel, mx, my, coord);
@@ -260,18 +296,29 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       for (let i = chartDrawings.length - 1; i >= 0; i--) {
         const d = chartDrawings[i];
         if (hitTestDrawing(d, mx, my, coord, w, h)) {
-          setSelectedDrawingId(d.id);
-          if (!d.locked) {
-            isDraggingRef.current = true;
-            dragTypeRef.current = 'move';
-            dragStartRef.current = { mx, my, points: d.points.map(p => ({ ...p })) };
+          if (isCtrl) {
+            // Ctrl+Click: toggle in multi-select
+            toggleSelectedDrawing(d.id);
+            if (selectedDrawingId === d.id) {
+              setSelectedDrawingId(null);
+            } else if (!selectedDrawingId) {
+              setSelectedDrawingId(d.id);
+            }
+          } else {
+            // Normal click: single select (clear multi)
+            setSelectedDrawingIds(new Set());
+            setSelectedDrawingId(d.id);
+            if (!d.locked) {
+              isDraggingRef.current = true;
+              dragTypeRef.current = 'move';
+              dragStartRef.current = { mx, my, points: d.points.map(p => ({ ...p })) };
+            }
           }
-          // Mark selected
+          // Mark selected state on drawing
           for (const dd of drawings) {
-            if (dd.id === d.id && !dd.selected) {
-              updateDrawing(dd.id, { ...dd, selected: true });
-            } else if (dd.id !== d.id && dd.selected) {
-              updateDrawing(dd.id, { ...dd, selected: false });
+            const shouldSelect = dd.id === d.id || (isCtrl && selectedDrawingIds.has(dd.id));
+            if (dd.selected !== shouldSelect) {
+              updateDrawing(dd.id, { ...dd, selected: shouldSelect });
             }
           }
           e.preventDefault();
@@ -280,13 +327,26 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
 
-      // Deselect
+      // Clicked empty area - start area selection or deselect
+      if (!isCtrl) {
+        // Start area selection
+        areaSelectStartRef.current = { x: mx, y: my };
+        areaSelectEndRef.current = { x: mx, y: my };
+      }
+
+      // Deselect all
       if (selectedDrawingId) {
         const prev = drawings.find(d => d.id === selectedDrawingId);
         if (prev) updateDrawing(prev.id, { ...prev, selected: false });
         setSelectedDrawingId(null);
-        setToolbarPos(null);
       }
+      if (selectedDrawingIds.size > 0) {
+        for (const dd of drawings) {
+          if (dd.selected) updateDrawing(dd.id, { ...dd, selected: false });
+        }
+        setSelectedDrawingIds(new Set());
+      }
+      setToolbarPos(null);
       return;
     }
 
@@ -346,7 +406,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     e.preventDefault();
     e.stopPropagation();
-  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, containerRef]);
+  }, [drawingTool, drawings, chartDrawings, selectedDrawingId, selectedDrawingIds, getMouseCoords, getCoordHelper, addDrawing, updateDrawing, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, toggleSelectedDrawing, containerRef, snapAngle45]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const coords = getMouseCoords(e as unknown as MouseEvent);
@@ -354,6 +414,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const { mx, my, time, price } = coords;
     const coord = getCoordHelper();
     if (!coord) return;
+
+    // Area selection
+    if (areaSelectStartRef.current) {
+      areaSelectEndRef.current = { x: mx, y: my };
+      return;
+    }
 
     // Brush
     if (isBrushingRef.current && brushDrawingIdRef.current) {
@@ -437,16 +503,54 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, updateDrawing, containerRef]);
 
   const handleMouseUp = useCallback(() => {
+    // Finalize area selection
+    if (areaSelectStartRef.current && areaSelectEndRef.current) {
+      const s = areaSelectStartRef.current;
+      const e = areaSelectEndRef.current;
+      const minX = Math.min(s.x, e.x);
+      const maxX = Math.max(s.x, e.x);
+      const minY = Math.min(s.y, e.y);
+      const maxY = Math.max(s.y, e.y);
+
+      // Only select if dragged more than 5px (not just a click)
+      if (Math.abs(e.x - s.x) > 5 || Math.abs(e.y - s.y) > 5) {
+        const coord = getCoordHelper();
+        if (coord) {
+          const newSelected = new Set<string>();
+          for (const d of chartDrawings) {
+            const anchors = getAnchors(d, coord);
+            const anyInside = anchors.some(a => a.x >= minX && a.x <= maxX && a.y >= minY && a.y <= maxY);
+            if (anyInside) {
+              newSelected.add(d.id);
+            }
+          }
+          if (newSelected.size > 0) {
+            setSelectedDrawingIds(newSelected);
+            const firstId = [...newSelected][0];
+            setSelectedDrawingId(firstId);
+            for (const dd of drawings) {
+              const shouldSelect = newSelected.has(dd.id);
+              if (dd.selected !== shouldSelect) {
+                updateDrawing(dd.id, { ...dd, selected: shouldSelect });
+              }
+            }
+          }
+        }
+      }
+
+      areaSelectStartRef.current = null;
+      areaSelectEndRef.current = null;
+    }
+
     isDraggingRef.current = false;
     dragStartRef.current = null;
     dragAnchorIdxRef.current = -1;
     if (isBrushingRef.current) {
       isBrushingRef.current = false;
       brushDrawingIdRef.current = null;
-      // Auto-switch back to cursor after brush/highlighter
       setDrawingTool('cursor');
     }
-  }, []);
+  }, [chartDrawings, drawings, getCoordHelper, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, setDrawingTool]);
 
   const handleDoubleClick = useCallback(() => {
     const toolPoints = getToolPointCount(drawingTool);
@@ -473,13 +577,19 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       shiftKeyRef.current = e.shiftKey;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
-        // Don't delete if focused on an input
+      ctrlKeyRef.current = e.ctrlKey || e.metaKey;
+      if ((e.key === 'Delete' || e.key === 'Backspace')) {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-        const sel = drawings.find(d => d.id === selectedDrawingId);
-        if (sel && !sel.locked) {
-          removeDrawing(selectedDrawingId);
+        // Delete all selected (multi + single)
+        const allSelected = new Set(selectedDrawingIds);
+        if (selectedDrawingId) allSelected.add(selectedDrawingId);
+        if (allSelected.size > 0) {
+          for (const id of allSelected) {
+            const d = drawings.find(dd => dd.id === id);
+            if (d && !d.locked) removeDrawing(id);
+          }
           setSelectedDrawingId(null);
+          setSelectedDrawingIds(new Set());
           setToolbarPos(null);
         }
       }
@@ -488,19 +598,21 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           pendingPointsRef.current = [];
           previewPointRef.current = null;
         }
-        if (selectedDrawingId) {
-          const sel = drawings.find(d => d.id === selectedDrawingId);
-          if (sel) updateDrawing(sel.id, { ...sel, selected: false });
+        if (selectedDrawingId || selectedDrawingIds.size > 0) {
+          for (const dd of drawings) {
+            if (dd.selected) updateDrawing(dd.id, { ...dd, selected: false });
+          }
           setSelectedDrawingId(null);
+          setSelectedDrawingIds(new Set());
           setToolbarPos(null);
         }
       }
     };
-    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; };
+    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; ctrlKeyRef.current = e.ctrlKey || e.metaKey; };
     window.addEventListener('keydown', handler);
     window.addEventListener('keyup', upHandler);
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
-  }, [selectedDrawingId, drawings, removeDrawing, setSelectedDrawingId, updateDrawing]);
+  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing]);
 
   useEffect(() => {
     pendingPointsRef.current = [];
@@ -560,7 +672,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     };
   }, [isCursorMode, selectedDrawingId, chartDrawings, getCoordHelper, containerRef]);
 
-  const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || isHoveringDrawing;
+  const shouldCapturePointer = !isCursorMode || selectedDrawingId !== null || selectedDrawingIds.size > 0 || isHoveringDrawing;
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     const coord = getCoordHelper();
@@ -601,33 +713,46 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      {selectedDrawingId && toolbarPos && (
+      {(selectedDrawingId || selectedDrawingIds.size > 0) && toolbarPos && (
         <FloatingToolbar
           x={toolbarPos.x}
           y={toolbarPos.y}
-          drawing={drawings.find(d => d.id === selectedDrawingId) || null}
+          drawing={selectedDrawingId ? drawings.find(d => d.id === selectedDrawingId) || null : null}
+          selectedCount={Math.max(selectedDrawingIds.size, selectedDrawingId ? 1 : 0)}
           onUpdate={(updates) => {
-            const d = drawings.find(dd => dd.id === selectedDrawingId);
-            if (d) updateDrawing(d.id, { ...d, ...updates });
+            // Apply to all selected drawings
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) {
+              const d = drawings.find(dd => dd.id === id);
+              if (d) updateDrawing(d.id, { ...d, ...updates });
+            }
           }}
           onClone={() => {
-            const d = drawings.find(dd => dd.id === selectedDrawingId);
-            if (d) {
-              const clone: Drawing = {
-                ...d,
-                id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                points: d.points.map(p => ({ ...p })),
-                selected: false,
-              };
-              addDrawing(clone);
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) {
+              const d = drawings.find(dd => dd.id === id);
+              if (d) {
+                const clone: Drawing = {
+                  ...d,
+                  id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                  points: d.points.map(p => ({ ...p })),
+                  selected: false,
+                };
+                addDrawing(clone);
+              }
             }
           }}
           onDelete={() => {
-            removeDrawing(selectedDrawingId);
+            const allIds = new Set(selectedDrawingIds);
+            if (selectedDrawingId) allIds.add(selectedDrawingId);
+            for (const id of allIds) removeDrawing(id);
             setSelectedDrawingId(null);
+            setSelectedDrawingIds(new Set());
             setToolbarPos(null);
           }}
-          onOpenSettings={() => setSettingsDrawingId(selectedDrawingId)}
+          onOpenSettings={() => { if (selectedDrawingId) setSettingsDrawingId(selectedDrawingId); }}
         />
       )}
       <DrawingContextMenu

@@ -79,6 +79,9 @@ interface ChartContextType {
   removeDrawing: (id: string) => void;
   selectedDrawingId: string | null;
   setSelectedDrawingId: (id: string | null) => void;
+  selectedDrawingIds: Set<string>;
+  setSelectedDrawingIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  toggleSelectedDrawing: (id: string) => void;
   indicators: string[];
   addIndicator: (definitionId: string) => void;
   removeIndicator: (instanceId: string) => void;
@@ -184,6 +187,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [selectedDrawingIds, setSelectedDrawingIds] = useState<Set<string>>(new Set());
   const [indicators, setIndicators] = useState<string[]>([]);
   const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
   const [indicatorConfigs, setIndicatorConfigs] = useState<Map<string, IndicatorInstance>>(new Map());
@@ -197,6 +201,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSymbolRaw(s);
     localStorage.setItem('lastSymbol', s);
     setSelectedDrawingId(null);
+    setSelectedDrawingIds(new Set());
   }, []);
 
   // Persistence state for auto-save
@@ -311,6 +316,21 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const removeDrawing = useCallback((id: string) => {
     setDrawings(prev => prev.filter(d => d.id !== id));
     setSelectedDrawingId(prev => prev === id ? null : prev);
+    setSelectedDrawingIds(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectedDrawing = useCallback((id: string) => {
+    setSelectedDrawingIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
   const addIndicator = useCallback((definitionId: string) => {
@@ -440,6 +460,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       addToWatchlist, removeFromWatchlist,
       drawings, addDrawing, updateDrawing, removeDrawing,
       selectedDrawingId, setSelectedDrawingId,
+      selectedDrawingIds, setSelectedDrawingIds, toggleSelectedDrawing,
       indicators, addIndicator, removeIndicator, toggleIndicator,
       hiddenIndicators, toggleHiddenIndicator,
       indicatorConfigs, updateIndicatorConfig,

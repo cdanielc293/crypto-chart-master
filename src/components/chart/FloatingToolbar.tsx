@@ -14,13 +14,14 @@ interface Props {
   x: number;
   y: number;
   drawing: Drawing | null;
+  selectedCount?: number;
   onUpdate: (updates: Partial<Drawing>) => void;
   onClone: () => void;
   onDelete: () => void;
   onOpenSettings?: () => void;
 }
 
-export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
+export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
   const [showColors, setShowColors] = useState(false);
   const [showLineStyles, setShowLineStyles] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -63,6 +64,13 @@ export default function FloatingToolbar({ x, y, drawing, onUpdate, onClone, onDe
       <div className="w-6 h-7 flex items-center justify-center text-muted-foreground cursor-grab">
         <GripVertical size={12} />
       </div>
+
+      {/* Multi-select count badge */}
+      {selectedCount > 1 && (
+        <span className="text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-medium min-w-[18px] text-center">
+          {selectedCount}
+        </span>
+      )}
 
       {/* Color picker */}
       <div className="relative">
