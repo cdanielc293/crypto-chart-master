@@ -10,6 +10,8 @@ import { useChart } from '@/context/ChartContext';
 import type { Drawing } from '@/types/chart';
 import { sanitizeHexColor } from '@/types/chartSettings';
 import { getKlines, getOlderKlinesFromCache } from '@/lib/klineCache';
+import { getHistoricalBarsLimit } from '@/lib/planLimits';
+import { useProfile } from '@/hooks/useProfile';
 import { getBinanceSourceInterval, getIntervalDurationMs, shouldAggregateInterval, toIntervalBucketStart } from '@/lib/chartIntervals';
 import { hitTestDrawing } from '@/lib/drawing/hit-testing';
 import DrawingCanvas from './DrawingCanvas';
@@ -568,6 +570,8 @@ interface TradingChartProps {
 
 export default function TradingChart({ panelIndex, overrideSymbol, compact }: TradingChartProps = {}) {
   const ctx = useChart();
+  const { data: profile } = useProfile();
+  const maxBars = getHistoricalBarsLimit(profile?.plan);
   const symbol = overrideSymbol || ctx.symbol;
   const isMultiPanel = panelIndex !== undefined && ctx.gridLayout.count > 1;
 
@@ -611,6 +615,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
+  const [barsLimitReached, setBarsLimitReached] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1276,7 +1281,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           ? rawCandlesRef.current
           : (cachedState?.candles ?? []);
         const nextCandles = mergeCandlesByTime(baseCandles, candles);
-        const finalCandles = nextCandles.length > 0 ? nextCandles : candles;
+        let finalCandles = nextCandles.length > 0 ? nextCandles : candles;
+
+        // Enforce plan-based historical bars limit
+        if (finalCandles.length > maxBars) {
+          finalCandles = finalCandles.slice(finalCandles.length - maxBars);
+          setBarsLimitReached(true);
+        } else {
+          setBarsLimitReached(false);
+        }
+
         const finalVolumes = finalCandles.map(c => ({
           time: c.time,
           value: c.volume,
@@ -1285,7 +1299,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawDataRef.current = finalCandles.length > 0 ? finalCandles : rawCandlesRef.current;
         rawCandlesRef.current = finalCandles;
         allCandlesRef.current = finalCandles;
-        hasMoreOlderRef.current = cachedState?.hasMoreOlder ?? true;
+        hasMoreOlderRef.current = (cachedState?.hasMoreOlder ?? true) && finalCandles.length < maxBars;
         activeDataKeyRef.current = cacheKey;
 
         let renderCandles = finalCandles;
@@ -1405,12 +1419,24 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
 
+      // Enforce plan-based historical bars limit
+      const currentBarCount = rawCandlesRef.current.length;
+      if (currentBarCount >= maxBars) {
+        setBarsLimitReached(true);
+        hasMoreOlderRef.current = false;
+        return;
+      }
+
       const oldestLoaded = rawCandlesRef.current[0];
       if (!oldestLoaded) return;
 
+      // Only request up to the remaining quota
+      const remaining = maxBars - currentBarCount;
+      const fetchLimit = Math.min(2500, remaining);
+
       loadingOlderRef.current = true;
       try {
-        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, 2500);
+        const older = await getOlderKlinesFromCache(symbol, interval, Number(oldestLoaded.time) - tzShiftSeconds, fetchLimit);
         if (cancelled) return;
         if (activeDataKeyRef.current !== cacheKey) return;
 
@@ -1430,7 +1456,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         }));
 
         const existing = rawCandlesRef.current;
-        const merged = mergeCandlesByTime(olderCandles, existing);
+        let merged = mergeCandlesByTime(olderCandles, existing);
+
+        // Trim to plan limit (keep most recent bars)
+        if (merged.length > maxBars) {
+          merged = merged.slice(merged.length - maxBars);
+          setBarsLimitReached(true);
+          hasMoreOlderRef.current = false;
+        }
 
         const volumes = merged.map(c => ({
           time: c.time,
@@ -1443,7 +1476,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawCandlesRef.current = merged;
         allCandlesRef.current = merged;
         rawDataRef.current = merged;
-        persistSeriesCache(cacheKey, merged, true);
+        persistSeriesCache(cacheKey, merged, hasMoreOlderRef.current);
 
         const currentRange = chart.timeScale().getVisibleLogicalRange();
         setChartData(series, merged, volumes, volSeries);
@@ -1465,7 +1498,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       cancelled = true;
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(loadOlderBars);
     };
-  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache, maxBars]);
 
   // ─── WebSocket (separate from data fetch, respects replay) ───
   useEffect(() => {
@@ -2247,6 +2280,22 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       {watermarkText && (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
           <span className="text-6xl font-semibold tracking-widest text-muted-foreground/20">{watermarkText}</span>
+        </div>
+      )}
+
+      {/* Historical bars limit overlay */}
+      {barsLimitReached && (
+        <div className="absolute top-1/2 left-4 z-[15] -translate-y-1/2 max-w-[220px] rounded-lg border border-chart-border bg-toolbar-bg/95 backdrop-blur-sm px-4 py-3 shadow-lg">
+          <p className="text-xs font-semibold text-foreground mb-1">Historical limit reached</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
+            Your plan allows up to {maxBars.toLocaleString()} historical bars. Upgrade for more history.
+          </p>
+          <a
+            href="/pricing"
+            className="inline-block text-[10px] font-medium text-primary hover:underline"
+          >
+            Upgrade Plan →
+          </a>
         </div>
       )}
 
