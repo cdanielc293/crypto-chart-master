@@ -45,6 +45,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const { data: stats, isLoading: statsLoading } = useAdminStats();
+  const { data: activityStats } = useAdminActivityStats();
   const { data: profiles, isLoading: profilesLoading } = useAdminProfiles();
   const { data: tickets, isLoading: ticketsLoading } = useAdminTickets();
   const { data: support, isLoading: supportLoading } = useAdminSupport();
