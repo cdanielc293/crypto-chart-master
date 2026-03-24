@@ -161,21 +161,51 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
 
     for (const d of chartDrawings) {
       renderDrawing(ctx, d, coord, w, h);
-      if (d.id === selectedDrawingId && d.selected) {
+      const isSelected = d.id === selectedDrawingId || selectedDrawingIds.has(d.id);
+      if (isSelected) {
         const anchors = getAnchors(d, coord);
         renderAnchors(ctx, anchors);
-        if (anchors.length > 0 && !isDraggingRef.current) {
-          const minY = Math.min(...anchors.map(a => a.y));
-          const avgX = anchors.reduce((s, a) => s + a.x, 0) / anchors.length;
-            const next = { x: avgX, y: Math.max(minY - 45, 5) };
-            setToolbarPos(prev => {
-              if (prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5) {
-                return prev;
-              }
-              return next;
-            });
+      }
+    }
+
+    // Toolbar position for primary selected or multi-select
+    const allSelectedIds = new Set(selectedDrawingIds);
+    if (selectedDrawingId) allSelectedIds.add(selectedDrawingId);
+    if (allSelectedIds.size > 0 && !isDraggingRef.current) {
+      const allAnchors: { x: number; y: number }[] = [];
+      for (const d of chartDrawings) {
+        if (allSelectedIds.has(d.id)) {
+          const anchors = getAnchors(d, coord);
+          allAnchors.push(...anchors);
         }
       }
+      if (allAnchors.length > 0) {
+        const minY = Math.min(...allAnchors.map(a => a.y));
+        const avgX = allAnchors.reduce((s, a) => s + a.x, 0) / allAnchors.length;
+        const next = { x: avgX, y: Math.max(minY - 45, 5) };
+        setToolbarPos(prev => {
+          if (prev && Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5) return prev;
+          return next;
+        });
+      }
+    }
+
+    // Area selection rectangle
+    if (areaSelectStartRef.current && areaSelectEndRef.current) {
+      const s = areaSelectStartRef.current;
+      const e = areaSelectEndRef.current;
+      ctx.save();
+      ctx.strokeStyle = '#2962ff';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.fillStyle = 'rgba(41, 98, 255, 0.08)';
+      const rx = Math.min(s.x, e.x);
+      const ry = Math.min(s.y, e.y);
+      const rw = Math.abs(e.x - s.x);
+      const rh = Math.abs(e.y - s.y);
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+      ctx.restore();
     }
 
     // Preview
