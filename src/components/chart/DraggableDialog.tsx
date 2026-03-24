@@ -130,9 +130,9 @@ export default function DraggableDialog({
       };
 
   return (
-    <div className={`fixed inset-0 ${zClass}`} style={{ pointerEvents: backdrop ? 'auto' : 'none' }}>
+    <div className={`fixed inset-0 ${zClass}`} style={{ pointerEvents: (backdrop || isDragging) ? 'auto' : 'none' }}>
       {/* Backdrop */}
-      {backdrop && (
+      {backdrop && !isDragging && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
       )}
 
