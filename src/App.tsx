@@ -22,6 +22,9 @@ import Accessibility from "./pages/Accessibility.tsx";
 import SecurityPage from "./pages/SecurityPage.tsx";
 import BugBounty from "./pages/BugBounty.tsx";
 import Status from "./pages/Status.tsx";
+import DMCA from "./pages/DMCA.tsx";
+import AcceptableUse from "./pages/AcceptableUse.tsx";
+import RefundPolicy from "./pages/RefundPolicy.tsx";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +47,9 @@ const App = () => (
             <Route path="/security" element={<SecurityPage />} />
             <Route path="/bug-bounty" element={<BugBounty />} />
             <Route path="/status" element={<Status />} />
+            <Route path="/dmca" element={<DMCA />} />
+            <Route path="/acceptable-use" element={<AcceptableUse />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/chart" element={
               <ProtectedRoute>
