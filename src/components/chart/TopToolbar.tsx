@@ -125,7 +125,7 @@ export default function TopToolbar() {
         >
           <Search size={16} className="text-muted-foreground" />
           <span>{pair}</span>
-          <span className="text-muted-foreground text-xs">· Binance</span>
+          <span className="text-muted-foreground text-xs">· {parsed.exchangeLabel}</span>
         </button>
 
         <div className="w-px h-5 bg-chart-border mx-1" />
