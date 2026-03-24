@@ -201,6 +201,7 @@ export default function Admin() {
                               ))}
                             </select>
                           </td>
+                          <td className="px-4 py-3 text-white/40 text-xs">{formatDate(p.created_at)}</td>
                           <td className="px-4 py-3">
                             {p.is_blocked ? (
                               <span className="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">Blocked</span>
