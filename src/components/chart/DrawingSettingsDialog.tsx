@@ -23,6 +23,7 @@ type Tab = typeof TABS[number];
 // Tools that support trendline-style features
 const LINE_TOOLS = ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle', 'horizontalray'];
 const SHAPE_TOOLS = ['triangle', 'trianglepattern', 'rectangle', 'rotatedrectangle', 'circle', 'ellipse'];
+const VERTICAL_TOOLS = ['verticalline'];
 
 interface Props {
   open: boolean;
@@ -74,6 +75,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   const toolLabel = drawing.type.charAt(0).toUpperCase() + drawing.type.slice(1).replace(/([A-Z])/g, ' $1');
   const isLineTool = LINE_TOOLS.includes(drawing.type);
   const isShapeTool = SHAPE_TOOLS.includes(drawing.type);
+  const isVerticalTool = VERTICAL_TOOLS.includes(drawing.type);
   const updateLocal = (key: string, value: any) => {
     setLocalProps(prev => ({ ...prev, [key]: value }));
   };
@@ -121,6 +123,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             updateLocal={updateLocal}
             isLineTool={isLineTool}
             isShapeTool={isShapeTool}
+            isVerticalTool={isVerticalTool}
           />
         )}
         {tab === 'Text' && (
@@ -149,12 +152,13 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 }
 
 // ─── Style Tab ───
-function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool }: {
+function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool, isVerticalTool }: {
   localColor: string; setLocalColor: (c: string) => void;
   localLineWidth: number; setLocalLineWidth: (w: number) => void;
   localProps: Record<string, any>; updateLocal: (k: string, v: any) => void;
   isLineTool: boolean;
   isShapeTool: boolean;
+  isVerticalTool: boolean;
 }) {
   return (
     <>
@@ -219,19 +223,29 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
           </div>
         </div>
       )}
+      {/* Vertical line specific */}
+      {isVerticalTool && (
+        <div className="space-y-2">
+          <CheckField label="Time label" checked={localProps.timeLabel !== false} onChange={v => updateLocal('timeLabel', v)} />
+        </div>
+      )}
 
-      {/* Extend */}
-      <SelectField
-        label="Extend"
-        value={localProps.extend || 'none'}
-        options={EXTEND_OPTIONS}
-        onChange={v => updateLocal('extend', v)}
-      />
+      {/* Extend (not for vertical) */}
+      {!isVerticalTool && (
+        <SelectField
+          label="Extend"
+          value={localProps.extend || 'none'}
+          options={EXTEND_OPTIONS}
+          onChange={v => updateLocal('extend', v)}
+        />
+      )}
 
-      <div className="space-y-2">
-        <CheckField label="Middle point" checked={!!localProps.middlePoint} onChange={v => updateLocal('middlePoint', v)} />
-        <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
-      </div>
+      {!isVerticalTool && (
+        <div className="space-y-2">
+          <CheckField label="Middle point" checked={!!localProps.middlePoint} onChange={v => updateLocal('middlePoint', v)} />
+          <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
+        </div>
+      )}
 
       {/* Stats section */}
       {isLineTool && (
@@ -357,6 +371,14 @@ function TextTab({ localProps, updateLocal }: { localProps: Record<string, any>;
           </select>
         </div>
       </div>
+
+      {/* Text orientation */}
+      <SelectField
+        label="Text orientation"
+        value={localProps.textOrientation || 'horizontal'}
+        options={[{ value: 'horizontal', label: 'Horizontal' }, { value: 'vertical', label: 'Vertical' }]}
+        onChange={v => updateLocal('textOrientation', v)}
+      />
     </>
   );
 }

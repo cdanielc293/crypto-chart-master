@@ -607,6 +607,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
           setToolbarPos(null);
         }
       }
+      // Alt+V shortcut for vertical line
+      if (e.altKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        setDrawingTool('verticalline');
+      }
     };
     const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; ctrlKeyRef.current = e.ctrlKey || e.metaKey; };
     window.addEventListener('keydown', handler);
