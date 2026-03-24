@@ -131,6 +131,10 @@ export default function TopToolbar() {
             <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-beta-pulse" />
           </span>
         </div>
+        {/* View Mode Toggle - right of logo area */}
+        <div className="absolute left-1/2 top-1/2 -translate-y-1/2 pointer-events-auto" style={{ transform: 'translateX(calc(-50% + 140px)) translateY(-50%)' }}>
+          <ViewModeToggle />
+        </div>
         {/* User Profile - leftmost */}
         <UserProfileMenu />
         <div className="w-px h-5 bg-chart-border mx-1" />
