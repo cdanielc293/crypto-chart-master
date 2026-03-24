@@ -120,6 +120,8 @@ interface ChartContextType {
   removePanelIndicator: (panelIndex: number, instanceId: string) => void;
   togglePanelHiddenIndicator: (panelIndex: number, instanceId: string) => void;
   updatePanelIndicatorConfig: (panelIndex: number, instanceId: string, config: IndicatorInstance) => void;
+  setPanelInterval: (panelIndex: number, interval: Interval) => void;
+  setPanelChartType: (panelIndex: number, chartType: ChartType) => void;
 }
 
 const ChartContext = createContext<ChartContextType | null>(null);
