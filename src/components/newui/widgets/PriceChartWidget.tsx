@@ -51,9 +51,9 @@ const TF_BINANCE: Record<Timeframe, string> = {
 const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number }> = {
   '1m': { label: '1m', intervalSec: 60, count: 500 },
   '5m': { label: '5m', intervalSec: 300, count: 500 },
-  '15m': { label: '15m', intervalSec: 900, count: 400 },
-  '1h': { label: '1H', intervalSec: 3600, count: 400 },
-  '4h': { label: '4H', intervalSec: 14400, count: 300 },
+  '15m': { label: '15m', intervalSec: 900, count: 500 },
+  '1h': { label: '1H', intervalSec: 3600, count: 500 },
+  '4h': { label: '4H', intervalSec: 14400, count: 500 },
   '1D': { label: '1D', intervalSec: 86400, count: 365 },
   '1W': { label: '1W', intervalSec: 604800, count: 200 },
 };
@@ -77,7 +77,7 @@ async function fetchBTCKlines(interval: string, limit: number): Promise<Candle[]
 
 // ─── Formatting ───
 function formatPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(2);
+  if (p >= 10000) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 100) return p.toFixed(2);
   if (p >= 1) return p.toFixed(3);
   return p.toFixed(6);
@@ -86,6 +86,7 @@ function formatPrice(p: number): string {
 function formatTimeLabel(ts: number, intervalSec: number): string {
   const d = new Date(ts * 1000);
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (intervalSec >= 604800) return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
   if (intervalSec >= 86400) return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
   if (intervalSec >= 3600) return `${months[d.getUTCMonth()]} ${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2,'0')}:00`;
   return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
@@ -98,7 +99,7 @@ function formatDateFull(ts: number, intervalSec: number): string {
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
 
-function calculateNiceStep(range: number, availablePx: number, minGapPx = 60): number {
+function calculateNiceStep(range: number, availablePx: number, minGapPx = 70): number {
   const maxTicks = Math.max(2, Math.floor(availablePx / minGapPx));
   const rough = range / maxTicks;
   const mag = Math.pow(10, Math.floor(Math.log10(rough)));
@@ -107,11 +108,13 @@ function calculateNiceStep(range: number, availablePx: number, minGapPx = 60): n
 }
 
 // ─── Constants ───
-const PRICE_W = 110;
-const TIME_H = 32;
-const VOL_RATIO = 0.13;
+const PRICE_W = 90;
+const TIME_H = 28;
+const INFO_BAR_H = 22;
+const VOL_RATIO = 0.12;
 const MIN_CW = 1;
 const MAX_CW = 50;
+const DEFAULT_CW = 8;
 
 // ─── Helper: load from localStorage ───
 function loadConfig(): ChartConfig {
@@ -134,7 +137,7 @@ function loadIndicators(): ActiveIndicator[] {
 export default function PriceChartWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [timeframe, setTimeframe] = useState<Timeframe>('1D');
+  const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -145,10 +148,10 @@ export default function PriceChartWidget() {
   // Refs for render callback (avoids stale closures)
   const dataRef = useRef<Candle[]>([]);
   const stateRef = useRef<ChartState>({
-    offsetX: 0, candleWidth: 8,
+    offsetX: 0, candleWidth: DEFAULT_CW,
     crosshair: null, dragMode: 'none',
     dragStartX: 0, dragStartY: 0,
-    dragStartOffset: 0, dragStartCandleWidth: 8,
+    dragStartOffset: 0, dragStartCandleWidth: DEFAULT_CW,
     priceScaleZoom: 1, dragStartPriceZoom: 1,
     panOffsetY: 0, dragStartPanY: 0,
   });
@@ -156,9 +159,11 @@ export default function PriceChartWidget() {
   const indicatorsRef = useRef(indicators);
   const indResultsRef = useRef<{ id: string; lines: { key: string; points: Point[]; color: string; width: number; style: string }[] }[]>([]);
   const rafRef = useRef(0);
-  const intervalSecRef = useRef(86400);
+  const intervalSecRef = useRef(14400);
   const wsRef = useRef<WebSocket | null>(null);
   const [cursor, setCursor] = useState('crosshair');
+  // For OHLCV info bar
+  const hoverIdxRef = useRef<number>(-1);
 
   // Keep refs in sync
   useEffect(() => { configRef.current = config; localStorage.setItem('newui-chart-config', JSON.stringify(config)); scheduleRender(); }, [config]);
@@ -246,11 +251,9 @@ export default function PriceChartWidget() {
       })
       .catch((err) => {
         console.error('Failed to fetch Binance data:', err);
-        toast.error('Failed to load market data. Using cached data.');
+        toast.error('Failed to load market data.');
         setLoading(false);
       });
-
-    return () => { /* cleanup handled by ws effect */ };
   }, [timeframe, recalcIndicators]);
 
   // ─── WebSocket for live updates ───
@@ -326,17 +329,11 @@ export default function PriceChartWidget() {
     // ─── Background ───
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(0, 0, w, h);
-    // Subtle radial glow
-    const bgG = ctx.createRadialGradient(chartW * 0.5, priceH * 0.3, 0, chartW * 0.5, priceH * 0.3, chartH * 0.8);
-    bgG.addColorStop(0, 'rgba(0,40,80,0.06)');
-    bgG.addColorStop(1, 'transparent');
-    ctx.fillStyle = bgG;
-    ctx.fillRect(0, 0, chartW, chartH);
 
     // ─── Visible range ───
     const visibleCount = Math.max(1, Math.floor(chartW / st.candleWidth));
-    const maxOff = Math.max(0, data.length - Math.floor(visibleCount * 0.3));
-    st.offsetX = Math.max(-visibleCount * 0.5, Math.min(st.offsetX, maxOff));
+    const maxOff = Math.max(0, data.length - Math.floor(visibleCount * 0.1));
+    st.offsetX = Math.max(-visibleCount * 0.7, Math.min(st.offsetX, maxOff));
 
     const startIdx = Math.max(0, Math.floor(st.offsetX));
     const endIdx = Math.min(data.length, startIdx + visibleCount + 2);
@@ -347,11 +344,12 @@ export default function PriceChartWidget() {
       ctx.font = '13px Inter, monospace';
       ctx.textAlign = 'center';
       ctx.fillText('No data in view', chartW / 2, priceH / 2);
-      drawAxes(ctx, w, h, chartW, chartH, cfg);
+      drawPriceAxis(ctx, w, chartW, chartH, priceH, cfg);
+      drawTimeAxis(ctx, w, h, chartW, chartH, cfg);
       return;
     }
 
-    // ─── Price range ───
+    // ─── Price range — use visible data to compute a tight range with padding ───
     let rawMin = Infinity, rawMax = -Infinity, maxVol = 0;
     for (const c of visible) {
       if (c.low < rawMin) rawMin = c.low;
@@ -360,7 +358,9 @@ export default function PriceChartWidget() {
     }
     const rawRange = rawMax - rawMin || 1;
     const midPrice = (rawMax + rawMin) / 2;
-    const scaledHalfRange = (rawRange / 2 + rawRange * 0.08) * st.priceScaleZoom;
+    // 5% padding top/bottom like Classic
+    const paddedHalfRange = (rawRange / 2) * 1.1;
+    const scaledHalfRange = paddedHalfRange * st.priceScaleZoom;
     const pxPerPrice = priceH / (scaledHalfRange * 2);
     const panPriceOffset = st.panOffsetY / pxPerPrice;
     const minPrice = midPrice - scaledHalfRange + panPriceOffset;
@@ -379,24 +379,23 @@ export default function PriceChartWidget() {
 
     // ─── Grid ───
     if (cfg.showGrid) {
-      ctx.font = '12px Inter, monospace';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
       const priceStep = calculateNiceStep(totalRange, priceH);
       for (let p = Math.ceil(minPrice / priceStep) * priceStep; p <= maxPrice; p += priceStep) {
         const y = priceToY(p);
-        if (y < -10 || y > priceH + 10) continue;
-        ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+        if (y < -10 || y > chartH + 10) continue;
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
         ctx.lineWidth = 0.5;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(chartW, y); ctx.stroke();
       }
 
-      const tStep = Math.max(1, Math.floor(80 / st.candleWidth));
+      // Time grid — adaptive spacing
+      const minTimeGapPx = 100;
+      const tStep = Math.max(1, Math.ceil(minTimeGapPx / st.candleWidth));
       for (let i = 0; i < visible.length; i++) {
         if ((startIdx + i) % tStep !== 0) continue;
         const x = (i - (st.offsetX - startIdx)) * st.candleWidth + st.candleWidth / 2;
         if (x < 0 || x > chartW) continue;
-        ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
         ctx.lineWidth = 0.5;
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, chartH); ctx.stroke();
       }
@@ -410,7 +409,7 @@ export default function PriceChartWidget() {
         const barW = Math.max(1, st.candleWidth * 0.7);
         const barH = maxVol > 0 ? (c.volume / maxVol) * volumeH * 0.85 : 0;
         const bull = c.close >= c.open;
-        ctx.fillStyle = bull ? hexToRgba(cfg.candleUp, 0.18) : hexToRgba(cfg.candleDown, 0.18);
+        ctx.fillStyle = bull ? hexToRgba(cfg.candleUp, 0.15) : hexToRgba(cfg.candleDown, 0.15);
         ctx.fillRect(x + (st.candleWidth - barW) / 2, priceH + (volumeH - barH), barW, barH);
       }
     }
@@ -426,12 +425,6 @@ export default function PriceChartWidget() {
       const bH = Math.max(1, bBot - bTop);
       const bW = Math.max(1, st.candleWidth * 0.65);
 
-      // Glow
-      if (cfg.showGlow && st.candleWidth >= 6) {
-        ctx.shadowColor = bull ? hexToRgba(cfg.candleUp, 0.25) : hexToRgba(cfg.candleDown, 0.25);
-        ctx.shadowBlur = 8;
-      }
-
       // Wick
       ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
       ctx.lineWidth = Math.min(1.5, Math.max(0.5, st.candleWidth * 0.12));
@@ -441,13 +434,17 @@ export default function PriceChartWidget() {
       ctx.stroke();
 
       // Body
+      if (cfg.showGlow && st.candleWidth >= 6) {
+        ctx.shadowColor = bull ? hexToRgba(cfg.candleUp, 0.2) : hexToRgba(cfg.candleDown, 0.2);
+        ctx.shadowBlur = 6;
+      }
       ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
       ctx.fillRect(cx - bW / 2, bTop, bW, bH);
       ctx.shadowBlur = 0;
 
-      // Border
+      // Border when zoomed in
       if (cfg.showBorders && st.candleWidth >= 14) {
-        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.4) : hexToRgba(cfg.candleDown, 0.4);
+        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
         ctx.lineWidth = 0.5;
         ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
       }
@@ -482,14 +479,14 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Last price line ───
+    // ─── Last price horizontal line ───
     if (visible.length > 0) {
-      const last = visible[visible.length - 1];
+      const last = data[data.length - 1]; // Always use latest candle
       const ly = priceToY(last.close);
       const bull = last.close >= last.open;
       if (ly > -20 && ly < priceH + 20) {
         ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.5) : hexToRgba(cfg.candleDown, 0.5);
+        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.4) : hexToRgba(cfg.candleDown, 0.4);
         ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(chartW, ly); ctx.stroke();
         ctx.setLineDash([]);
@@ -498,111 +495,146 @@ export default function PriceChartWidget() {
 
     ctx.restore(); // end clip
 
-    // ─── Axes ───
-    drawAxes(ctx, w, h, chartW, chartH, cfg);
+    // ─── Price axis background ───
+    drawPriceAxis(ctx, w, chartW, chartH, priceH, cfg);
 
     // ─── Price labels ───
-    ctx.font = '12px Inter, monospace';
+    ctx.font = '11px Inter, sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     const priceStep2 = calculateNiceStep(totalRange, priceH);
     for (let p = Math.ceil(minPrice / priceStep2) * priceStep2; p <= maxPrice; p += priceStep2) {
       const y = priceToY(p);
-      if (y < 5 || y > priceH - 5) continue;
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
-      ctx.fillText(formatPrice(p), w - 8, y);
+      if (y < 8 || y > priceH - 8) continue;
+      // Tick mark
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(chartW, y); ctx.lineTo(chartW + 4, y); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(formatPrice(p), w - 6, y);
     }
 
+    // ─── Last price label on price axis ───
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      const ly = Math.max(12, Math.min(priceH - 12, priceToY(last.close)));
+      const bull = last.close >= last.open;
+      const labelH = 20;
+      const labelText = formatPrice(last.close);
+      ctx.font = 'bold 11px Inter, sans-serif';
+      const tw = ctx.measureText(labelText).width + 12;
+      ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+      ctx.fillRect(chartW, ly - labelH / 2, PRICE_W, labelH);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, w - 6, ly);
+    }
+
+    // ─── Time axis background ───
+    drawTimeAxis(ctx, w, h, chartW, chartH, cfg);
+
     // ─── Time labels ───
-    const tStep2 = Math.max(1, Math.floor(80 / st.candleWidth));
+    const minTimeGapPx = 100;
+    const tStep2 = Math.max(1, Math.ceil(minTimeGapPx / st.candleWidth));
+    ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (let i = 0; i < visible.length; i++) {
       if ((startIdx + i) % tStep2 !== 0) continue;
       const x = (i - (st.offsetX - startIdx)) * st.candleWidth + st.candleWidth / 2;
-      if (x < 20 || x > chartW - 20) continue;
-      ctx.fillStyle = 'rgba(255,255,255,0.82)';
-      ctx.fillText(formatTimeLabel(visible[i].time, intSec), x, chartH + 7);
-    }
-
-    // ─── Last price label on axis ───
-    if (visible.length > 0) {
-      const last = visible[visible.length - 1];
-      const ly = Math.max(0, Math.min(priceH, priceToY(last.close)));
-      const bull = last.close >= last.open;
-      const labelH = 20;
-      ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
-      ctx.fillRect(chartW, ly - labelH / 2, PRICE_W, labelH);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px Inter, monospace';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(formatPrice(last.close), w - 8, ly);
+      if (x < 30 || x > chartW - 30) continue;
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillText(formatTimeLabel(visible[i].time, intSec), x, chartH + 8);
     }
 
     // ─── Crosshair ───
     if (st.crosshair && st.crosshair.x < chartW && st.crosshair.y < chartH && st.dragMode === 'none') {
       const { x: mx, y: my } = st.crosshair;
-      const chColor = hexToRgba(cfg.crosshairColor, 0.25);
+      const chColor = hexToRgba(cfg.crosshairColor, 0.2);
 
-      ctx.strokeStyle = chColor; ctx.lineWidth = 0.8; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = chColor; ctx.lineWidth = 0.6; ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(mx, 0); ctx.lineTo(mx, chartH); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, my); ctx.lineTo(chartW, my); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Price label
+      // Price label on axis
       const lH = 18;
       ctx.fillStyle = '#0d1a30';
       ctx.fillRect(chartW, my - lH / 2, PRICE_W, lH);
       ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3); ctx.lineWidth = 0.5;
       ctx.strokeRect(chartW, my - lH / 2, PRICE_W, lH);
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.font = '12px Inter, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(formatPrice(yToPrice(my)), w - 8, my);
+      ctx.font = '11px Inter, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(formatPrice(yToPrice(my)), w - 6, my);
 
-      // Time label
+      // Time label on axis
       const hi = xToIdx(mx);
+      hoverIdxRef.current = hi;
       if (data[hi]) {
         const tl = formatDateFull(data[hi].time, intSec);
+        ctx.font = '10px Inter, sans-serif';
         const tw = ctx.measureText(tl).width + 14;
         ctx.fillStyle = '#0d1a30';
         ctx.fillRect(mx - tw / 2, chartH, tw, TIME_H);
         ctx.strokeStyle = hexToRgba(cfg.crosshairColor, 0.3); ctx.lineWidth = 0.5;
         ctx.strokeRect(mx - tw / 2, chartH, tw, TIME_H);
         ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(tl, mx, chartH + 7);
+        ctx.fillText(tl, mx, chartH + 8);
       }
+    } else {
+      hoverIdxRef.current = data.length > 0 ? data.length - 1 : -1;
+    }
 
-      // OHLCV overlay
-      if (data[hi]) {
-        const c = data[hi];
-        const col = c.close >= c.open ? cfg.candleUp : cfg.candleDown;
-        ctx.font = '12px Inter, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        let lx = 8;
-        const items = [
-          { t: `O ${formatPrice(c.open)}`, c: col },
-          { t: `H ${formatPrice(c.high)}`, c: col },
-          { t: `L ${formatPrice(c.low)}`, c: col },
-          { t: `C ${formatPrice(c.close)}`, c: col },
-          { t: `V ${c.volume.toFixed(0)}`, c: 'rgba(255,255,255,0.3)' },
-        ];
-        const totalW = items.reduce((s, it) => s + ctx.measureText(it.t).width + 10, 0);
-        ctx.fillStyle = 'rgba(8,14,30,0.85)';
-        ctx.fillRect(4, 4, totalW + 4, 16);
-        for (const item of items) {
-          ctx.fillStyle = item.c;
-          ctx.fillText(item.t, lx, 7);
-          lx += ctx.measureText(item.t).width + 10;
+    // ─── OHLCV info bar (top-left, like Classic) ───
+    const infoIdx = hoverIdxRef.current >= 0 && hoverIdxRef.current < data.length ? hoverIdxRef.current : data.length - 1;
+    if (data[infoIdx]) {
+      const c = data[infoIdx];
+      const bull = c.close >= c.open;
+      const col = bull ? cfg.candleUp : cfg.candleDown;
+      const changePct = c.open !== 0 ? ((c.close - c.open) / c.open * 100) : 0;
+      
+      ctx.font = '12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      
+      // Background
+      const infoY = 4;
+      let lx = 8;
+      
+      // Symbol
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillText('BTC / TetherUS', lx, infoY);
+      lx += ctx.measureText('BTC / TetherUS').width + 16;
+      
+      ctx.font = '12px Inter, sans-serif';
+      const items = [
+        { label: 'O', value: formatPrice(c.open), color: col },
+        { label: 'H', value: formatPrice(c.high), color: col },
+        { label: 'L', value: formatPrice(c.low), color: col },
+        { label: 'C', value: formatPrice(c.close), color: col },
+        { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col },
+      ];
+      
+      for (const item of items) {
+        if (item.label) {
+          ctx.fillStyle = 'rgba(255,255,255,0.35)';
+          ctx.fillText(item.label, lx, infoY);
+          lx += ctx.measureText(item.label).width + 4;
         }
+        ctx.fillStyle = item.color;
+        ctx.fillText(item.value, lx, infoY);
+        lx += ctx.measureText(item.value).width + 12;
       }
     }
 
-    // ─── Indicator labels overlay ───
+    // ─── Indicator labels ───
     const indResults = indResultsRef.current;
-    if (indResults.length > 0 && (!st.crosshair || st.dragMode !== 'none')) {
+    if (indResults.length > 0) {
       ctx.font = '10px Inter, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      let iy = 6;
+      let iy = INFO_BAR_H + 4;
       for (const ind of indicatorsRef.current) {
         if (!ind.visible) continue;
         const def = getIndicator(ind.defId);
@@ -613,26 +645,25 @@ export default function PriceChartWidget() {
         iy += 14;
       }
     }
-
-    // ─── Drag indicators ───
-    if (st.dragMode === 'price-scale') {
-      ctx.fillStyle = hexToRgba(cfg.crosshairColor, 0.04);
-      ctx.fillRect(chartW, 0, PRICE_W, chartH);
-    }
-    if (st.dragMode === 'time-scale') {
-      ctx.fillStyle = hexToRgba(cfg.crosshairColor, 0.04);
-      ctx.fillRect(0, chartH, chartW, TIME_H);
-    }
   }, []);
 
-  function drawAxes(ctx: CanvasRenderingContext2D, w: number, h: number, chartW: number, chartH: number, cfg: ChartConfig) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(chartW, 0); ctx.lineTo(chartW, chartH); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, chartH); ctx.lineTo(chartW, chartH); ctx.stroke();
-    ctx.fillStyle = hexToRgba(cfg.bg, 0.97);
+  function drawPriceAxis(ctx: CanvasRenderingContext2D, w: number, chartW: number, chartH: number, priceH: number, cfg: ChartConfig) {
+    // Price axis background
+    ctx.fillStyle = cfg.bg;
     ctx.fillRect(chartW, 0, PRICE_W, chartH);
-    ctx.fillStyle = hexToRgba(cfg.bg, 0.97);
+    // Separator line
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(chartW, 0); ctx.lineTo(chartW, chartH); ctx.stroke();
+  }
+
+  function drawTimeAxis(ctx: CanvasRenderingContext2D, w: number, h: number, chartW: number, chartH: number, cfg: ChartConfig) {
+    ctx.fillStyle = cfg.bg;
     ctx.fillRect(0, chartH, w, TIME_H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, chartH); ctx.lineTo(chartW, chartH); ctx.stroke();
+    // Corner
     ctx.fillStyle = cfg.bg;
     ctx.fillRect(chartW, chartH, PRICE_W, TIME_H);
   }
@@ -666,11 +697,13 @@ export default function PriceChartWidget() {
       const dx = e.clientX - st.dragStartX;
       const dy = e.clientY - st.dragStartY;
       st.offsetX = st.dragStartOffset - dx / st.candleWidth;
-      st.panOffsetY = st.dragStartPanY + dy;
+      // Gentler vertical pan — scale down by 0.4 to match Classic feel
+      st.panOffsetY = st.dragStartPanY + dy * 0.4;
       st.crosshair = null;
     } else if (st.dragMode === 'price-scale') {
       const dy = e.clientY - st.dragStartY;
-      st.priceScaleZoom = Math.max(0.05, Math.min(20, st.dragStartPriceZoom * (1 + dy * 0.005)));
+      // Smoother price scale zoom
+      st.priceScaleZoom = Math.max(0.1, Math.min(10, st.dragStartPriceZoom * (1 + dy * 0.003)));
       st.crosshair = null;
     } else if (st.dragMode === 'time-scale') {
       const dx = e.clientX - st.dragStartX;
@@ -731,11 +764,13 @@ export default function PriceChartWidget() {
     const chartH = container.clientHeight - TIME_H;
 
     if (x >= chartW && y < chartH) {
+      // Double-click on price axis: reset vertical
       stateRef.current.priceScaleZoom = 1;
       stateRef.current.panOffsetY = 0;
     } else if (y >= chartH && x < chartW) {
-      stateRef.current.candleWidth = 8;
-      const visibleCandles = Math.floor(chartW / 8);
+      // Double-click on time axis: reset horizontal
+      stateRef.current.candleWidth = DEFAULT_CW;
+      const visibleCandles = Math.floor(chartW / DEFAULT_CW);
       stateRef.current.offsetX = Math.max(0, dataRef.current.length - visibleCandles);
     }
     scheduleRender();
@@ -754,7 +789,8 @@ export default function PriceChartWidget() {
       const chartW = rect.width - PRICE_W;
       const ratio = mx / chartW;
       const oldW = st.candleWidth;
-      const zf = e.deltaY > 0 ? 0.92 : 1.08;
+      // Smooth zoom factor
+      const zf = e.deltaY > 0 ? 0.93 : 1.07;
       st.candleWidth = Math.max(MIN_CW, Math.min(MAX_CW, st.candleWidth * zf));
       const oldVis = chartW / oldW;
       const newVis = chartW / st.candleWidth;
@@ -770,11 +806,11 @@ export default function PriceChartWidget() {
     const st = stateRef.current;
     st.priceScaleZoom = 1;
     st.panOffsetY = 0;
-    st.candleWidth = 8;
+    st.candleWidth = DEFAULT_CW;
     const container = containerRef.current;
     if (container) {
       const chartW = container.clientWidth - PRICE_W;
-      st.offsetX = Math.max(0, dataRef.current.length - Math.floor(chartW / 8));
+      st.offsetX = Math.max(0, dataRef.current.length - Math.floor(chartW / DEFAULT_CW));
     }
     scheduleRender();
   }, [scheduleRender]);
@@ -909,7 +945,6 @@ export default function PriceChartWidget() {
 
       {/* Top toolbar */}
       <div className="absolute top-1.5 left-2 z-10 flex items-center gap-1 pointer-events-auto">
-        {/* Timeframe buttons */}
         {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map(tf => (
           <button
             key={tf}
@@ -926,7 +961,6 @@ export default function PriceChartWidget() {
 
         <div className="w-px h-4 bg-white/[0.06] mx-1" />
 
-        {/* Indicators button */}
         <NewUIIndicatorPanel
           indicators={indicators}
           onAdd={addIndicator}
@@ -942,7 +976,6 @@ export default function PriceChartWidget() {
           </button>
         </NewUIIndicatorPanel>
 
-        {/* Settings button */}
         <button
           onClick={() => setSettingsOpen(true)}
           className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
@@ -952,7 +985,7 @@ export default function PriceChartWidget() {
       </div>
 
       {/* Symbol + timeframe label */}
-      <div className="absolute top-1.5 right-[112px] flex items-center gap-2 pointer-events-none z-10">
+      <div className="absolute top-1.5 right-[94px] flex items-center gap-2 pointer-events-none z-10">
         <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">
           BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}
         </span>
@@ -961,7 +994,7 @@ export default function PriceChartWidget() {
 
       {/* Live indicator dot */}
       {!loading && (
-        <div className="absolute top-2.5 right-24 z-10 flex items-center gap-1 pointer-events-none">
+        <div className="absolute top-2.5 right-20 z-10 flex items-center gap-1 pointer-events-none">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[9px] font-mono text-emerald-400/60">LIVE</span>
         </div>
@@ -980,7 +1013,6 @@ export default function PriceChartWidget() {
 
 // ─── Utility ───
 function hexToRgba(hex: string, alpha: number): string {
-  // Handle already-rgba strings
   if (hex.startsWith('rgba') || hex.startsWith('rgb')) return hex;
   const h = hex.replace('#', '');
   const r = parseInt(h.substring(0, 2), 16) || 0;
