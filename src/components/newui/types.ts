@@ -1,16 +1,17 @@
 // New UI widget types and layout definitions — fully isolated from Classic view
 
 export interface WidgetPosition {
-  col: number;
-  row: number;
-  colSpan: number;
-  rowSpan: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface WidgetInstance {
   id: string;
   type: string;
   position: WidgetPosition;
+  locked?: boolean;
   config?: Record<string, any>;
 }
 
@@ -38,7 +39,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     type: 'price-chart',
     label: 'Price Chart',
-    description: 'Professional candlestick chart with volume, crosshair, and full zoom/scroll. Powered by Lightweight Charts.',
+    description: 'Professional custom candlestick chart with volume, crosshair, and full zoom/scroll.',
     category: 'charts',
     icon: 'candlestick-chart',
     defaultSize: { colSpan: 2, rowSpan: 2 },
