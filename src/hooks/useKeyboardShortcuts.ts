@@ -216,6 +216,7 @@ export function useKeyboardShortcuts() {
         '1': '1m', '2': '2m', '3': '3m', '5': '5m',
       };
       if (intervalMap[key]) {
+        e.preventDefault();
         setInterval(intervalMap[key] as any);
         return;
       }
@@ -223,6 +224,7 @@ export function useKeyboardShortcuts() {
 
     // , (comma) → Open interval selector
     if (!ctrl && !alt && !shift && key === ',') {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:open-intervals'));
       return;
     }
