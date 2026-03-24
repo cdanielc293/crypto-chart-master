@@ -369,14 +369,20 @@ const renderRectangle: Renderer = (ctx, d, coord) => {
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
+  const props = d.props || {};
   setupStroke(ctx, d);
   const x = Math.min(p1.x, p2.x);
   const y = Math.min(p1.y, p2.y);
   const rw = Math.abs(p2.x - p1.x);
   const rh = Math.abs(p2.y - p1.y);
   ctx.strokeRect(x, y, rw, rh);
-  ctx.fillStyle = d.color + '15';
-  ctx.fillRect(x, y, rw, rh);
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = props.backgroundOpacity ?? 0.08;
+    ctx.fillStyle = props.backgroundColor || d.color;
+    ctx.fillRect(x, y, rw, rh);
+    ctx.restore();
+  }
 };
 
 const renderCircle: Renderer = (ctx, d, coord) => {
@@ -384,13 +390,19 @@ const renderCircle: Renderer = (ctx, d, coord) => {
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
+  const props = d.props || {};
   const r = Math.hypot(p2.x - p1.x, p2.y - p1.y);
   setupStroke(ctx, d);
   ctx.beginPath();
   ctx.arc(p1.x, p1.y, r, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = d.color + '15';
-  ctx.fill();
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = props.backgroundOpacity ?? 0.08;
+    ctx.fillStyle = props.backgroundColor || d.color;
+    ctx.fill();
+    ctx.restore();
+  }
 };
 
 const renderEllipse: Renderer = (ctx, d, coord) => {
@@ -398,29 +410,71 @@ const renderEllipse: Renderer = (ctx, d, coord) => {
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
+  const props = d.props || {};
   const rx = Math.abs(p2.x - p1.x);
   const ry = Math.abs(p2.y - p1.y);
   setupStroke(ctx, d);
   ctx.beginPath();
   ctx.ellipse(p1.x, p1.y, rx, ry, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = d.color + '15';
-  ctx.fill();
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = props.backgroundOpacity ?? 0.08;
+    ctx.fillStyle = props.backgroundColor || d.color;
+    ctx.fill();
+    ctx.restore();
+  }
 };
 
 const renderTriangle: Renderer = (ctx, d, coord) => {
   if (d.points.length < 3) return;
   const pts = d.points.map(p => toXY(coord, p.time, p.price)).filter(Boolean) as { x: number; y: number }[];
   if (pts.length < 3) return;
+
+  const props = d.props || {};
+  const borderColor = props.borderColor || d.color;
+  const bgColor = props.backgroundColor || d.color;
+  const bgOpacity = props.backgroundOpacity ?? 0.08;
+  const showBg = props.showBackground !== false;
+
+  // Border
   setupStroke(ctx, d);
+  ctx.strokeStyle = borderColor;
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
   ctx.lineTo(pts[1].x, pts[1].y);
   ctx.lineTo(pts[2].x, pts[2].y);
   ctx.closePath();
   ctx.stroke();
-  ctx.fillStyle = d.color + '15';
-  ctx.fill();
+
+  // Background fill
+  if (showBg) {
+    ctx.save();
+    ctx.globalAlpha = bgOpacity;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    ctx.lineTo(pts[1].x, pts[1].y);
+    ctx.lineTo(pts[2].x, pts[2].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Price/time labels on axes when selected
+  if (d.selected && props.priceLabels) {
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = borderColor;
+    ctx.textAlign = 'left';
+    d.points.forEach((p, i) => {
+      const pt = pts[i];
+      if (pt) {
+        ctx.fillText(`P${i + 1}: ${p.price.toFixed(2)}`, pt.x + 6, pt.y - 4);
+      }
+    });
+    ctx.restore();
+  }
 };
 
 // ─── Arrows ───

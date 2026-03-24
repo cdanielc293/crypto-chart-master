@@ -22,6 +22,7 @@ type Tab = typeof TABS[number];
 
 // Tools that support trendline-style features
 const LINE_TOOLS = ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle', 'horizontalray'];
+const SHAPE_TOOLS = ['triangle', 'trianglepattern', 'rectangle', 'rotatedrectangle', 'circle', 'ellipse'];
 
 interface Props {
   open: boolean;
@@ -72,7 +73,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 
   const toolLabel = drawing.type.charAt(0).toUpperCase() + drawing.type.slice(1).replace(/([A-Z])/g, ' $1');
   const isLineTool = LINE_TOOLS.includes(drawing.type);
-
+  const isShapeTool = SHAPE_TOOLS.includes(drawing.type);
   const updateLocal = (key: string, value: any) => {
     setLocalProps(prev => ({ ...prev, [key]: value }));
   };
@@ -119,6 +120,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
             localProps={localProps}
             updateLocal={updateLocal}
             isLineTool={isLineTool}
+            isShapeTool={isShapeTool}
           />
         )}
         {tab === 'Text' && (
@@ -147,11 +149,12 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 }
 
 // ─── Style Tab ───
-function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool }: {
+function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool }: {
   localColor: string; setLocalColor: (c: string) => void;
   localLineWidth: number; setLocalLineWidth: (w: number) => void;
   localProps: Record<string, any>; updateLocal: (k: string, v: any) => void;
   isLineTool: boolean;
+  isShapeTool: boolean;
 }) {
   return (
     <>
@@ -252,6 +255,40 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
             />
             <CheckField label="Always show stats" checked={!!localProps.alwaysShowStats} onChange={v => updateLocal('alwaysShowStats', v)} />
           </div>
+        </div>
+      )}
+
+      {/* Shape-specific: Background */}
+      {isShapeTool && (
+        <div className="pt-2 border-t border-border space-y-3">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">Background</span>
+          <CheckField label="Show background" checked={localProps.showBackground !== false} onChange={v => updateLocal('showBackground', v)} />
+          {localProps.showBackground !== false && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Color</span>
+                <input
+                  type="color"
+                  value={localProps.backgroundColor || localColor}
+                  onChange={e => updateLocal('backgroundColor', e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Opacity</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round((localProps.backgroundOpacity ?? 0.08) * 100)}
+                  onChange={e => updateLocal('backgroundOpacity', Number(e.target.value) / 100)}
+                  className="w-32"
+                />
+                <span className="text-xs text-muted-foreground ml-2 w-8">{Math.round((localProps.backgroundOpacity ?? 0.08) * 100)}%</span>
+              </div>
+            </>
+          )}
+          <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
         </div>
       )}
     </>
