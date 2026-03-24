@@ -140,6 +140,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_chart_state: {
         Row: {
           chart_type: string
@@ -221,11 +242,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_login_log: {
+        Row: {
+          id: string
+          logged_in_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_in_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_in_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_get_activity_stats: { Args: never; Returns: Json }
       get_user_sessions: {
         Args: { p_user_id: string }
         Returns: {
