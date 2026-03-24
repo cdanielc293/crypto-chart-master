@@ -1,0 +1,167 @@
+/* =====================================================
+   NEW UI — Futuristic Trading Terminal Styles
+   Fully isolated from Classic view.
+   ===================================================== */
+
+.newui-root {
+  --neon-cyan: #00f0ff;
+  --neon-purple: #a855f7;
+  --neon-pink: #ec4899;
+  --neon-green: #10b981;
+  --neon-orange: #f97316;
+  --glass-bg: rgba(10, 14, 28, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.08);
+  background: #060a16;
+  color: #e2e8f0;
+}
+
+/* Futuristic grid background */
+.newui-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  position: relative;
+}
+
+.newui-grid-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 240, 255, 0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Glass card */
+.newui-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.newui-glass:hover {
+  border-color: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 30px -10px rgba(0, 240, 255, 0.1);
+}
+
+/* Neon glow accents */
+.newui-neon-border {
+  box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.1),
+              0 0 20px -8px rgba(0, 240, 255, 0.15);
+}
+
+/* Widget empty slot */
+.newui-slot {
+  background: rgba(15, 20, 40, 0.4);
+  border: 1.5px dashed rgba(0, 240, 255, 0.12);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.newui-slot:hover {
+  border-color: rgba(0, 240, 255, 0.35);
+  background: rgba(0, 240, 255, 0.03);
+  box-shadow: 0 0 40px -15px rgba(0, 240, 255, 0.15);
+}
+
+/* Hub overlay */
+.newui-hub-overlay {
+  background: rgba(4, 8, 20, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* Hub card */
+.newui-hub-card {
+  background: rgba(15, 20, 40, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.newui-hub-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 240, 255, 0.2);
+  box-shadow: 0 8px 40px -12px rgba(0, 240, 255, 0.15);
+}
+
+/* Animated preview stripe at top of hub card */
+.newui-card-preview {
+  height: 4px;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.newui-hub-card:hover .newui-card-preview {
+  opacity: 1;
+}
+
+/* Widget wrapper */
+.newui-widget {
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.newui-widget-header {
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: grab;
+  user-select: none;
+}
+
+.newui-widget-header:active {
+  cursor: grabbing;
+}
+
+/* Scrollbar */
+.newui-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.newui-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.newui-root ::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.15);
+  border-radius: 3px;
+}
+
+.newui-root ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.3);
+}
+
+/* Animations */
+@keyframes newui-pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes newui-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes newui-scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.newui-animate-float {
+  animation: newui-float 4s ease-in-out infinite;
+}
+
+.newui-animate-glow {
+  animation: newui-pulse-glow 3s ease-in-out infinite;
+}
