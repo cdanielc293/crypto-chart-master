@@ -60,6 +60,21 @@ export default function TopToolbar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
 
+  // Listen for keyboard shortcut events
+  useEffect(() => {
+    const onSymbolSearch = () => setSearchOpen(true);
+    const onOpenIndicators = () => setIndicatorOpen(true);
+    const onOpenIntervals = () => setIntervalDropdownOpen(true);
+    window.addEventListener('shortcut:symbol-search', onSymbolSearch);
+    window.addEventListener('shortcut:open-indicators', onOpenIndicators);
+    window.addEventListener('shortcut:open-intervals', onOpenIntervals);
+    return () => {
+      window.removeEventListener('shortcut:symbol-search', onSymbolSearch);
+      window.removeEventListener('shortcut:open-indicators', onOpenIndicators);
+      window.removeEventListener('shortcut:open-intervals', onOpenIntervals);
+    };
+  }, []);
+
   const pair = symbol.replace('USDT', ' / TetherUS');
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
 
