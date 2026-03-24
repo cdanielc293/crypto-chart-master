@@ -46,12 +46,20 @@ export default function Landing() {
             <span key={item.label} onClick={() => navigate(item.path)} className="hover:text-white transition-colors cursor-pointer">{item.label}</span>
           ))}
         </div>
-        <button
-          onClick={() => navigate('/pricing')}
-          className="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
-        >
-          Get started
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/signup?mode=login')}
+            className="px-5 py-2 text-sm font-medium rounded-lg border border-white/10 text-white/80 hover:text-white hover:border-white/25 transition-all"
+          >
+            Log in
+          </button>
+          <button
+            onClick={() => navigate('/pricing')}
+            className="px-5 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-lg shadow-cyan-500/20"
+          >
+            Get started
+          </button>
+        </div>
       </motion.nav>
 
       {/* Hero Section */}
