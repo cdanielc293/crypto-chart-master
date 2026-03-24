@@ -812,9 +812,9 @@ export async function getOlderKlinesFromCache(
   // Fallback: fetch from Binance
   try {
     const endTimeMs = beforeTime * 1000 - 1;
-    const rows = await fetchFromBinance(symbol, sourceInterval, 1000, undefined, endTimeMs);
+    const rows = await fetchFromBinance(cleanSymbol, sourceInterval, 1000, undefined, endTimeMs);
     if (rows.length > 0) {
-      void upsertKlines(symbol, sourceInterval, rows);
+      void upsertKlines(cleanSymbol, sourceInterval, rows);
       return aggregateForInterval(rows, interval)
         .filter(k => k.time < beforeTime)
         .slice(-limit);
