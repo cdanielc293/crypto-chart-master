@@ -826,7 +826,8 @@ export async function getOlderKlinesFromCache(
 
 /** Warm cache for all source intervals used across timeframe options for a symbol. */
 export async function prefetchSymbolHistory(symbol: string): Promise<void> {
-  const normalizedSymbol = symbol.trim().toUpperCase();
+  const { raw } = parseSymbol(symbol);
+  const normalizedSymbol = raw.trim().toUpperCase();
   if (!normalizedSymbol) return;
   if (symbolPrefetchInProgress.has(normalizedSymbol)) return;
 
