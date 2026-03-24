@@ -1101,6 +1101,178 @@ const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
   ctx.restore();
 };
 
+// ─── Fixed Range Volume Profile ───
+
+const renderFixedRangeVolume: Renderer = (ctx, d, coord, w, h, candles) => {
+  if (d.points.length < 2 || !candles || candles.length === 0) return;
+  const t1 = Math.min(d.points[0].time, d.points[1].time);
+  const t2 = Math.max(d.points[0].time, d.points[1].time);
+  const props = d.props || {};
+  const numRows = props.rowSize || 24;
+  const volumeMode = props.volumeMode || 'total'; // 'total' | 'updown' | 'delta'
+  const valueAreaPct = (props.valueAreaVolume ?? 70) / 100;
+
+  // Filter candles in range
+  const rangeBars = candles.filter(c => c.time >= t1 && c.time <= t2);
+  if (rangeBars.length === 0) return;
+
+  // Find price range
+  let priceHigh = -Infinity, priceLow = Infinity;
+  for (const c of rangeBars) {
+    if (c.high > priceHigh) priceHigh = c.high;
+    if (c.low < priceLow) priceLow = c.low;
+  }
+  if (priceHigh <= priceLow) return;
+
+  const rowHeight = (priceHigh - priceLow) / numRows;
+  if (rowHeight <= 0) return;
+
+  // Build volume rows
+  const rows: { upVol: number; downVol: number; totalVol: number }[] = 
+    Array.from({ length: numRows }, () => ({ upVol: 0, downVol: 0, totalVol: 0 }));
+
+  for (const c of rangeBars) {
+    const vol = c.volume || 1;
+    const isUp = c.close > c.open;
+    // Distribute volume across rows the candle touches
+    const candleLow = Math.min(c.open, c.close, c.low);
+    const candleHigh = Math.max(c.open, c.close, c.high);
+    for (let r = 0; r < numRows; r++) {
+      const rowLow = priceLow + r * rowHeight;
+      const rowHigh = rowLow + rowHeight;
+      // Overlap between candle and row
+      const overlap = Math.max(0, Math.min(candleHigh, rowHigh) - Math.max(candleLow, rowLow));
+      const candleRange = candleHigh - candleLow || 1;
+      const fraction = overlap / candleRange;
+      if (fraction > 0) {
+        const portionVol = vol * fraction;
+        rows[r].totalVol += portionVol;
+        if (isUp) rows[r].upVol += portionVol;
+        else rows[r].downVol += portionVol;
+      }
+    }
+  }
+
+  // Find max volume for scaling
+  let maxVol = 0;
+  for (const r of rows) {
+    const v = volumeMode === 'delta' ? Math.abs(r.upVol - r.downVol) : r.totalVol;
+    if (v > maxVol) maxVol = v;
+  }
+  if (maxVol === 0) return;
+
+  // Value Area: find POC and expand outward until valueAreaPct
+  let totalVol = 0;
+  let pocIdx = 0;
+  let pocVol = 0;
+  for (let i = 0; i < rows.length; i++) {
+    totalVol += rows[i].totalVol;
+    if (rows[i].totalVol > pocVol) { pocVol = rows[i].totalVol; pocIdx = i; }
+  }
+  const vaTarget = totalVol * valueAreaPct;
+  let vaVol = rows[pocIdx].totalVol;
+  let vaLow = pocIdx, vaHigh = pocIdx;
+  while (vaVol < vaTarget && (vaLow > 0 || vaHigh < rows.length - 1)) {
+    const below = vaLow > 0 ? rows[vaLow - 1].totalVol : -1;
+    const above = vaHigh < rows.length - 1 ? rows[vaHigh + 1].totalVol : -1;
+    if (below >= above && below >= 0) { vaLow--; vaVol += rows[vaLow].totalVol; }
+    else if (above >= 0) { vaHigh++; vaVol += rows[vaHigh].totalVol; }
+    else break;
+  }
+
+  // Get screen coordinates
+  const x1 = coord.timeToX(t1);
+  const x2 = coord.timeToX(t2);
+  if (x1 === null || x2 === null) return;
+  const leftX = Math.min(x1, x2);
+  const profileWidth = Math.abs(x2 - x1);
+  if (profileWidth < 2) return;
+
+  const upColor = props.upColor || '#26a69a';
+  const downColor = props.downColor || '#ef5350';
+  const totalColor = d.color || '#2962ff';
+  const vaColor = props.vaColor || 'rgba(255, 235, 59, 0.15)';
+
+  // Draw rows
+  for (let r = 0; r < numRows; r++) {
+    const rowLow = priceLow + r * rowHeight;
+    const rowHigh = rowLow + rowHeight;
+    const y1 = coord.priceToY(rowHigh);
+    const y2 = coord.priceToY(rowLow);
+    if (y1 === null || y2 === null) continue;
+    const barY = Math.min(y1, y2);
+    const barH = Math.max(Math.abs(y2 - y1) - 1, 1);
+
+    // Value area background
+    if (r >= vaLow && r <= vaHigh) {
+      ctx.fillStyle = vaColor;
+      ctx.fillRect(leftX, barY, profileWidth, barH);
+    }
+
+    if (volumeMode === 'total') {
+      const barW = (rows[r].totalVol / maxVol) * profileWidth;
+      ctx.fillStyle = totalColor;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(leftX, barY, barW, barH);
+      ctx.globalAlpha = 1;
+    } else if (volumeMode === 'updown') {
+      const upW = (rows[r].upVol / maxVol) * profileWidth;
+      const downW = (rows[r].downVol / maxVol) * profileWidth;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = upColor;
+      ctx.fillRect(leftX, barY, upW, barH);
+      ctx.fillStyle = downColor;
+      ctx.fillRect(leftX + upW, barY, downW, barH);
+      ctx.globalAlpha = 1;
+    } else {
+      // Delta
+      const delta = rows[r].upVol - rows[r].downVol;
+      const barW = (Math.abs(delta) / maxVol) * profileWidth;
+      ctx.fillStyle = delta >= 0 ? upColor : downColor;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(leftX, barY, barW, barH);
+      ctx.globalAlpha = 1;
+    }
+
+    // POC line
+    if (r === pocIdx) {
+      ctx.strokeStyle = '#ffeb3b';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.moveTo(leftX, barY + barH / 2);
+      ctx.lineTo(leftX + profileWidth, barY + barH / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Border
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.3;
+  ctx.setLineDash([2, 2]);
+  const topY = coord.priceToY(priceHigh);
+  const bottomY = coord.priceToY(priceLow);
+  if (topY !== null && bottomY !== null) {
+    ctx.strokeRect(leftX, Math.min(topY, bottomY), profileWidth, Math.abs(bottomY - topY));
+  }
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  // POC label
+  const pocPrice = priceLow + (pocIdx + 0.5) * rowHeight;
+  const pocY = coord.priceToY(pocPrice);
+  if (pocY !== null) {
+    ctx.save();
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#ffeb3b';
+    ctx.textAlign = 'left';
+    ctx.fillText(`POC ${pocPrice.toFixed(2)}`, leftX + 3, pocY - 3);
+    ctx.restore();
+  }
+};
+
 // ─── Renderer map ───
 
 const RENDERERS: Record<string, Renderer> = {
@@ -1154,6 +1326,8 @@ const RENDERERS: Record<string, Renderer> = {
   headshoulders: renderXabcd,
   threedrives: renderXabcd,
   anchoredvwap: renderAnchoredVwap,
+  fixedrangevolume: renderFixedRangeVolume,
+  anchoredvolume: renderFixedRangeVolume,
 };
 
 

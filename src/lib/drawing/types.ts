@@ -72,6 +72,8 @@ export const TOOL_POINT_COUNT: Record<string, number> = {
   longposition: 2,
   shortposition: 2,
   anchoredvwap: 1,
+  fixedrangevolume: 2,
+  anchoredvolume: 1,
   gannbox: 2,
   gannfan: 2,
   // Three-point
