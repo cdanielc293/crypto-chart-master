@@ -395,7 +395,9 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         selected: false,
         visible: true,
         locked: false,
-        props: drawingTool === 'text' ? { text: 'Text', fontSize: 14 } : undefined,
+        props: drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
+             : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
+             : undefined,
       };
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
