@@ -1124,9 +1124,6 @@ const RENDERERS: Record<string, Renderer> = {
   anchoredvwap: renderAnchoredVwap,
 };
 
-// ─── Anchored VWAP ───
-
-const renderAnchoredVwap: Renderer = (ctx, d, coord, w, _h, candles) => {
   if (d.points.length < 1 || !candles || candles.length === 0) return;
   const anchorTime = d.points[0].time;
   
