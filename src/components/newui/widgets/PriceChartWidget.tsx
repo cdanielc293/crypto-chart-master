@@ -70,10 +70,7 @@ export default function PriceChartWidget() {
       handleScale: true,
     });
 
-    const candleSeries = chart.addSeries({
-      type: 'Candlestick',
-    });
-    candleSeries.applyOptions({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderDownColor: '#ef5350',
@@ -85,10 +82,8 @@ export default function PriceChartWidget() {
     const candles = generateMockCandles(200);
     candleSeries.setData(candles as any);
 
-    const volumeSeries = chart.addSeries({
-      type: 'Histogram',
-    });
-    volumeSeries.applyOptions({
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: '',
     } as any);
