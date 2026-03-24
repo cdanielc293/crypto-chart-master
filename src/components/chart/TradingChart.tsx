@@ -572,6 +572,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const ctx = useChart();
   const { data: profile } = useProfile();
   const maxBars = getHistoricalBarsLimit(profile?.plan);
+  const earliestAllowed = getEarliestAllowedTimestamp(profile?.plan, ctx.interval);
   const symbol = overrideSymbol || ctx.symbol;
   const isMultiPanel = panelIndex !== undefined && ctx.gridLayout.count > 1;
 
