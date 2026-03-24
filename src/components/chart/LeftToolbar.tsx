@@ -392,7 +392,25 @@ export default function LeftToolbar() {
           {/* Flyout submenu */}
           {openCategory === cat.id && (
             <div className="absolute left-full top-0 ml-1 bg-card border border-chart-border rounded-md shadow-2xl py-1 min-w-[260px] max-h-[80vh] overflow-y-auto z-50">
-              {cat.groups.map((group, gi) => (
+              {cat.id === 'emoji' ? (
+                // Emoji grid layout
+                <div className="p-2">
+                  <div className="px-1 pb-2 text-[10px] font-semibold text-muted-foreground tracking-wider">EMOJIS</div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {cat.groups[0].items.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleToolSelect(cat.id, 'emoji' as DrawingTool, { emoji: item.label })}
+                        className="w-10 h-10 flex items-center justify-center text-xl rounded hover:bg-toolbar-hover transition-colors"
+                        title={item.label}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+              cat.groups.map((group, gi) => (
                 <div key={gi}>
                   {group.label && (
                     <div className="px-3 pt-2 pb-1 text-[10px] font-semibold text-muted-foreground tracking-wider">
