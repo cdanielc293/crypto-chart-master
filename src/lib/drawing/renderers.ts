@@ -461,25 +461,54 @@ const renderFibonacci: Renderer = (ctx, d, coord, w) => {
 
 // ─── Shapes ───
 
-const renderRectangle: Renderer = (ctx, d, coord) => {
+const renderRectangle: Renderer = (ctx, d, coord, w, h) => {
   if (d.points.length < 2) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
   const props = d.props || {};
   setupStroke(ctx, d);
-  const x = Math.min(p1.x, p2.x);
-  const y = Math.min(p1.y, p2.y);
-  const rw = Math.abs(p2.x - p1.x);
-  const rh = Math.abs(p2.y - p1.y);
-  ctx.strokeRect(x, y, rw, rh);
+
+  const top = Math.min(p1.y, p2.y);
+  const bottom = Math.max(p1.y, p2.y);
+  let left = Math.min(p1.x, p2.x);
+  let right = Math.max(p1.x, p2.x);
+
+  // Extend left/right
+  if (props.extendLeft) left = 0;
+  if (props.extendRight) right = w;
+
+  const rw = right - left;
+  const rh = bottom - top;
+
+  // Background fill
   if (props.showBackground !== false) {
     ctx.save();
     ctx.globalAlpha = props.backgroundOpacity ?? 0.08;
     ctx.fillStyle = props.backgroundColor || d.color;
-    ctx.fillRect(x, y, rw, rh);
+    ctx.fillRect(left, top, rw, rh);
     ctx.restore();
   }
+
+  // Border
+  ctx.strokeRect(left, top, rw, rh);
+
+  // Middle line (horizontal)
+  if (props.showMiddleLine) {
+    const midY = (top + bottom) / 2;
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = Math.max(1, d.lineWidth - 1);
+    ctx.strokeStyle = props.middleLineColor || d.color;
+    ctx.beginPath();
+    ctx.moveTo(left, midY);
+    ctx.lineTo(right, midY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Text inside rectangle
+  renderShapeText(ctx, props, d.color, (left + right) / 2, (top + bottom) / 2);
 };
 function renderShapeText(ctx: CanvasRenderingContext2D, props: Record<string, any>, fallbackColor: string, cx: number, cy: number) {
   const text = props.text;
@@ -1180,46 +1209,117 @@ const renderFibTrendTime: Renderer = (ctx, d, coord, _w, h) => {
 
 // ─── Positions ───
 
-const renderPosition: Renderer = (ctx, d, coord) => {
+const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 2) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
   const isLong = d.type === 'longposition';
+  const props = d.props || {};
   const entry = d.points[0].price;
   const target = d.points[1].price;
+  const qty = props.quantity || 1;
+  const stopPrice = props.stopPrice;
+
   const yEntry = coord.priceToY(entry);
   const yTarget = coord.priceToY(target);
   if (yEntry === null || yTarget === null) return;
 
-  // Background
-  const profitColor = isLong ? (target > entry) : (target < entry);
-  ctx.fillStyle = profitColor ? 'rgba(38,166,154,0.12)' : 'rgba(239,83,80,0.12)';
-  ctx.fillRect(p1.x, Math.min(yEntry, yTarget), Math.abs(p2.x - p1.x) || 150, Math.abs(yTarget - yEntry));
+  const boxLeft = p1.x;
+  const boxRight = Math.max(p2.x, p1.x + 180);
+  const boxW = boxRight - boxLeft;
+
+  // Profit zone
+  const inProfit = isLong ? (target > entry) : (target < entry);
+  const profitBg = 'rgba(38,166,154,0.12)';
+  const lossBg = 'rgba(239,83,80,0.12)';
+
+  ctx.fillStyle = inProfit ? profitBg : lossBg;
+  ctx.fillRect(boxLeft, Math.min(yEntry, yTarget), boxW, Math.abs(yTarget - yEntry));
+
+  // Stop loss zone
+  let yStop: number | null = null;
+  if (stopPrice != null && stopPrice > 0) {
+    yStop = coord.priceToY(stopPrice);
+    if (yStop !== null) {
+      const stopInLoss = isLong ? (stopPrice < entry) : (stopPrice > entry);
+      ctx.fillStyle = stopInLoss ? lossBg : profitBg;
+      ctx.fillRect(boxLeft, Math.min(yEntry, yStop), boxW, Math.abs(yStop - yEntry));
+    }
+  }
 
   // Entry line
   ctx.strokeStyle = '#2196f3';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(p1.x, yEntry);
-  ctx.lineTo(p1.x + 150, yEntry);
-  ctx.stroke();
-  // Target line
-  ctx.strokeStyle = profitColor ? '#26a69a' : '#ef5350';
-  ctx.beginPath();
-  ctx.moveTo(p1.x, yTarget);
-  ctx.lineTo(p1.x + 150, yTarget);
+  ctx.moveTo(boxLeft, yEntry);
+  ctx.lineTo(boxRight, yEntry);
   ctx.stroke();
 
+  // Target line
+  ctx.strokeStyle = inProfit ? '#26a69a' : '#ef5350';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(boxLeft, yTarget);
+  ctx.lineTo(boxRight, yTarget);
+  ctx.stroke();
+
+  // Stop line
+  if (yStop !== null) {
+    ctx.strokeStyle = '#ef5350';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(boxLeft, yStop);
+    ctx.lineTo(boxRight, yStop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Calculate P&L
+  const pnlTarget = isLong ? target - entry : entry - target;
+  const pnlTargetPct = ((pnlTarget / entry) * 100).toFixed(2);
+  const pnlTargetAbs = (pnlTarget * qty).toFixed(2);
+
   // Labels
-  ctx.fillStyle = '#d1d4dc';
-  ctx.font = '10px monospace';
-  ctx.fillText(`Entry: ${entry.toFixed(2)}`, p1.x + 5, yEntry - 4);
-  ctx.fillText(`Target: ${target.toFixed(2)}`, p1.x + 5, yTarget - 4);
-  const pnl = isLong ? target - entry : entry - target;
-  const pnlPct = ((pnl / entry) * 100).toFixed(2);
-  ctx.fillStyle = profitColor ? '#26a69a' : '#ef5350';
-  ctx.fillText(`${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} (${pnlPct}%)`, p1.x + 5, (yEntry + yTarget) / 2);
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+
+  // Entry label
+  ctx.fillStyle = '#2196f3';
+  ctx.fillText(`Entry: ${entry.toFixed(2)}`, boxLeft + 5, yEntry - 5);
+
+  // Target label with P&L
+  ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
+  ctx.fillText(`Target: ${target.toFixed(2)}  ${pnlTarget >= 0 ? '+' : ''}${pnlTargetPct}%  (${pnlTarget >= 0 ? '+' : ''}${pnlTargetAbs})`, boxLeft + 5, yTarget + (yTarget < yEntry ? -5 : 14));
+
+  // Stop label
+  if (yStop !== null && stopPrice != null) {
+    const pnlStop = isLong ? stopPrice - entry : entry - stopPrice;
+    const pnlStopPct = ((pnlStop / entry) * 100).toFixed(2);
+    const pnlStopAbs = (pnlStop * qty).toFixed(2);
+    ctx.fillStyle = '#ef5350';
+    ctx.fillText(`Stop: ${stopPrice.toFixed(2)}  ${pnlStop >= 0 ? '+' : ''}${pnlStopPct}%  (${pnlStop >= 0 ? '+' : ''}${pnlStopAbs})`, boxLeft + 5, yStop + (yStop > yEntry ? 14 : -5));
+
+    // Risk/Reward ratio
+    if (Math.abs(pnlStop) > 0) {
+      const rr = Math.abs(pnlTarget / pnlStop);
+      ctx.fillStyle = '#d1d4dc';
+      ctx.fillText(`R/R: ${rr.toFixed(2)}`, boxLeft + 5, (yEntry + yTarget) / 2);
+    }
+  } else {
+    // Just show P&L in center
+    ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
+    ctx.fillText(`P&L: ${pnlTarget >= 0 ? '+' : ''}${pnlTarget.toFixed(2)} (${pnlTargetPct}%)`, boxLeft + 5, (yEntry + yTarget) / 2);
+  }
+
+  // Quantity label
+  if (qty > 1) {
+    ctx.fillStyle = '#787b86';
+    ctx.font = '10px monospace';
+    ctx.fillText(`Qty: ${qty}`, boxRight - 60, yEntry - 5);
+  }
 };
 
 // ─── Gann Box ───
@@ -1467,6 +1567,85 @@ const renderXabcd: Renderer = (ctx, d, coord) => {
     ctx.fillText(labels[i], pt.x, pt.y + offsetY);
   });
   ctx.restore();
+};
+
+// ─── Projection ───
+const renderProjection: Renderer = (ctx, d, coord) => {
+  if (d.points.length < 3) return;
+  const pA = toXY(coord, d.points[0].time, d.points[0].price);
+  const pB = toXY(coord, d.points[1].time, d.points[1].price);
+  const pC = toXY(coord, d.points[2].time, d.points[2].price);
+  if (!pA || !pB || !pC) return;
+  const props = d.props || {};
+  setupStroke(ctx, d);
+
+  // Draw legs A→B, B→C
+  ctx.beginPath();
+  ctx.moveTo(pA.x, pA.y);
+  ctx.lineTo(pB.x, pB.y);
+  ctx.lineTo(pC.x, pC.y);
+  ctx.stroke();
+
+  // Calculate projected point D: C + (B - A) ratio
+  const priceAB = d.points[1].price - d.points[0].price;
+  const timeAB = d.points[1].time - d.points[0].time;
+
+  // Fibonacci projection levels from C
+  const levels = props.projectionLevels || [1, 0.618, 1.618, 2.618];
+  const levelColors = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4'];
+
+  for (let i = 0; i < levels.length; i++) {
+    const level = levels[i];
+    const projPrice = d.points[2].price + priceAB * level;
+    const projTime = d.points[2].time + timeAB * level;
+    const pD = toXY(coord, projTime, projPrice);
+    if (!pD) continue;
+
+    // Dashed line from C to projected point
+    ctx.save();
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = levelColors[i % levelColors.length];
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pC.x, pC.y);
+    ctx.lineTo(pD.x, pD.y);
+    ctx.stroke();
+
+    // Horizontal level line at projected price
+    ctx.beginPath();
+    ctx.moveTo(pD.x - 40, pD.y);
+    ctx.lineTo(pD.x + 40, pD.y);
+    ctx.stroke();
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = levelColors[i % levelColors.length];
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${(level * 100).toFixed(1)}% (${projPrice.toFixed(2)})`, pD.x + 6, pD.y + 4);
+  }
+
+  // Background between A-B-C
+  if (props.showBackground !== false) {
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.moveTo(pA.x, pA.y);
+    ctx.lineTo(pB.x, pB.y);
+    ctx.lineTo(pC.x, pC.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Point labels
+  ctx.fillStyle = d.color;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('A', pA.x, pA.y - 8);
+  ctx.fillText('B', pB.x, pB.y - 8);
+  ctx.fillText('C', pC.x, pC.y - 8);
 };
 
 // ─── Anchored VWAP ───
@@ -1734,6 +1913,7 @@ const RENDERERS: Record<string, Renderer> = {
   anchoredvwap: renderAnchoredVwap,
   fixedrangevolume: renderFixedRangeVolume,
   anchoredvolume: renderFixedRangeVolume,
+  projection: renderProjection,
 };
 
 
