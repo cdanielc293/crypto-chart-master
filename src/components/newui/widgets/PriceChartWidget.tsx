@@ -1,6 +1,6 @@
 // Professional candlestick chart using lightweight-charts
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
 
 // Generate realistic-looking mock OHLCV data
 function generateMockCandles(count = 200) {
