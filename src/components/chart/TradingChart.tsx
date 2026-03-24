@@ -2330,6 +2330,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       {/* Historical depth limit overlay */}
       {barsLimitReached && (
         <div className="absolute top-1/2 left-4 z-[15] -translate-y-1/2 max-w-[260px] rounded-xl border border-amber-500/30 bg-toolbar-bg/95 backdrop-blur-md px-5 py-4 shadow-2xl">
+          <button
+            onClick={() => setBarsLimitReached(false)}
+            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
+            title="Close"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400">
