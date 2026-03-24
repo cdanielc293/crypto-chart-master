@@ -1428,15 +1428,20 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     const cacheKey = getDataCacheKey();
 
     let cancelled = false;
+    let initialRangeEventSkipped = false;
 
     const loadOlderBars = async (range: { from: number; to: number } | null) => {
       if (!range || cancelled) return;
       if (range.from > 50) return;
+
+      // Skip the first range-change event (fired on initial render/data load)
+      if (!initialRangeEventSkipped) {
+        initialRangeEventSkipped = true;
+        return;
+      }
+
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
-
-      // Mark that user has scrolled back (first call with range.from <= 50 after initial load)
-      userScrolledBackRef.current = true;
 
       // Enforce plan-based time depth + bar count limit
       const currentBarCount = rawCandlesRef.current.length;
