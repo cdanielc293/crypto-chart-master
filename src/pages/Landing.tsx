@@ -36,6 +36,7 @@ export default function Landing() {
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
             VIZIONX
           </span>
+          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold tracking-wider rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">Beta</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
           {[
@@ -116,14 +117,17 @@ export default function Landing() {
             </button>
           </motion.div>
 
-          <motion.p
-            className="mt-4 text-sm text-white/30"
+          <motion.div
+            className="mt-4 flex flex-col items-center gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 1.1 }}
           >
-            $0 forever, no credit card needed
-          </motion.p>
+            <p className="text-sm text-white/30">$0 forever, no credit card needed</p>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              🚀 Currently in Beta — All features free
+            </span>
+          </motion.div>
         </motion.div>
 
         <motion.div

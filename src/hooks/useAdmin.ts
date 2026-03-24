@@ -29,6 +29,13 @@ export interface AdminStats {
   open_support: number;
 }
 
+export interface ActivityStats {
+  online_now: number;
+  today_logins: number;
+  week_logins: number;
+  month_logins: number;
+}
+
 export function useAdminStats() {
   return useQuery({
     queryKey: ['admin-stats'],
@@ -37,6 +44,18 @@ export function useAdminStats() {
       if (error) throw error;
       return data as AdminStats;
     },
+  });
+}
+
+export function useAdminActivityStats() {
+  return useQuery({
+    queryKey: ['admin-activity-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_activity_stats');
+      if (error) throw error;
+      return data as ActivityStats;
+    },
+    refetchInterval: 30000, // refresh every 30s
   });
 }
 

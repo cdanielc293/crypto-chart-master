@@ -11,7 +11,25 @@ import {
 
 const tiers = [
   {
-    name: 'VizionXX Core',
+    name: 'VizionX Start',
+    price: '$0',
+    originalPrice: null,
+    period: '/mo',
+    billing: 'Free Forever',
+    desc: 'The perfect entry into professional analysis.',
+    icon: Star,
+    free: true,
+    features: [
+      '1 chart per tab',
+      '4 indicators per chart',
+      '6K historical bars',
+      '5 price & technical alerts',
+      'Bar Replay (Daily)',
+      'Web, Desktop, and Mobile sync',
+    ],
+  },
+  {
+    name: 'VizionX Core',
     price: '$6.50',
     originalPrice: '$12.95',
     period: '/mo',
@@ -29,7 +47,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Prime',
+    name: 'VizionX Prime',
     price: '$14.15',
     originalPrice: '$28.30',
     period: '/mo',
@@ -49,7 +67,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Elite',
+    name: 'VizionX Elite',
     price: '$28.25',
     originalPrice: '$56.50',
     period: '/mo',
@@ -68,7 +86,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionXX Zenith',
+    name: 'VizionX Zenith',
     price: '$99.95',
     originalPrice: '$199.90',
     period: '/mo',
@@ -134,8 +152,9 @@ export default function Pricing() {
         <button onClick={() => navigate('/')} className="flex items-center gap-2.5">
           <img src={vizionLogo} alt="VizionX" className="h-8 w-8" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            VIZION
+            VIZIONX
           </span>
+          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold tracking-wider rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase">Beta</span>
         </button>
         <button
           onClick={() => navigate('/signup?tier=zenith')}
@@ -157,9 +176,10 @@ export default function Pricing() {
           <div className="relative flex items-center justify-center gap-3 py-3.5 px-6">
             <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
             <p className="text-sm sm:text-base font-semibold">
-              <span className="text-cyan-400">FREE LAUNCH ACCESS:</span>{' '}
-              <span className="text-white/70">All features currently</span>{' '}
-              <span className="text-cyan-300 font-bold">$0</span>
+              <span className="text-cyan-400">🚀 BETA LAUNCH:</span>{' '}
+              <span className="text-white/70">All Zenith features unlocked —</span>{' '}
+              <span className="text-cyan-300 font-bold">100% FREE</span>{' '}
+              <span className="text-white/50">during Beta</span>
             </p>
             <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
           </div>
@@ -197,14 +217,17 @@ export default function Pricing() {
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl" />
           <div className="relative">
-            <p className="text-sm font-semibold tracking-widest text-cyan-400/80 uppercase mb-3">
-              Special Launch Offer
+           <p className="text-sm font-semibold tracking-widest text-cyan-400/80 uppercase mb-3">
+              🚀 Beta Launch Offer
             </p>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">UNLIMITED ACCESS</h2>
-            <p className="text-white/50 max-w-lg mx-auto mb-6">
-              To celebrate the launch of VizionX, all features—including our Zenith Tier—are{' '}
-              <span className="text-cyan-400 font-semibold">100% FREE</span> for all users until further
-              notice. No credit card, no strings attached.
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">ALL FEATURES UNLOCKED</h2>
+            <p className="text-white/50 max-w-lg mx-auto mb-4">
+              We're in <span className="text-cyan-400 font-semibold">Beta</span> — and during this period, every user gets full{' '}
+              <span className="text-cyan-400 font-semibold">Zenith-level access</span> completely free.
+              We're working hard to deliver the best experience possible.
+            </p>
+            <p className="text-xs text-white/30 mb-6 max-w-md mx-auto">
+              As a Beta product, you may experience occasional downtime for updates and improvements. We appreciate your patience!
             </p>
             <motion.button
               onClick={() => navigate('/signup?tier=zenith')}
@@ -212,7 +235,7 @@ export default function Pricing() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >
-              Claim Your Free Zenith Access
+              Join the Beta — It's Free
             </motion.button>
           </div>
         </motion.div>
@@ -220,7 +243,7 @@ export default function Pricing() {
 
       {/* Pricing Tiers */}
       <section className="px-6 pb-24">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.name}
@@ -252,7 +275,8 @@ export default function Pricing() {
                 <span className="text-white/40 text-sm">{tier.period}</span>
               </div>
               <p className="text-xs text-white/30 mb-1">{tier.billing}</p>
-              <p className="text-xs text-white/20 line-through mb-5">Was {tier.originalPrice}/mo</p>
+              {tier.originalPrice && <p className="text-xs text-white/20 line-through mb-5">Was {tier.originalPrice}/mo</p>}
+              {(tier as any).free && <p className="text-xs text-cyan-400/60 font-medium mb-5">No credit card needed</p>}
 
               <div className="flex-1 space-y-3 mb-6">
                 {tier.features.map((f) => (

@@ -2243,6 +2243,12 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         </div>
       )}
 
+      {/* Beta Notice */}
+      <div className="absolute bottom-2 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-chart-bg/80 border border-chart-border/50 backdrop-blur-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+        <span className="text-[10px] text-muted-foreground font-medium">Beta — Updates & improvements in progress</span>
+      </div>
+
       {replayState !== 'off' && replayState !== 'selecting' && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary text-xs px-3 py-1 rounded-full">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />

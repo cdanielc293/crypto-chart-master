@@ -8,6 +8,7 @@ import vizionLogo from '@/assets/vizionx-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
 
 const tierNames: Record<string, string> = {
+  start: 'VizionX Start',
   core: 'VizionX Core',
   prime: 'VizionX Prime',
   elite: 'VizionX Elite',

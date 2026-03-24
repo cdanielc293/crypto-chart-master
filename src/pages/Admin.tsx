@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   useAdminStats, useAdminProfiles, useAdminTickets, useAdminSupport,
   useToggleBlock, useUpdateTicketStatus, useUpdateSupportStatus,
+  useAdminActivityStats,
 } from '@/hooks/useAdmin';
 import { planLabels } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { toast } from 'sonner';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ArrowLeft, Users, Bug, Lightbulb, MessageSquare, BarChart3, Shield,
-  Ban, CheckCircle, Clock, Loader2, ChevronDown,
+  Ban, CheckCircle, Clock, Loader2, ChevronDown, Wifi, Calendar, CalendarDays, CalendarRange,
 } from 'lucide-react';
 
 const tabs = [
@@ -44,6 +45,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const { data: stats, isLoading: statsLoading } = useAdminStats();
+  const { data: activityStats } = useAdminActivityStats();
   const { data: profiles, isLoading: profilesLoading } = useAdminProfiles();
   const { data: tickets, isLoading: ticketsLoading } = useAdminTickets();
   const { data: support, isLoading: supportLoading } = useAdminSupport();
@@ -118,6 +120,17 @@ export default function Admin() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold">Overview</h2>
+
+              {/* Activity Stats */}
+              {activityStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+                  <StatCard label="Online Now" value={activityStats.online_now} icon={Wifi} color="text-green-400" />
+                  <StatCard label="Logins Today" value={activityStats.today_logins} icon={Calendar} color="text-cyan-400" />
+                  <StatCard label="Logins This Week" value={activityStats.week_logins} icon={CalendarDays} color="text-blue-400" />
+                  <StatCard label="Logins This Month" value={activityStats.month_logins} icon={CalendarRange} color="text-violet-400" />
+                </div>
+              )}
+
               {statsLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-cyan-400 mx-auto" />
               ) : stats ? (
