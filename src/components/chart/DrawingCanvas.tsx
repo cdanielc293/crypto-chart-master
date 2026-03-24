@@ -861,7 +861,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         drawing={ctxDrawing}
         onClose={() => setDrawingCtxMenu(null)}
         onUpdate={(updates) => {
-          if (ctxDrawing) updateDrawing(ctxDrawing.id, { ...ctxDrawing, ...updates });
+          if (ctxDrawing) {
+            const fu = { ...updates };
+            if (fu.color && ctxDrawing.type === 'parallelchannel' && ctxDrawing.props?.channelLevels) {
+              fu.props = { ...ctxDrawing.props, ...fu.props, channelLevels: ctxDrawing.props.channelLevels.map((l: any) => ({ ...l, color: fu.color })) };
+            }
+            updateDrawing(ctxDrawing.id, { ...ctxDrawing, ...fu });
+          }
         }}
         onClone={() => {
           if (ctxDrawing) {
