@@ -73,6 +73,9 @@ interface WidgetDrawing {
   points: DrawingPoint[];
   color: string;
   lineWidth: number;
+  selected?: boolean;
+  locked?: boolean;
+  visible?: boolean;
 }
 
 interface Projection {
