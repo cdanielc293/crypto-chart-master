@@ -17,8 +17,9 @@ import {
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield,
+  Home, Palette, Settings, Users, LogOut, ChevronRight, Shield, Sparkles,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ReferFriendDialog from './ReferFriendDialog';
 
 export default function UserProfileMenu() {
