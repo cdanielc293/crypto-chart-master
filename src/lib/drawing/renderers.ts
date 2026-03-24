@@ -2047,7 +2047,7 @@ export function renderDrawing(
 // ─── Anchors ───
 
 export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoint[] {
-  return drawing.points
+  const baseAnchors = drawing.points
     .map((p, i) => {
       const x = coord.timeToX(p.time);
       const y = coord.priceToY(p.price);
@@ -2055,6 +2055,27 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
       return { x, y, pointIndex: i };
     })
     .filter(Boolean) as AnchorPoint[];
+
+  // For parallel channel with 3 points, add 3 virtual anchors on the opposite line
+  if (drawing.type === 'parallelchannel' && drawing.points.length >= 3) {
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    const p2 = toXY(coord, drawing.points[1].time, drawing.points[1].price);
+    const p3 = toXY(coord, drawing.points[2].time, drawing.points[2].price);
+    if (p1 && p2 && p3) {
+      const offsetY = p3.y - p1.y;
+      // Virtual anchors: bottom-left (mirror of p1), bottom-middle (mirror of midpoint), bottom-right (mirror of p2)
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+      // pointIndex 10,11,12 = virtual anchors (bottom line: start, mid, end)
+      baseAnchors.push({ x: p1.x, y: p1.y + offsetY, pointIndex: 10 });
+      baseAnchors.push({ x: midX, y: midY + offsetY, pointIndex: 11 });
+      baseAnchors.push({ x: p2.x, y: p2.y + offsetY, pointIndex: 12 });
+      // Also add midpoint anchor on top line
+      baseAnchors.push({ x: midX, y: midY, pointIndex: 13 });
+    }
+  }
+
+  return baseAnchors;
 }
 
 export function renderAnchors(ctx: CanvasRenderingContext2D, anchors: AnchorPoint[]) {
