@@ -2011,9 +2011,9 @@ export function renderDrawing(
   renderer(ctx, drawing, coord, w, h, candles);
   ctx.restore();
 
-  // Render text label if present
+  // Render text label if present (skip for text/note types — they handle their own rendering)
   const text = drawing.props?.text;
-  if (text && text.trim() && drawing.points.length >= 2) {
+  if (text && text.trim() && drawing.type !== 'text' && drawing.type !== 'note' && drawing.points.length >= 2) {
     const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     const p2 = toXY(coord, drawing.points[1].time, drawing.points[1].price);
     if (p1 && p2) {
@@ -2031,7 +2031,7 @@ export function renderDrawing(
       ctx.fillText(text, mx, my + offset);
       ctx.restore();
     }
-  } else if (text && text.trim() && drawing.points.length === 1) {
+  } else if (text && text.trim() && drawing.type !== 'text' && drawing.type !== 'note' && drawing.points.length === 1) {
     const p = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     if (p) {
       const fontSize = drawing.props?.textSize || 14;
