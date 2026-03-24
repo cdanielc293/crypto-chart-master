@@ -31,8 +31,8 @@ export default function Signup() {
   const [signedUpName, setSignedUpName] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/chart', { replace: true });
-  }, [user, navigate]);
+    if (user && !showBetaPass) navigate('/chart', { replace: true });
+  }, [user, navigate, showBetaPass]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
