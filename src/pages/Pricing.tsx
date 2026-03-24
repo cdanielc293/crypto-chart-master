@@ -11,7 +11,7 @@ import {
 
 const tiers = [
   {
-    name: 'VizionX Core',
+    name: 'VizionXX Core',
     price: '$6.50',
     originalPrice: '$12.95',
     period: '/mo',
@@ -29,7 +29,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionX Prime',
+    name: 'VizionXX Prime',
     price: '$14.15',
     originalPrice: '$28.30',
     period: '/mo',
@@ -49,7 +49,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionX Elite',
+    name: 'VizionXX Elite',
     price: '$28.25',
     originalPrice: '$56.50',
     period: '/mo',
@@ -68,7 +68,7 @@ const tiers = [
     ],
   },
   {
-    name: 'VizionX Zenith',
+    name: 'VizionXX Zenith',
     price: '$99.95',
     originalPrice: '$199.90',
     period: '/mo',
@@ -102,7 +102,7 @@ const faqs = [
   },
   {
     q: 'Do I need a credit card now?',
-    a: 'No. Your Vizion starts with zero friction. Just sign up and start analyzing.',
+    a: 'No. Your VizionX starts with zero friction. Just sign up and start analyzing.',
   },
   {
     q: 'What happens to my charts after the launch?',
@@ -132,7 +132,7 @@ export default function Pricing() {
         className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between backdrop-blur-md bg-[#050508]/60 border-b border-white/5"
       >
         <button onClick={() => navigate('/')} className="flex items-center gap-2.5">
-          <img src={vizionLogo} alt="Vizion" className="h-8 w-8" />
+          <img src={vizionLogo} alt="VizionX" className="h-8 w-8" />
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
             VIZION
           </span>
@@ -202,7 +202,7 @@ export default function Pricing() {
             </p>
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">UNLIMITED ACCESS</h2>
             <p className="text-white/50 max-w-lg mx-auto mb-6">
-              To celebrate the launch of Vizion, all features—including our Zenith Tier—are{' '}
+              To celebrate the launch of VizionX, all features—including our Zenith Tier—are{' '}
               <span className="text-cyan-400 font-semibold">100% FREE</span> for all users until further
               notice. No credit card, no strings attached.
             </p>
@@ -291,7 +291,7 @@ export default function Pricing() {
             transition={{ duration: 0.6 }}
           >
             <p className="text-sm font-semibold tracking-widest text-cyan-400/80 uppercase mb-4">
-              The Vizion Advantage
+              The VizionX Advantage
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Why traders <span className="text-white/40">switch to us</span>
@@ -307,7 +307,7 @@ export default function Pricing() {
           >
             <div className="grid grid-cols-3 bg-white/[0.03] border-b border-white/5">
               <div className="p-4 text-sm font-semibold text-white/60">Feature</div>
-              <div className="p-4 text-sm font-semibold text-cyan-400">Vizion (Any Tier)</div>
+              <div className="p-4 text-sm font-semibold text-cyan-400">VizionX (Any Tier)</div>
               <div className="p-4 text-sm font-semibold text-white/30">The Competition</div>
             </div>
             {comparisonRows.map((row, i) => (
@@ -340,7 +340,7 @@ export default function Pricing() {
             {
               title: 'Alerts & Automation',
               items: [
-                "Durations: Vizion alerts don't expire prematurely.",
+                "Durations: VizionX alerts don't expire prematurely.",
                 'Webhooks: Send alerts directly to your execution bots.',
                 'Watchlist Alerts: Stay notified when your entire list hits a setup.',
               ],
@@ -378,7 +378,7 @@ export default function Pricing() {
           <p className="text-sm text-white/40 max-w-2xl mx-auto">
             We connect you to institutional-grade data partners, providing direct access to over{' '}
             <span className="text-cyan-400 font-semibold">3.5 Million instruments</span> worldwide. Crypto,
-            Stocks, Forex, and Futures—all in one Vizion.
+            Stocks, Forex, and Futures—all in one VizionX.
           </p>
         </motion.div>
       </section>
@@ -433,7 +433,7 @@ export default function Pricing() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-4">
             Ready to Master the Markets?
           </h2>
-          <p className="text-lg text-white/40 mb-8">Join the elite. Start your Vizion today.</p>
+          <p className="text-lg text-white/40 mb-8">Join the elite. Start your VizionX today.</p>
           <motion.button
             onClick={() => navigate('/signup?tier=zenith')}
             className="px-10 py-4 text-base font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400 transition-all shadow-2xl shadow-cyan-500/25"
@@ -450,7 +450,7 @@ export default function Pricing() {
         <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-white/25">
           <div className="flex items-center gap-2">
             <img src={vizionLogo} alt="" className="h-5 w-5 opacity-50" />
-            <span>© 2026 Vizion. All rights reserved.</span>
+            <span>© 2026 VizionX. All rights reserved.</span>
           </div>
           <div className="hidden md:flex gap-6">
             <span className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>

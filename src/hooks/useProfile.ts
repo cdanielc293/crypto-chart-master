@@ -65,10 +65,10 @@ export function useUpdateProfile() {
 }
 
 export const planLabels: Record<string, string> = {
-  core: 'Vizion Core',
-  prime: 'Vizion Prime',
-  elite: 'Vizion Elite',
-  zenith: 'Vizion Zenith',
+  core: 'VizionX Core',
+  prime: 'VizionX Prime',
+  elite: 'VizionX Elite',
+  zenith: 'VizionX Zenith',
 };
 
 export const planColors: Record<string, string> = {
