@@ -20,14 +20,14 @@ export interface ChartConfig {
 export const DEFAULT_CHART_CONFIG: ChartConfig = {
   candleUp: '#26a69a',
   candleDown: '#ef5350',
-  wickUp: '#2ec4a6',
-  wickDown: '#f06860',
-  bg: '#080e1e',
+  wickUp: '#26a69a',
+  wickDown: '#ef5350',
+  bg: '#131722',
   showGrid: true,
-  showGlow: true,
+  showGlow: false,
   showVolume: true,
   showBorders: true,
-  crosshairColor: '#00c8ff',
+  crosshairColor: '#758696',
 };
 
 interface Props {
