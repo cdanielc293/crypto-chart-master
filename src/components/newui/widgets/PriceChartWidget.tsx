@@ -2,7 +2,8 @@
 // configurable settings, indicator overlays, and full drawing tools via left toolbar.
 // Fully isolated from Classic view.
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ContextMenu,
   ContextMenuContent,
