@@ -328,9 +328,8 @@ export default function Terms() {
             in controversy in U.S. Dollars; and (4) certification that the requesting party will pay applicable filing fees.
           </p>
           <p>
-            Demands should be sent to{' '}
-            <a href="mailto:legal@vizionx.pro" className="text-cyan-400 hover:underline">legal@vizionx.pro</a>. 
-            Unless otherwise agreed, arbitration will be conducted in the county of your residence. 
+            Demands should be submitted through the contact form at the bottom of this page.
+            Unless otherwise agreed, arbitration will be conducted in the county of your residence.
             The arbitration shall be conducted in English by a single arbitrator who is either a retired judge or licensed attorney.
           </p>
 
