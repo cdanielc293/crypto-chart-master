@@ -1,6 +1,6 @@
 import type { Drawing } from '@/types/chart';
 import { Copy, Trash2, Lock, Unlock, Minus, Plus, Type, MoreHorizontal, GripVertical, Eye, Settings } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 
 const COLORS = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#e91e63', '#00bcd4', '#ffeb3b', '#ffffff', '#787b86'];
 
@@ -21,14 +21,60 @@ interface Props {
   onOpenSettings?: () => void;
 }
 
+function getDefaultPosition(x: number, y: number) {
+  return { x: Math.max(5, x - 160), y: Math.max(5, y) };
+}
+
 export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUpdate, onClone, onDelete, onOpenSettings }: Props) {
   const [showColors, setShowColors] = useState(false);
   const [showLineStyles, setShowLineStyles] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textValue, setTextValue] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [position, setPosition] = useState(() => getDefaultPosition(x, y));
   const textInputRef = useRef<HTMLInputElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  // Reset toolbar placement when selected drawing changes
+  useEffect(() => {
+    setIsPinned(false);
+    setPosition(getDefaultPosition(x, y));
+  }, [drawing?.id, x, y]);
+
+  // Follow auto position unless user dragged it manually
+  useEffect(() => {
+    if (!isPinned && !isDragging) {
+      setPosition(getDefaultPosition(x, y));
+    }
+  }, [x, y, isPinned, isDragging]);
+
+  // Drag logic (from grip handle)
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMove = (e: MouseEvent) => {
+      setIsPinned(true);
+      setPosition({
+        x: Math.max(5, e.clientX - dragOffsetRef.current.x),
+        y: Math.max(5, e.clientY - dragOffsetRef.current.y),
+      });
+    };
+
+    const onUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [isDragging]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -51,6 +97,20 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
   const currentStyleIcon = LINE_STYLES.find(s => s.value === lineStyle)?.icon || LINE_STYLES[0].icon;
   const hasText = drawing.props?.text && drawing.props.text.trim().length > 0;
 
+  const handleDragStart = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragOffsetRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+    setIsDragging(true);
+    setShowColors(false);
+    setShowLineStyles(false);
+    setShowMore(false);
+    setShowTextInput(false);
+  };
+
   const updateProps = (updates: Record<string, any>) => {
     onUpdate({ props: { ...drawing.props, ...updates } });
   };
@@ -59,11 +119,15 @@ export default function FloatingToolbar({ x, y, drawing, selectedCount = 1, onUp
     <div
       ref={toolbarRef}
       className="absolute z-50 flex items-center gap-0.5 bg-card border border-chart-border rounded-md shadow-xl px-1 py-0.5"
-      style={{ left: Math.max(5, x - 160), top: Math.max(5, y), pointerEvents: 'auto' }}
+      style={{ left: position.x, top: position.y, pointerEvents: 'auto' }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* Drag handle */}
-      <div className="w-6 h-7 flex items-center justify-center text-muted-foreground cursor-grab">
+      <div
+        className={`w-6 h-7 flex items-center justify-center text-muted-foreground ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        onMouseDown={handleDragStart}
+        title="Drag toolbar"
+      >
         <GripVertical size={12} />
       </div>
 
