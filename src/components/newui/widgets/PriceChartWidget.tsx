@@ -12,7 +12,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { RotateCcw, ZoomIn, ZoomOut, Maximize2, Clock, Copy } from 'lucide-react';
+import { RotateCcw, ZoomIn, ZoomOut, Maximize2, Clock, Copy, BarChart3, Settings, Trash2, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ─── Types ───
 interface Candle {
