@@ -47,6 +47,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const ctrlKeyRef = useRef(false);
   const areaSelectStartRef = useRef<{ x: number; y: number } | null>(null);
   const areaSelectEndRef = useRef<{ x: number; y: number } | null>(null);
+  const justPlacedRef = useRef(false);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
@@ -380,6 +381,14 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
+    // Prevent double-placement from double-click firing two mousedowns
+    if (justPlacedRef.current) {
+      justPlacedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     // Shift-snap for second point on line-type tools
     let pointToAdd = { time, price };
     if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
@@ -391,6 +400,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       const defaultTmpl = getDefaultTemplate(drawingTool);
       let drawingProps: Record<string, any> | undefined = drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
            : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
+           : drawingTool === 'note' ? { text: 'Note', fontSize: 12 } 
            : undefined;
       if (defaultTmpl) {
         drawingProps = { ...drawingProps, ...defaultTmpl.props };
@@ -409,6 +419,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
       previewPointRef.current = null;
+      justPlacedRef.current = true;
       // Auto-switch back to cursor after placing a drawing
       setDrawingTool('cursor');
     }
@@ -561,7 +572,26 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     }
   }, [chartDrawings, drawings, getCoordHelper, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, setDrawingTool]);
 
-  const handleDoubleClick = useCallback(() => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    // Double-click on text/note drawing → open settings for editing
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
+      const coords = getMouseCoords(e as unknown as MouseEvent);
+      const coord = getCoordHelper();
+      const container = containerRef.current;
+      if (coords && coord && container) {
+        const { mx, my } = coords;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        for (let i = chartDrawings.length - 1; i >= 0; i--) {
+          const d = chartDrawings[i];
+          if ((d.type === 'text' || d.type === 'note') && hitTestDrawing(d, mx, my, coord, w, h)) {
+            setSettingsDrawingId(d.id);
+            return;
+          }
+        }
+      }
+    }
+
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1 && pendingPointsRef.current.length >= 2) {
       const newDrawing: Drawing = {
@@ -580,7 +610,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       // Auto-switch back to cursor after multi-point drawing
       setDrawingTool('cursor');
     }
-  }, [drawingTool, addDrawing, setDrawingTool]);
+  }, [drawingTool, addDrawing, setDrawingTool, chartDrawings, getMouseCoords, getCoordHelper, containerRef]);
 
   // Keyboard
   useEffect(() => {

@@ -35,8 +35,8 @@ export type DrawingTool =
   // Shapes
   | 'rectangle' | 'rotatedrectangle' | 'path' | 'circle' | 'ellipse'
   | 'polyline' | 'triangle' | 'arc' | 'curve' | 'doublecurve'
-  // Text & Emoji
-  | 'text' | 'emoji';
+  // Text, Note & Emoji
+  | 'text' | 'note' | 'emoji';
 
 export type ChartType =
   | 'bars' | 'candles' | 'hollow' | 'volume_candles'
