@@ -2,7 +2,8 @@
 // configurable settings, indicator overlays, and full drawing tools via left toolbar.
 // Fully isolated from Classic view.
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -525,6 +526,14 @@ export default function PriceChartWidget() {
 
   useEffect(() => { drawingToolRef.current = drawingTool; }, [drawingTool]);
 
+  // Load logo image for watermark
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    const img = new Image();
+    img.src = vizionLogo;
+    img.onload = () => { logoImgRef.current = img; scheduleRender(); };
+  }, []);
+
   const scheduleRender = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(render);
@@ -1011,6 +1020,24 @@ export default function PriceChartWidget() {
         iy += 14;
       }
     }
+
+    // ─── Logo watermark (bottom-right of chart area) ───
+    const logoImg = logoImgRef.current;
+    if (logoImg) {
+      const logoH = 22;
+      const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
+      const logoX = chartW - logoW - 12;
+      const logoY = priceH - logoH - 8;
+      ctx.globalAlpha = 0.12;
+      ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+      ctx.globalAlpha = 1;
+      // Brand text next to logo
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('VIZIONX', logoX - 6, logoY + logoH);
+    }
   }, [createPointFromScreen]);
 
   function drawPriceAxis(ctx: CanvasRenderingContext2D, chartW: number, chartH: number, cfg: ChartConfig) {
@@ -1122,7 +1149,7 @@ export default function PriceChartWidget() {
         return;
       }
 
-      // Single-point tools: place immediately
+      // Single-point tools: place immediately, then auto-switch to cursor (like Classic)
       if (needed === 1) {
         commitDrawing({
           id: `${tool}-${Date.now()}`,
@@ -1131,6 +1158,7 @@ export default function PriceChartWidget() {
           color: '#778ba4',
           lineWidth: 1.4,
         });
+        setDrawingTool('none');
         return;
       }
 
@@ -1146,6 +1174,8 @@ export default function PriceChartWidget() {
           lineWidth: 1.5,
         });
         draftPointsRef.current = [];
+        // Auto-switch back to cursor after placing (like Classic)
+        setDrawingTool('none');
         return;
       }
 
@@ -1180,6 +1210,8 @@ export default function PriceChartWidget() {
         lineWidth: tool === 'highlighter' ? 16 : 1.5,
       });
       draftPointsRef.current = [];
+      // Auto-switch back to cursor after freehand drawing (like Classic)
+      setDrawingTool('none');
     }
 
     stateRef.current.dragMode = 'none';
