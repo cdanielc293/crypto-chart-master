@@ -2283,6 +2283,22 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         </div>
       )}
 
+      {/* Historical bars limit overlay */}
+      {barsLimitReached && (
+        <div className="absolute top-1/2 left-4 z-[15] -translate-y-1/2 max-w-[220px] rounded-lg border border-chart-border bg-toolbar-bg/95 backdrop-blur-sm px-4 py-3 shadow-lg">
+          <p className="text-xs font-semibold text-foreground mb-1">Historical limit reached</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed mb-2">
+            Your plan allows up to {maxBars.toLocaleString()} historical bars. Upgrade for more history.
+          </p>
+          <a
+            href="/pricing"
+            className="inline-block text-[10px] font-medium text-primary hover:underline"
+          >
+            Upgrade Plan →
+          </a>
+        </div>
+      )}
+
       {/* Beta Notice */}
       <div className="absolute bottom-2 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-chart-bg/80 border border-chart-border/50 backdrop-blur-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
