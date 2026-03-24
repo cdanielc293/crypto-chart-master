@@ -415,6 +415,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     const coord = getCoordHelper();
     if (!coord) return;
 
+    // Area selection
+    if (areaSelectStartRef.current) {
+      areaSelectEndRef.current = { x: mx, y: my };
+      return;
+    }
+
     // Brush
     if (isBrushingRef.current && brushDrawingIdRef.current) {
       const existing = drawings.find(d => d.id === brushDrawingIdRef.current);
