@@ -252,6 +252,7 @@ export function useKeyboardShortcuts() {
 
     // Any letter key → Open symbol search (like TradingView)
     if (!ctrl && !alt && !shift && key.length === 1 && /^[a-zA-Z]$/.test(key)) {
+      e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:symbol-search', { detail: { initialChar: key } }));
       return;
     }
