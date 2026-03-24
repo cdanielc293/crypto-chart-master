@@ -48,11 +48,26 @@ const shortLabel: Record<string, string> = {
 
 export default function TopToolbar() {
   const {
-    symbol, interval, setInterval, chartType, setChartType,
+    symbol, interval: globalInterval, setInterval: setGlobalInterval, chartType: globalChartType, setChartType: setGlobalChartType,
     indicators, toggleIndicator, replayState, setReplayState,
     favoriteIntervals, toggleFavoriteInterval,
     gridLayout, setGridLayout, syncOptions, setSyncOptions,
+    activePanelIndex, panelIndicatorStates, setPanelInterval, setPanelChartType,
   } = useChart();
+
+  const isMultiChart = gridLayout.count > 1;
+  const activePanelState = isMultiChart && activePanelIndex !== null ? panelIndicatorStates.get(activePanelIndex) : undefined;
+
+  // Use active panel's interval/chartType when in multi-chart, otherwise global
+  const interval = isMultiChart && activePanelState?.interval ? activePanelState.interval : globalInterval;
+  const chartType = isMultiChart && activePanelState?.chartType ? activePanelState.chartType : globalChartType;
+
+  const setInterval = isMultiChart && activePanelIndex !== null
+    ? (iv: Interval) => setPanelInterval(activePanelIndex, iv)
+    : setGlobalInterval;
+  const setChartType = isMultiChart && activePanelIndex !== null
+    ? (ct: ChartType) => setPanelChartType(activePanelIndex, ct)
+    : setGlobalChartType;
   const { theme, setTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
