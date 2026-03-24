@@ -790,7 +790,7 @@ export async function getOlderKlinesFromCache(
     const p = supabase
       .from('klines')
       .select('time, open, high, low, close, volume')
-      .eq('symbol', symbol)
+      .eq('symbol', cleanSymbol)
       .eq('interval', sourceInterval)
       .lt('time', beforeTime)
       .order('time', { ascending: false })
