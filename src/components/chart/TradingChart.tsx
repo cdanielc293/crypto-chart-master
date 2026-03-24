@@ -1424,9 +1424,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
 
-      // Enforce plan-based historical bars limit
+      // Enforce plan-based time depth + bar count limit
       const currentBarCount = rawCandlesRef.current.length;
-      if (currentBarCount >= maxBars) {
+      const oldestLoadedTime = rawCandlesRef.current[0] ? Number(rawCandlesRef.current[0].time) : 0;
+      if (currentBarCount >= maxBars || oldestLoadedTime <= earliestAllowed) {
         setBarsLimitReached(true);
         hasMoreOlderRef.current = false;
         return;
