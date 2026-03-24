@@ -217,14 +217,17 @@ export default function Pricing() {
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl" />
           <div className="relative">
-            <p className="text-sm font-semibold tracking-widest text-cyan-400/80 uppercase mb-3">
-              Special Launch Offer
+           <p className="text-sm font-semibold tracking-widest text-cyan-400/80 uppercase mb-3">
+              🚀 Beta Launch Offer
             </p>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">UNLIMITED ACCESS</h2>
-            <p className="text-white/50 max-w-lg mx-auto mb-6">
-              To celebrate the launch of VizionX, all features—including our Zenith Tier—are{' '}
-              <span className="text-cyan-400 font-semibold">100% FREE</span> for all users until further
-              notice. No credit card, no strings attached.
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">ALL FEATURES UNLOCKED</h2>
+            <p className="text-white/50 max-w-lg mx-auto mb-4">
+              We're in <span className="text-cyan-400 font-semibold">Beta</span> — and during this period, every user gets full{' '}
+              <span className="text-cyan-400 font-semibold">Zenith-level access</span> completely free.
+              We're working hard to deliver the best experience possible.
+            </p>
+            <p className="text-xs text-white/30 mb-6 max-w-md mx-auto">
+              As a Beta product, you may experience occasional downtime for updates and improvements. We appreciate your patience!
             </p>
             <motion.button
               onClick={() => navigate('/signup?tier=zenith')}
@@ -232,7 +235,7 @@ export default function Pricing() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >
-              Claim Your Free Zenith Access
+              Join the Beta — It's Free
             </motion.button>
           </div>
         </motion.div>
