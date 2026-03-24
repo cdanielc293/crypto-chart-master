@@ -197,6 +197,47 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [selectedDrawingIds, setSelectedDrawingIds] = useState<Set<string>>(new Set());
+
+  // Undo/Redo stacks for drawings
+  const drawingUndoStack = useRef<Drawing[][]>([]);
+  const drawingRedoStack = useRef<Drawing[][]>([]);
+  const [canUndoDrawing, setCanUndoDrawing] = useState(false);
+  const [canRedoDrawing, setCanRedoDrawing] = useState(false);
+
+  const pushDrawingUndo = useCallback((prev: Drawing[]) => {
+    drawingUndoStack.current.push(JSON.parse(JSON.stringify(prev)));
+    if (drawingUndoStack.current.length > 50) drawingUndoStack.current.shift();
+    drawingRedoStack.current = [];
+    setCanUndoDrawing(true);
+    setCanRedoDrawing(false);
+  }, []);
+
+  const undoDrawing = useCallback(() => {
+    if (drawingUndoStack.current.length === 0) return;
+    setDrawings(prev => {
+      drawingRedoStack.current.push(JSON.parse(JSON.stringify(prev)));
+      const restored = drawingUndoStack.current.pop()!;
+      setCanUndoDrawing(drawingUndoStack.current.length > 0);
+      setCanRedoDrawing(true);
+      return restored;
+    });
+    setSelectedDrawingId(null);
+    setSelectedDrawingIds(new Set());
+  }, []);
+
+  const redoDrawing = useCallback(() => {
+    if (drawingRedoStack.current.length === 0) return;
+    setDrawings(prev => {
+      drawingUndoStack.current.push(JSON.parse(JSON.stringify(prev)));
+      const restored = drawingRedoStack.current.pop()!;
+      setCanUndoDrawing(true);
+      setCanRedoDrawing(drawingRedoStack.current.length > 0);
+      return restored;
+    });
+    setSelectedDrawingId(null);
+    setSelectedDrawingIds(new Set());
+  }, []);
+
   const [indicators, setIndicators] = useState<string[]>([]);
   const [hiddenIndicators, setHiddenIndicators] = useState<Set<string>>(new Set());
   const [indicatorConfigs, setIndicatorConfigs] = useState<Map<string, IndicatorInstance>>(new Map());
@@ -231,6 +272,11 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setHiddenIndicators(loaded.hiddenIndicators);
     setChartType(loaded.chartType);
     setInterval(loaded.interval);
+    // Reset undo/redo on load
+    drawingUndoStack.current = [];
+    drawingRedoStack.current = [];
+    setCanUndoDrawing(false);
+    setCanRedoDrawing(false);
   }, []);
 
   // Auto-save and load per symbol
@@ -313,15 +359,24 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [activeWatchlistId]);
 
   const addDrawing = useCallback((d: Drawing) => {
-    setDrawings(prev => [...prev, d]);
-  }, []);
+    setDrawings(prev => {
+      pushDrawingUndo(prev);
+      return [...prev, d];
+    });
+  }, [pushDrawingUndo]);
 
   const updateDrawing = useCallback((id: string, d: Drawing) => {
-    setDrawings(prev => prev.map(dd => dd.id === id ? d : dd));
-  }, []);
+    setDrawings(prev => {
+      pushDrawingUndo(prev);
+      return prev.map(dd => dd.id === id ? d : dd);
+    });
+  }, [pushDrawingUndo]);
 
   const removeDrawing = useCallback((id: string) => {
-    setDrawings(prev => prev.filter(d => d.id !== id));
+    setDrawings(prev => {
+      pushDrawingUndo(prev);
+      return prev.filter(d => d.id !== id);
+    });
     setSelectedDrawingId(prev => prev === id ? null : prev);
     setSelectedDrawingIds(prev => {
       if (!prev.has(id)) return prev;
@@ -329,7 +384,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       next.delete(id);
       return next;
     });
-  }, []);
+  }, [pushDrawingUndo]);
 
   const toggleSelectedDrawing = useCallback((id: string) => {
     setSelectedDrawingIds(prev => {
