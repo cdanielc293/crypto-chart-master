@@ -601,7 +601,7 @@ function NewsTab({ symbols }: { symbols: string[] }) {
 
 // ─── Main Component ───
 
-export default function AdvancedWatchlist({ onClose }: { onClose: () => void }) {
+export default function AdvancedWatchlist({ onClose, panelWidth }: { onClose: () => void; panelWidth: number }) {
   const {
     symbol, setSymbol, watchlists, activeWatchlistId,
     watchlistPrices, gridLayout, activePanelIndex, setPanelSymbol, panelSymbols,
@@ -716,7 +716,7 @@ export default function AdvancedWatchlist({ onClose }: { onClose: () => void }) 
   }, [allSymbols.join(',')]);
 
   return (
-    <div className="flex flex-col w-[min(600px,55vw)] min-w-[400px] bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+    <div className="flex flex-col min-w-[400px] bg-toolbar-bg border-l border-chart-border select-none overflow-hidden" style={{ width: Math.max(panelWidth, 400) }}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-chart-border">
         <div className="flex items-center gap-2">

@@ -76,9 +76,9 @@ export default function RightSidebar() {
 
       {/* Panel content */}
       {activePanel === 'watchlist' && <Watchlist panelWidth={panelWidth} />}
-      {activePanel === 'advanced' && <AdvancedWatchlist onClose={() => setActivePanel('watchlist')} />}
-      {activePanel === 'alerts' && <AlertsPanel />}
-      {activePanel === 'objects' && <ObjectTreePanel />}
+      {activePanel === 'advanced' && <AdvancedWatchlist panelWidth={panelWidth} onClose={() => setActivePanel('watchlist')} />}
+      {activePanel === 'alerts' && <AlertsPanel panelWidth={panelWidth} />}
+      {activePanel === 'objects' && <ObjectTreePanel panelWidth={panelWidth} />}
       {activePanel === 'chat' && (
         <div
           className="flex flex-col min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center"
