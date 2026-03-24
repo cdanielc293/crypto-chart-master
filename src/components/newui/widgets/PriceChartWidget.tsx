@@ -769,12 +769,13 @@ export default function PriceChartWidget() {
   }, [scheduleRender, pushUndo]);
 
   const removeDrawing = useCallback((id: string) => {
+    pushUndo();
     drawingsRef.current = drawingsRef.current.filter(d => d.id !== id);
     persistDrawings(drawingsRef.current);
     setDrawingsCount(drawingsRef.current.length);
     if (selectedDrawingId === id) setSelectedDrawingId(null);
     scheduleRender();
-  }, [scheduleRender, selectedDrawingId]);
+  }, [scheduleRender, selectedDrawingId, pushUndo]);
 
   const updateDrawing = useCallback((id: string, updates: Partial<WidgetDrawing>) => {
     drawingsRef.current = drawingsRef.current.map(d => d.id === id ? { ...d, ...updates } : d);
