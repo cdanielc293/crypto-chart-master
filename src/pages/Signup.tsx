@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Mail } from 'lucide-react';
+import BetaPassDialog from '@/components/chart/BetaPassDialog';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import signupHero from '@/assets/signup-hero.jpg';
 
