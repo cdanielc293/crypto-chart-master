@@ -223,19 +223,29 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
           </div>
         </div>
       )}
+      {/* Vertical line specific */}
+      {isVerticalTool && (
+        <div className="space-y-2">
+          <CheckField label="Time label" checked={localProps.timeLabel !== false} onChange={v => updateLocal('timeLabel', v)} />
+        </div>
+      )}
 
-      {/* Extend */}
-      <SelectField
-        label="Extend"
-        value={localProps.extend || 'none'}
-        options={EXTEND_OPTIONS}
-        onChange={v => updateLocal('extend', v)}
-      />
+      {/* Extend (not for vertical) */}
+      {!isVerticalTool && (
+        <SelectField
+          label="Extend"
+          value={localProps.extend || 'none'}
+          options={EXTEND_OPTIONS}
+          onChange={v => updateLocal('extend', v)}
+        />
+      )}
 
-      <div className="space-y-2">
-        <CheckField label="Middle point" checked={!!localProps.middlePoint} onChange={v => updateLocal('middlePoint', v)} />
-        <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
-      </div>
+      {!isVerticalTool && (
+        <div className="space-y-2">
+          <CheckField label="Middle point" checked={!!localProps.middlePoint} onChange={v => updateLocal('middlePoint', v)} />
+          <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
+        </div>
+      )}
 
       {/* Stats section */}
       {isLineTool && (
