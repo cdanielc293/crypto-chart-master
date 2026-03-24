@@ -20,6 +20,7 @@ import Privacy from "./pages/Privacy.tsx";
 import Cookies from "./pages/Cookies.tsx";
 import Accessibility from "./pages/Accessibility.tsx";
 import SecurityPage from "./pages/SecurityPage.tsx";
+import BugBounty from "./pages/BugBounty.tsx";
 
 const queryClient = new QueryClient();
 
