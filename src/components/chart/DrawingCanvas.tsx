@@ -503,16 +503,54 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   }, [drawingTool, drawings, chartDrawings, selectedDrawingId, getMouseCoords, getCoordHelper, updateDrawing, containerRef]);
 
   const handleMouseUp = useCallback(() => {
+    // Finalize area selection
+    if (areaSelectStartRef.current && areaSelectEndRef.current) {
+      const s = areaSelectStartRef.current;
+      const e = areaSelectEndRef.current;
+      const minX = Math.min(s.x, e.x);
+      const maxX = Math.max(s.x, e.x);
+      const minY = Math.min(s.y, e.y);
+      const maxY = Math.max(s.y, e.y);
+
+      // Only select if dragged more than 5px (not just a click)
+      if (Math.abs(e.x - s.x) > 5 || Math.abs(e.y - s.y) > 5) {
+        const coord = getCoordHelper();
+        if (coord) {
+          const newSelected = new Set<string>();
+          for (const d of chartDrawings) {
+            const anchors = getAnchors(d, coord);
+            const anyInside = anchors.some(a => a.x >= minX && a.x <= maxX && a.y >= minY && a.y <= maxY);
+            if (anyInside) {
+              newSelected.add(d.id);
+            }
+          }
+          if (newSelected.size > 0) {
+            setSelectedDrawingIds(newSelected);
+            const firstId = [...newSelected][0];
+            setSelectedDrawingId(firstId);
+            for (const dd of drawings) {
+              const shouldSelect = newSelected.has(dd.id);
+              if (dd.selected !== shouldSelect) {
+                updateDrawing(dd.id, { ...dd, selected: shouldSelect });
+              }
+            }
+          }
+        }
+      }
+
+      areaSelectStartRef.current = null;
+      areaSelectEndRef.current = null;
+    }
+
     isDraggingRef.current = false;
     dragStartRef.current = null;
     dragAnchorIdxRef.current = -1;
     if (isBrushingRef.current) {
       isBrushingRef.current = false;
       brushDrawingIdRef.current = null;
-      // Auto-switch back to cursor after brush/highlighter
       setDrawingTool('cursor');
     }
-  }, []);
+  }, [chartDrawings, drawings, getCoordHelper, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, setDrawingTool]);
 
   const handleDoubleClick = useCallback(() => {
     const toolPoints = getToolPointCount(drawingTool);
