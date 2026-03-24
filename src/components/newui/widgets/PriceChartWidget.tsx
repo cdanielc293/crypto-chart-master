@@ -1210,6 +1210,34 @@ export default function PriceChartWidget() {
     return 'pan';
   }, []);
 
+  // Helper: find drawing under cursor
+  const findDrawingAtPoint = useCallback((x: number, y: number): WidgetDrawing | null => {
+    const proj = projectionRef.current;
+    const data = dataRef.current;
+    if (!proj || data.length === 0) return null;
+    const st = stateRef.current;
+    const container = containerRef.current;
+    if (!container) return null;
+    const chartW = container.clientWidth - PRICE_W;
+    const priceH = container.clientHeight - TIME_H - (configRef.current.showVolume ? (container.clientHeight - TIME_H) * VOL_RATIO : 0);
+
+    const totalRange = proj.maxPrice - proj.minPrice;
+    const priceToY = (p: number) => priceH * (1 - (p - proj.minPrice) / totalRange);
+    const timeMap = new Map<number, number>();
+    for (let i = 0; i < data.length; i++) {
+      const px = (i - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+      timeMap.set(data[i].time, px);
+    }
+    const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+
+    // Test in reverse order (topmost drawing first)
+    for (let i = drawingsRef.current.length - 1; i >= 0; i--) {
+      const d = drawingsRef.current[i];
+      if (hitTestWidgetDrawing(d, x, y, timeToX, priceToY, chartW, priceH)) return d;
+    }
+    return null;
+  }, []);
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -1220,6 +1248,36 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Dragging a selected drawing
+    const dd = dragDrawingRef.current;
+    if (dd) {
+      const proj = projectionRef.current;
+      if (proj) {
+        const totalRange = proj.maxPrice - proj.minPrice;
+        const priceH = chartH - (configRef.current.showVolume ? chartH * VOL_RATIO : 0);
+        const dxPx = x - dd.startMx;
+        const dyPx = y - dd.startMy;
+        const dPrice = -(dyPx / priceH) * totalRange;
+        const dIdx = dxPx / st.candleWidth;
+        const data = dataRef.current;
+
+        const newPoints = dd.origPoints.map(p => {
+          const origIdx = data.findIndex(c => c.time === p.time);
+          if (origIdx < 0) return p;
+          const newIdx = Math.max(0, Math.min(data.length - 1, Math.round(origIdx + dIdx)));
+          return { time: data[newIdx].time, price: p.price + dPrice };
+        });
+
+        drawingsRef.current = drawingsRef.current.map(d =>
+          d.id === dd.id ? { ...d, points: newPoints } : d
+        );
+        st.crosshair = { x, y };
+        setCursor('grabbing');
+      }
+      scheduleRender();
+      return;
+    }
 
     if (st.dragMode === 'pan') {
       const dx = e.clientX - st.dragStartX;
@@ -1243,7 +1301,13 @@ export default function PriceChartWidget() {
     } else {
       const zone = getDragZone(x, y);
       const tool = drawingToolRef.current;
-      if (tool !== 'none' && tool !== 'cursor' && x < chartW && y < chartH) {
+      const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
+
+      // Hover cursor for drawings
+      if (isCursorTool && x < chartW && y < chartH) {
+        const hit = findDrawingAtPoint(x, y);
+        setCursor(hit ? 'pointer' : 'crosshair');
+      } else if (tool !== 'none' && tool !== 'cursor' && x < chartW && y < chartH) {
         setCursor('crosshair');
       } else {
         setCursor(zone === 'price-scale' ? 'ns-resize' : zone === 'time-scale' ? 'ew-resize' : 'crosshair');
@@ -1259,7 +1323,7 @@ export default function PriceChartWidget() {
       }
     }
     scheduleRender();
-  }, [getDragZone, scheduleRender, createPointFromScreen]);
+  }, [getDragZone, scheduleRender, createPointFromScreen, findDrawingAtPoint]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 2) return;
@@ -1275,6 +1339,28 @@ export default function PriceChartWidget() {
     const tool = drawingToolRef.current;
     const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
+    // In cursor mode, try to select/drag a drawing
+    if (isCursorTool && x < chartW && y < chartH) {
+      const hit = findDrawingAtPoint(x, y);
+      if (hit) {
+        setSelectedDrawingId(hit.id);
+        if (!hit.locked) {
+          dragDrawingRef.current = {
+            id: hit.id,
+            startMx: x,
+            startMy: y,
+            origPoints: hit.points.map(p => ({ ...p })),
+          };
+          setCursor('grabbing');
+        }
+        scheduleRender();
+        return;
+      } else {
+        setSelectedDrawingId(null);
+        // Fall through to pan
+      }
+    }
+
     // Drawing mode
     if (!isCursorTool && x < chartW && y < chartH) {
       const point = createPointFromScreen(x, y);
@@ -1288,7 +1374,7 @@ export default function PriceChartWidget() {
         return;
       }
 
-      // Single-point tools: place immediately, then auto-switch to cursor (like Classic)
+      // Single-point tools: place immediately
       if (needed === 1) {
         commitDrawing({
           id: `${tool}-${Date.now()}`,
@@ -1313,7 +1399,6 @@ export default function PriceChartWidget() {
           lineWidth: 1.5,
         });
         draftPointsRef.current = [];
-        // Auto-switch back to cursor after placing (like Classic)
         setDrawingTool('none');
         return;
       }
@@ -1334,10 +1419,19 @@ export default function PriceChartWidget() {
     st.dragStartPanY = st.panOffsetY;
     st.crosshair = null;
     if (zone === 'pan') setCursor('grabbing');
-  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing]);
+  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing, findDrawingAtPoint]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     const tool = drawingToolRef.current;
+
+    // Finalize dragging a drawing
+    if (dragDrawingRef.current) {
+      persistDrawings(drawingsRef.current);
+      dragDrawingRef.current = null;
+      setCursor('pointer');
+      scheduleRender();
+      return;
+    }
 
     // Finalize freehand drawing
     if (['brush', 'highlighter', 'arrowdraw', 'path', 'polyline'].includes(tool) && draftPointsRef.current.length >= 2) {
@@ -1349,13 +1443,12 @@ export default function PriceChartWidget() {
         lineWidth: tool === 'highlighter' ? 16 : 1.5,
       });
       draftPointsRef.current = [];
-      // Auto-switch back to cursor after freehand drawing (like Classic)
       setDrawingTool('none');
     }
 
     stateRef.current.dragMode = 'none';
     setCursor('crosshair');
-  }, [commitDrawing]);
+  }, [commitDrawing, scheduleRender]);
 
   const handleMouseLeave = useCallback(() => {
     stateRef.current.dragMode = 'none';
