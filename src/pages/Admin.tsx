@@ -120,6 +120,17 @@ export default function Admin() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold">Overview</h2>
+
+              {/* Activity Stats */}
+              {activityStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+                  <StatCard label="Online Now" value={activityStats.online_now} icon={Wifi} color="text-green-400" />
+                  <StatCard label="Logins Today" value={activityStats.today_logins} icon={Calendar} color="text-cyan-400" />
+                  <StatCard label="Logins This Week" value={activityStats.week_logins} icon={CalendarDays} color="text-blue-400" />
+                  <StatCard label="Logins This Month" value={activityStats.month_logins} icon={CalendarRange} color="text-violet-400" />
+                </div>
+              )}
+
               {statsLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-cyan-400 mx-auto" />
               ) : stats ? (
