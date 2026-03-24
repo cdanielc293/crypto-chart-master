@@ -582,6 +582,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const hiddenIndicators = isMultiPanel ? (panelState?.hiddenIndicators || new Set<string>()) : ctx.hiddenIndicators;
   const indicatorConfigs = isMultiPanel ? (panelState?.indicatorConfigs || new Map()) : ctx.indicatorConfigs;
 
+  // Per-panel interval and chartType
+  const interval = isMultiPanel && panelState?.interval ? panelState.interval : ctx.interval;
+  const chartType = isMultiPanel && panelState?.chartType ? panelState.chartType : ctx.chartType;
+
   const localAddIndicator = isMultiPanel
     ? (defId: string) => ctx.addPanelIndicator(panelIndex!, defId)
     : ctx.addIndicator;
@@ -595,8 +599,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     ? (instId: string, cfg: any) => ctx.updatePanelIndicatorConfig(panelIndex!, instId, cfg)
     : ctx.updateIndicatorConfig;
 
+  const localSetInterval = isMultiPanel
+    ? (iv: any) => ctx.setPanelInterval(panelIndex!, iv)
+    : ctx.setInterval;
+  const localSetChartType = isMultiPanel
+    ? (ct: any) => ctx.setPanelChartType(panelIndex!, ct)
+    : ctx.setChartType;
+
   const {
-    interval, chartType, drawingTool, drawings, removeDrawing,
+    drawingTool, drawings, removeDrawing,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = ctx;
