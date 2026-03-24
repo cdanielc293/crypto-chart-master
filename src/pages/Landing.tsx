@@ -213,8 +213,8 @@ export default function Landing() {
             <span>© 2026 VizionX. All rights reserved.</span>
           </div>
           <div className="hidden md:flex gap-6">
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Terms</span>
+            <span onClick={() => navigate('/terms')} className="hover:text-white/50 transition-colors cursor-pointer">Terms</span>
+            <span onClick={() => navigate('/terms')} className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
             <span className="hover:text-white/50 transition-colors cursor-pointer">Contact</span>
           </div>
         </div>
