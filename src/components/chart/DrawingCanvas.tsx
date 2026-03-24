@@ -226,7 +226,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         props: previewProps,
       };
       ctx.globalAlpha = 0.7;
-      renderDrawing(ctx, previewDrawing, coord, w, h);
+      renderDrawing(ctx, previewDrawing, coord, w, h, candles);
       ctx.globalAlpha = 1;
 
       for (const pt of pendingPointsRef.current) {
