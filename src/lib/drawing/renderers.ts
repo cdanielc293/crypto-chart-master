@@ -355,7 +355,35 @@ const DEFAULT_CHANNEL_LEVELS = [
 ];
 
 const renderParallelChannel: Renderer = (ctx, d, coord, w) => {
-  if (d.points.length < 3) return;
+  // Allow preview with 1 or 2 points during drawing
+  if (d.points.length < 2) {
+    if (d.points.length === 1) {
+      // Single point: just draw a dot
+      const p = toXY(coord, d.points[0].time, d.points[0].price);
+      if (!p) return;
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return;
+  }
+
+  // With 2 points: draw single line (preview of first line before 3rd point placed)
+  if (d.points.length === 2) {
+    const p1 = toXY(coord, d.points[0].time, d.points[0].price);
+    const p2 = toXY(coord, d.points[1].time, d.points[1].price);
+    if (!p1 || !p2) return;
+    setupStroke(ctx, d);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    return;
+  }
+
+  // 3 points: full parallel channel
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   const p3 = toXY(coord, d.points[2].time, d.points[2].price);
