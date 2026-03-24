@@ -46,7 +46,7 @@ export default function Signup() {
         toast.error('אימות הסיסמה לא תואם.');
         return;
       }
-      await signUpWithEmail(trimmedEmail, password);
+      await signUpWithEmail(trimmedEmail, password, { plan: tier });
       return;
     }
     await signInWithEmail(trimmedEmail, password);

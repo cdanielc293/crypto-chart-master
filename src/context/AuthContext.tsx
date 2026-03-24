@@ -10,7 +10,7 @@ interface AuthContextType {
   signingIn: boolean;
   isGuest: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, metadata?: Record<string, any>) => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'apple') => Promise<void>;
   enterAsGuest: () => void;
   signOut: () => Promise<void>;
