@@ -436,6 +436,20 @@ const renderRectangle: Renderer = (ctx, d, coord) => {
     ctx.restore();
   }
 };
+function renderShapeText(ctx: CanvasRenderingContext2D, props: Record<string, any>, fallbackColor: string, cx: number, cy: number) {
+  const text = props.text;
+  if (!text || !text.trim()) return;
+  ctx.save();
+  const fontSize = props.textSize || 14;
+  const bold = props.textBold ? 'bold ' : '';
+  const italic = props.textItalic ? 'italic ' : '';
+  ctx.font = `${italic}${bold}${fontSize}px sans-serif`;
+  ctx.fillStyle = props.textColor || fallbackColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
 
 const renderCircle: Renderer = (ctx, d, coord) => {
   if (d.points.length < 2) return;
