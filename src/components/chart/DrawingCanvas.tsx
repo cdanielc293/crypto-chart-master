@@ -47,6 +47,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const ctrlKeyRef = useRef(false);
   const areaSelectStartRef = useRef<{ x: number; y: number } | null>(null);
   const areaSelectEndRef = useRef<{ x: number; y: number } | null>(null);
+  const justPlacedRef = useRef(false);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
