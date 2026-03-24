@@ -751,11 +751,12 @@ export default function PriceChartWidget() {
   const removeAllIndicators = useCallback(() => setIndicators([]), []);
 
   const commitDrawing = useCallback((drawing: WidgetDrawing) => {
+    pushUndo();
     drawingsRef.current = [...drawingsRef.current, drawing];
     persistDrawings(drawingsRef.current);
     setDrawingsCount(drawingsRef.current.length);
     scheduleRender();
-  }, [scheduleRender]);
+  }, [scheduleRender, pushUndo]);
 
   const removeAllDrawings = useCallback(() => {
     drawingsRef.current = [];
