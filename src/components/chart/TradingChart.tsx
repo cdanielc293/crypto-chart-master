@@ -1281,7 +1281,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           ? rawCandlesRef.current
           : (cachedState?.candles ?? []);
         const nextCandles = mergeCandlesByTime(baseCandles, candles);
-        const finalCandles = nextCandles.length > 0 ? nextCandles : candles;
+        let finalCandles = nextCandles.length > 0 ? nextCandles : candles;
+
+        // Enforce plan-based historical bars limit
+        if (finalCandles.length > maxBars) {
+          finalCandles = finalCandles.slice(finalCandles.length - maxBars);
+          setBarsLimitReached(true);
+        } else {
+          setBarsLimitReached(false);
+        }
+
         const finalVolumes = finalCandles.map(c => ({
           time: c.time,
           value: c.volume,
@@ -1290,7 +1299,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         rawDataRef.current = finalCandles.length > 0 ? finalCandles : rawCandlesRef.current;
         rawCandlesRef.current = finalCandles;
         allCandlesRef.current = finalCandles;
-        hasMoreOlderRef.current = cachedState?.hasMoreOlder ?? true;
+        hasMoreOlderRef.current = (cachedState?.hasMoreOlder ?? true) && finalCandles.length < maxBars;
         activeDataKeyRef.current = cacheKey;
 
         let renderCandles = finalCandles;
