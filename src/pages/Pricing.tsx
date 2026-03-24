@@ -470,20 +470,7 @@ export default function Pricing() {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-sm text-white/25">
-          <div className="flex items-center gap-2">
-            <img src={vizionLogo} alt="" className="h-5 w-5 opacity-50" />
-            <span>© 2026 VizionX. All rights reserved.</span>
-          </div>
-          <div className="hidden md:flex gap-6">
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Privacy</span>
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Terms</span>
-            <span className="hover:text-white/50 transition-colors cursor-pointer">Contact</span>
-          </div>
-        </div>
-      </footer>
+      <PolicyFooter />
     </div>
   );
 }
