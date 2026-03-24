@@ -188,17 +188,54 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
       items = items.filter(s => s.marketType === typeFilter);
     }
 
-    // Text search
+    // Text search with relevance scoring
     if (query.trim()) {
-      const q = query.toLowerCase();
-      items = items.filter(s =>
-        s.symbol.toLowerCase().includes(q) ||
-        s.baseAsset.toLowerCase().includes(q) ||
-        s.fullName.toLowerCase().includes(q)
-      );
+      const q = query.toLowerCase().trim();
+      const scored = items
+        .filter(s =>
+          s.symbol.toLowerCase().includes(q) ||
+          s.baseAsset.toLowerCase().includes(q) ||
+          s.fullName.toLowerCase().includes(q)
+        )
+        .map(s => {
+          let score = 0;
+          const sym = s.symbol.toLowerCase();
+          const base = s.baseAsset.toLowerCase();
+
+          // Exact match on base asset (highest priority)
+          if (base === q) score += 1000;
+          // Base asset starts with query
+          else if (base.startsWith(q)) score += 500;
+          // Symbol starts with query
+          else if (sym.startsWith(q)) score += 400;
+          // Symbol exact match
+          else if (sym === q) score += 900;
+          // Base asset contains query
+          else if (base.includes(q)) score += 200;
+          // Symbol contains query
+          else if (sym.includes(q)) score += 100;
+
+          // Boost popular quote assets (USDT pairs first)
+          if (s.quoteAsset === 'USDT') score += 50;
+          else if (s.quoteAsset === 'USD') score += 45;
+          else if (s.quoteAsset === 'BUSD') score += 30;
+
+          // Boost spot over futures
+          if (s.marketType === 'spot') score += 20;
+
+          // Boost major exchanges
+          if (s.exchangeId === 'binance') score += 10;
+          else if (s.exchangeId === 'coinbase') score += 8;
+          else if (s.exchangeId === 'bybit') score += 6;
+
+          return { result: s, score };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      return scored.map(s => s.result).slice(0, 80);
     }
 
-    return items.slice(0, 60);
+    return items.slice(0, 80);
   }, [results, activeCategory, sourceFilter, typeFilter, query]);
 
   const selectSymbol = useCallback((result: SearchResult) => {
