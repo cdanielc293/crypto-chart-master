@@ -9,7 +9,7 @@ import { snapToCandle } from '@/lib/drawing/snap';
 import type { Drawing } from '@/types/chart';
 import FloatingToolbar from './FloatingToolbar';
 import DrawingContextMenu from './DrawingContextMenu';
-import DrawingSettingsDialog from './DrawingSettingsDialog';
+import DrawingSettingsDialog, { getDefaultTemplate } from './DrawingSettingsDialog';
 
 interface Props {
   chart: IChartApi | null;
