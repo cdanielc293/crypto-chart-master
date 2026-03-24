@@ -149,11 +149,12 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 }
 
 // ─── Style Tab ───
-function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool }: {
+function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool }: {
   localColor: string; setLocalColor: (c: string) => void;
   localLineWidth: number; setLocalLineWidth: (w: number) => void;
   localProps: Record<string, any>; updateLocal: (k: string, v: any) => void;
   isLineTool: boolean;
+  isShapeTool: boolean;
 }) {
   return (
     <>
