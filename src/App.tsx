@@ -21,6 +21,7 @@ import Cookies from "./pages/Cookies.tsx";
 import Accessibility from "./pages/Accessibility.tsx";
 import SecurityPage from "./pages/SecurityPage.tsx";
 import BugBounty from "./pages/BugBounty.tsx";
+import Status from "./pages/Status.tsx";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/accessibility" element={<Accessibility />} />
             <Route path="/security" element={<SecurityPage />} />
             <Route path="/bug-bounty" element={<BugBounty />} />
+            <Route path="/status" element={<Status />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/chart" element={
               <ProtectedRoute>
