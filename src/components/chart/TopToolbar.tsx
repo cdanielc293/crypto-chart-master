@@ -120,20 +120,21 @@ export default function TopToolbar() {
   return (
     <>
       <div className="relative flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
-        {/* Absolutely centered logo + beta badge */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-          <img src={vizionLogo} alt="VizionXX" className="h-5 w-5" />
-          <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            VizionX
-          </span>
-          <span className="relative ml-1.5 px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase rounded-full border border-cyan-500/30 text-cyan-400 bg-cyan-500/10 animate-beta-glow">
-            Beta
-            <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-beta-pulse" />
-          </span>
-        </div>
-        {/* View Mode Toggle - right of logo area */}
-        <div className="absolute left-1/2 top-1/2 -translate-y-1/2 pointer-events-auto" style={{ transform: 'translateX(calc(-50% + 140px)) translateY(-50%)' }}>
-          <ViewModeToggle />
+        {/* Absolutely centered logo + beta badge + view toggle */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <img src={vizionLogo} alt="VizionXX" className="h-5 w-5" />
+            <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+              VizionX
+            </span>
+            <span className="relative ml-1.5 px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase rounded-full border border-cyan-500/30 text-cyan-400 bg-cyan-500/10 animate-beta-glow">
+              Beta
+              <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-beta-pulse" />
+            </span>
+          </div>
+          <div className="pointer-events-auto">
+            <ViewModeToggle />
+          </div>
         </div>
         {/* User Profile - leftmost */}
         <UserProfileMenu />
