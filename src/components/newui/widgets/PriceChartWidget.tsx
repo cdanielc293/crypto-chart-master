@@ -1183,6 +1183,8 @@ export default function PriceChartWidget() {
         lineWidth: tool === 'highlighter' ? 16 : 1.5,
       });
       draftPointsRef.current = [];
+      // Auto-switch back to cursor after freehand drawing (like Classic)
+      setDrawingTool('none');
     }
 
     stateRef.current.dragMode = 'none';
