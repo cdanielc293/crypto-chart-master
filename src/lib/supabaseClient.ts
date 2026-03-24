@@ -12,9 +12,7 @@ const FALLBACK_URL = 'http://213.57.181.98:8000';
 
 // Use the anon key from your self-hosted Supabase instance
 // Replace this with your actual anon key after setup
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4aWl5Z3lzenhoZ2Vzd3drcGpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMjAxNDEsImV4cCI6MjA4OTY5NjE0MX0.TlG26FwEZeL_yWcnxEohyOPfMCtNnVUc4gCy93_N7L4';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
 
 let activeClient: SupabaseClient | null = null;
 let resolvedUrl: string | null = null;
