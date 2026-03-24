@@ -29,6 +29,13 @@ export interface AdminStats {
   open_support: number;
 }
 
+export interface ActivityStats {
+  online_now: number;
+  today_logins: number;
+  week_logins: number;
+  month_logins: number;
+}
+
 export function useAdminStats() {
   return useQuery({
     queryKey: ['admin-stats'],
