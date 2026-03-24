@@ -60,7 +60,7 @@ export default function Signup() {
         toast.error('Passwords do not match.');
         return;
       }
-      await signUpWithEmail(trimmedEmail, password, { plan: tier });
+      await signUpWithEmail(trimmedEmail, password, { plan: tier || 'start' });
       // Show Beta Pass on successful signup (when user appears)
       setSignedUpName(trimmedEmail.split('@')[0]);
       setShowBetaPass(true);
