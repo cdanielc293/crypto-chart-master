@@ -150,67 +150,155 @@ export default function Privacy() {
           </p>
 
           <h2>When We Share Your Personal Data</h2>
-          <p>We may share your personal data in the following circumstances:</p>
+          <p>We may share your personal data with third parties in the following circumstances:</p>
+
+          <h3>Service Providers</h3>
+          <p>
+            We engage selected third parties who act on our behalf to support our operations, including: 
+            (i) payment processing services, (ii) IT suppliers and hosting providers, (iii) web and mobile analytics providers, 
+            (iv) digital advertising services, and (v) marketing and sales solution providers. 
+            These parties may access, process, or store your data only under our instructions and solely to perform the services we have engaged them for.
+          </p>
+
+          <h3>Payment Information</h3>
+          <p>
+            When paid subscriptions become available, payment information (name, billing address, payment card or account details) 
+            will be processed by our third-party payment processors. VizionX does not have direct access to your full payment card information. 
+            We will use your email address to contact you regarding any billing issues.
+          </p>
+
+          <h3>Analytics Providers</h3>
+          <p>
+            We may use third-party analytics services to monitor and analyze usage of our platform and applications. 
+            This helps us understand user behavior and improve our services. Analytics data is pseudonymous and does not include 
+            personally identifiable profile information. Services we may use include:
+          </p>
           <ul className="list-disc pl-6 space-y-1 text-white/60">
-            <li><strong>Payment Processors:</strong> When you make a purchase, payment information is processed by our third-party payment provider. We do not store full payment card details.</li>
-            <li><strong>Service Providers:</strong> We work with trusted third-party providers for analytics, infrastructure, security, and customer support. They process data on our behalf under strict confidentiality agreements.</li>
-            <li><strong>Legal Requirements:</strong> We may disclose data to law enforcement, regulators, or courts when required by law, subpoena, or legal process.</li>
-            <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of assets, your data may be transferred as part of that transaction.</li>
-            <li><strong>Affiliated Entities:</strong> We may share data with affiliated businesses for administrative purposes and service provision.</li>
+            <li><strong>Google Analytics</strong> — web analytics for understanding traffic patterns and user engagement</li>
+            <li><strong>Firebase</strong> — development and analytics platform by Google</li>
+            <li><strong>Sentry</strong> — error tracking and performance monitoring to diagnose and fix issues</li>
           </ul>
+          <p>Each provider operates under its own privacy policy, which we encourage you to review.</p>
+
+          <h3>Business Transfers</h3>
+          <p>
+            In the event of a merger, acquisition, restructuring, or sale of assets, your personal data may be transferred 
+            as part of that transaction. We will notify you of any such change in ownership or control.
+          </p>
+
+          <h3>Legal & Administrative Reasons</h3>
+          <p>
+            We may disclose personal data when required to: (i) comply with legal obligations, court orders, or regulatory proceedings; 
+            (ii) enforce our Terms of Use or other agreements; or (iii) protect VizionX, its users, or others against loss, fraud, or damage. 
+            This includes exchanging information with law enforcement, courts, or regulatory authorities.
+          </p>
+
+          <h3>Advertising</h3>
+          <p>
+            We may display advertising on our platform and use remarketing and tracking features to present relevant advertisements 
+            based on user activity. We collect only pseudonymous data for these purposes. We do not share any personally identifiable 
+            information with advertisers — they can only access aggregate statistics such as impression counts and click rates.
+          </p>
+
+          <h3>Security Services</h3>
+          <p>
+            We may use CAPTCHA and similar technologies to protect our services from spam, fraud, and automated abuse. 
+            These services may analyze visitor behavior (e.g., IP address, visit duration, mouse interactions) in the background. 
+            Data collected is forwarded to the respective service provider under their privacy policy.
+          </p>
+
+          <h2>Public Information on VizionX</h2>
+
+          <h3>Public Profile</h3>
+          <p>
+            When you create a profile, other users may view your publicly available information, including: username, avatar, 
+            signature, bio, social links, join date, subscription level, published analyses, and community status. 
+            Your email address is never publicly visible unless you explicitly choose to display it.
+          </p>
+
+          <h3>Public Content</h3>
+          <p>
+            Our platform allows registered users to share charts, analyses, indicators, and other content publicly. 
+            By publishing content, you grant us an irrevocable, perpetual, royalty-free license to display it along with your username. 
+            You may also publish content as "private" — it will not appear on your profile or in search results, 
+            but users with a direct link can still view it.
+          </p>
+
+          <h3>Messages & Communications</h3>
+          <p>
+            We store and process messages sent through our platform. We may scan links for malicious content and detect spam. 
+            Recipients retain copies of messages even if you delete them from your account. Exercise caution when sharing sensitive information.
+          </p>
 
           <h2>Data Security</h2>
           <p>
-            We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, 
-            alteration, disclosure, or destruction. However, no method of transmission over the Internet or electronic storage 
-            is 100% secure, and we cannot guarantee absolute security.
+            We implement technical and organizational safeguards to protect your personal data, including TLS encryption, 
+            firewalls, authentication systems, and access control mechanisms. Access to personal data is restricted to 
+            authorized personnel who require it for their duties. Servers storing personal data are housed in secure, locked facilities.
           </p>
+          <p>
+            We continuously improve our security measures. However, no method of electronic transmission or storage is 100% secure, 
+            and we cannot guarantee absolute security.
+          </p>
+
+          <h2>Children & Sensitive Data</h2>
+          <p>
+            VizionX is not directed at individuals under 18 years of age. We do not knowingly collect personal data from minors 
+            or sensitive personal data (racial or ethnic origin, political opinions, religious beliefs, health data, biometric data, etc.) 
+            as defined under GDPR Article 9. If you believe such data has been inadvertently collected, please contact us immediately.
+          </p>
+
+          <h2>Third-Party Sites</h2>
+          <p>
+            VizionX may contain links to external websites operated by third parties with independent privacy policies. 
+            We bear no responsibility for their content, activities, or privacy practices. We recommend reviewing the privacy policy 
+            of every site you visit.
+          </p>
+
+          <h2>EEA & UK Users' Rights</h2>
+          <p>If you are located in the European Economic Area or the United Kingdom, you have the following rights:</p>
+          <ul className="list-disc pl-6 space-y-1 text-white/60">
+            <li><strong>Access:</strong> Confirm whether we process your data and obtain a copy</li>
+            <li><strong>Restriction:</strong> Request that we block or restrict processing in certain circumstances</li>
+            <li><strong>Objection:</strong> Object to processing based on legitimate interests; object to direct marketing at any time via the "unsubscribe" link</li>
+            <li><strong>Withdrawal of Consent:</strong> Withdraw consent at any time without affecting prior lawful processing</li>
+            <li><strong>Rectification:</strong> Correct inaccurate or incomplete data via your Settings page</li>
+            <li><strong>Erasure:</strong> Request deletion of your personal data (see Account Deletion section)</li>
+            <li><strong>Portability:</strong> Receive your data in a structured, machine-readable format for reuse elsewhere</li>
+            <li><strong>Complaint:</strong> Lodge a complaint with your local data protection authority (EU DPA contacts or the UK ICO)</li>
+          </ul>
+
+          <h2>California Users' Rights (CCPA)</h2>
+          <p>If you are a California resident, the CCPA provides you with specific rights:</p>
+          <ul className="list-disc pl-6 space-y-1 text-white/60">
+            <li><strong>Disclosure:</strong> Request information about the categories of personal data collected and disclosed in the past 12 months</li>
+            <li><strong>Deletion:</strong> Request deletion of personal data we have collected from you</li>
+            <li><strong>Non-Discrimination:</strong> We will not discriminate against you for exercising your CCPA rights</li>
+          </ul>
+          <p>We do not sell your personal information.</p>
 
           <h2>Data Retention</h2>
           <p>
-            We retain personal data only for as long as necessary to fulfill the purposes described in this policy, 
-            unless a longer retention period is required by law. When data is no longer needed, it is securely deleted or anonymized.
+            We retain personal data (1) until you request account deletion, or (2) as required by law or necessary for legitimate 
+            business purposes (tax, legal, accounting, fraud prevention, etc.). Upon expiration of the retention period, 
+            data is securely destroyed or anonymized. If you consent to marketing, we retain your data until you unsubscribe.
           </p>
 
           <h2>International Data Transfers</h2>
           <p>
-            Your data may be transferred to and processed in countries outside your country of residence. 
-            We ensure appropriate safeguards are in place for such transfers in accordance with applicable data protection laws.
-          </p>
-
-          <h2>Your Rights</h2>
-          <p>Depending on your jurisdiction, you may have the following rights regarding your personal data:</p>
-          <ul className="list-disc pl-6 space-y-1 text-white/60">
-            <li><strong>Access:</strong> Request a copy of the personal data we hold about you</li>
-            <li><strong>Rectification:</strong> Request correction of inaccurate or incomplete data</li>
-            <li><strong>Erasure:</strong> Request deletion of your personal data (subject to legal obligations)</li>
-            <li><strong>Restriction:</strong> Request that we limit processing of your data in certain circumstances</li>
-            <li><strong>Portability:</strong> Request your data in a structured, machine-readable format</li>
-            <li><strong>Objection:</strong> Object to processing based on legitimate interests or for direct marketing</li>
-            <li><strong>Withdraw Consent:</strong> Where processing is based on consent, you may withdraw it at any time</li>
-          </ul>
-          <p>
-            To exercise any of these rights, contact us at{' '}
-            <a href="mailto:privacy@vizionx.pro" className="text-cyan-400 hover:underline">privacy@vizionx.pro</a>. 
-            We will respond within the timeframe required by applicable law.
-          </p>
-
-          <h2>Children's Privacy</h2>
-          <p>
-            VizionX is not intended for use by individuals under the age of 18. We do not knowingly collect personal data 
-            from children. If we become aware that we have collected data from a minor, we will take steps to delete it promptly.
-          </p>
-
-          <h2>Third-Party Links</h2>
-          <p>
-            Our platform may contain links to third-party websites or services. We are not responsible for the privacy practices 
-            of those third parties. We encourage you to review the privacy policies of any external sites you visit.
+            VizionX servers and service providers may be located in various countries, including outside the EEA. 
+            We ensure appropriate safeguards are in place for international transfers in accordance with applicable data protection laws. 
+            Contact us for more information about the safeguards we implement.
           </p>
 
           <h2>Contact Us</h2>
           <p>
-            For questions, concerns, or requests related to this privacy policy, please contact us at:{' '}
+            For questions, concerns, or requests related to this privacy policy or your personal data, please contact us at:{' '}
             <a href="mailto:privacy@vizionx.pro" className="text-cyan-400 hover:underline">privacy@vizionx.pro</a>
+          </p>
+          <p className="text-white/50">
+            VizionX<br />
+            Website: <a href="https://www.vizionx.pro" className="text-cyan-400 hover:underline">www.vizionx.pro</a>
           </p>
 
           <div className="border-t border-white/10 pt-8 mt-12">
