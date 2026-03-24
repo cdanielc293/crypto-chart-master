@@ -1,79 +1,47 @@
-// Whale Trade Bubbles — animated floating bubbles
-import { useEffect, useRef } from 'react';
+// Whale Trades — professional table with mock large-order data
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
-interface Bubble {
-  x: number; y: number; r: number; vx: number; vy: number;
-  color: string; alpha: number;
-}
+const MOCK_WHALE_TRADES = [
+  { pair: 'BTC/USDT', side: 'buy', size: '142.5 BTC', value: '$6.12M', time: '2s ago', exchange: 'Binance' },
+  { pair: 'ETH/USDT', side: 'sell', size: '3,200 ETH', value: '$8.96M', time: '15s ago', exchange: 'Coinbase' },
+  { pair: 'SOL/USDT', side: 'buy', size: '45,000 SOL', value: '$4.28M', time: '32s ago', exchange: 'Bybit' },
+  { pair: 'BTC/USDT', side: 'sell', size: '85.2 BTC', value: '$3.66M', time: '1m ago', exchange: 'OKX' },
+  { pair: 'ETH/USDT', side: 'buy', size: '1,850 ETH', value: '$5.18M', time: '1m ago', exchange: 'Kraken' },
+  { pair: 'XRP/USDT', side: 'buy', size: '2.1M XRP', value: '$1.47M', time: '2m ago', exchange: 'Binance' },
+  { pair: 'BTC/USDT', side: 'buy', size: '210.0 BTC', value: '$9.03M', time: '3m ago', exchange: 'Bitfinex' },
+  { pair: 'DOGE/USDT', side: 'sell', size: '12M DOGE', value: '$1.92M', time: '4m ago', exchange: 'Binance' },
+];
 
 export default function WhaleBubblesWidget() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const colors = ['#a855f7', '#7c3aed', '#c084fc', '#6366f1'];
-    const bubbles: Bubble[] = [];
-
-    for (let i = 0; i < 15; i++) {
-      bubbles.push({
-        x: Math.random() * 300,
-        y: Math.random() * 200,
-        r: 8 + Math.random() * 30,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.3,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: 0.2 + Math.random() * 0.4,
-      });
-    }
-
-    let frame: number;
-    const draw = () => {
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      ctx.scale(2, 2);
-      ctx.clearRect(0, 0, w, h);
-
-      for (const b of bubbles) {
-        b.x += b.vx;
-        b.y += b.vy;
-        if (b.x < -b.r) b.x = w + b.r;
-        if (b.x > w + b.r) b.x = -b.r;
-        if (b.y < -b.r) b.y = h + b.r;
-        if (b.y > h + b.r) b.y = -b.r;
-
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-        grad.addColorStop(0, b.color + '60');
-        grad.addColorStop(0.7, b.color + '20');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // glow ring
-        ctx.strokeStyle = b.color + '30';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-
-      frame = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
   return (
-    <div className="w-full h-full relative">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute bottom-2 right-2 text-[9px] tracking-widest text-purple-400/40 font-mono uppercase">
-        Whale Tracker
-      </div>
+    <div className="w-full h-full overflow-auto">
+      <table className="w-full text-[11px] font-mono">
+        <thead>
+          <tr className="text-white/25 uppercase tracking-wider text-[9px] border-b border-white/[0.04]">
+            <th className="text-left py-1.5 px-2 font-medium">Pair</th>
+            <th className="text-left py-1.5 px-1 font-medium">Side</th>
+            <th className="text-right py-1.5 px-1 font-medium">Size</th>
+            <th className="text-right py-1.5 px-1 font-medium">Value</th>
+            <th className="text-right py-1.5 px-2 font-medium">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MOCK_WHALE_TRADES.map((t, i) => (
+            <tr key={i} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+              <td className="py-1.5 px-2 text-white/70">{t.pair}</td>
+              <td className="py-1.5 px-1">
+                <span className={`inline-flex items-center gap-0.5 ${t.side === 'buy' ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {t.side === 'buy' ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                  {t.side.toUpperCase()}
+                </span>
+              </td>
+              <td className="py-1.5 px-1 text-right text-white/50">{t.size}</td>
+              <td className="py-1.5 px-1 text-right text-white/70 font-semibold">{t.value}</td>
+              <td className="py-1.5 px-2 text-right text-white/25">{t.time}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// Volatility Vortex — spinning animated vortex
+// Volatility Gauge — professional radial gauge with mock data
 import { useEffect, useRef } from 'react';
 
 export default function VolatilityVortexWidget() {
@@ -10,9 +10,6 @@ export default function VolatilityVortexWidget() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let frame: number;
-    let angle = 0;
-
     const draw = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
@@ -22,44 +19,73 @@ export default function VolatilityVortexWidget() {
       ctx.clearRect(0, 0, w, h);
 
       const cx = w / 2;
-      const cy = h / 2;
-      const maxR = Math.min(w, h) * 0.4;
+      const cy = h * 0.55;
+      const radius = Math.min(w, h) * 0.35;
+      const startAngle = Math.PI * 0.8;
+      const endAngle = Math.PI * 2.2;
+      const value = 0.62; // 62% volatility
 
-      for (let i = 0; i < 60; i++) {
-        const a = angle + (i / 60) * Math.PI * 6;
-        const r = (i / 60) * maxR;
-        const x = cx + Math.cos(a) * r;
-        const y = cy + Math.sin(a) * r;
-        const size = 1 + (i / 60) * 3;
-
-        ctx.fillStyle = `hsla(${320 + i * 2}, 80%, 60%, ${0.1 + (i / 60) * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Center glow
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20);
-      grad.addColorStop(0, 'rgba(236,72,153,0.4)');
-      grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = grad;
+      // Background arc
       ctx.beginPath();
-      ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.arc(cx, cy, radius, startAngle, endAngle);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.stroke();
 
-      angle += 0.03;
-      frame = requestAnimationFrame(draw);
+      // Value arc — gradient from green to yellow to red
+      const valueAngle = startAngle + (endAngle - startAngle) * value;
+      const grad = ctx.createLinearGradient(cx - radius, cy, cx + radius, cy);
+      grad.addColorStop(0, '#10b981');
+      grad.addColorStop(0.5, '#eab308');
+      grad.addColorStop(1, '#ef4444');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, startAngle, valueAngle);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Needle dot
+      const nx = cx + Math.cos(valueAngle) * radius;
+      const ny = cy + Math.sin(valueAngle) * radius;
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(nx, ny, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Center text
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = `bold ${Math.max(14, radius * 0.4)}px 'Inter', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('62%', cx, cy - 4);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.font = `${Math.max(8, radius * 0.15)}px 'Inter', sans-serif`;
+      ctx.fillText('MODERATE', cx, cy + 12);
+
+      // Labels
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.font = "8px 'Inter', sans-serif";
+      ctx.textAlign = 'left';
+      ctx.fillText('LOW', cx - radius - 5, cy + radius * 0.5);
+      ctx.textAlign = 'right';
+      ctx.fillText('HIGH', cx + radius + 5, cy + radius * 0.5);
     };
+
     draw();
-    return () => cancelAnimationFrame(frame);
+    const observer = new ResizeObserver(draw);
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative flex items-center justify-center">
       <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute bottom-2 left-2 text-[9px] tracking-widest text-pink-400/40 font-mono uppercase">
-        Volatility
-      </div>
     </div>
   );
 }

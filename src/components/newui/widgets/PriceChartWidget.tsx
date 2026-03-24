@@ -1,90 +1,116 @@
-// Futuristic price chart placeholder widget
+// Professional candlestick chart using lightweight-charts
 import { useEffect, useRef } from 'react';
+import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
+
+// Generate realistic-looking mock OHLCV data
+function generateMockCandles(count = 200) {
+  const candles: { time: string; open: number; high: number; low: number; close: number; }[] = [];
+  let price = 42000 + Math.random() * 3000;
+  const baseDate = new Date('2024-01-01');
+
+  for (let i = 0; i < count; i++) {
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+
+    const volatility = 200 + Math.random() * 600;
+    const open = price;
+    const direction = Math.random() > 0.48 ? 1 : -1;
+    const move = Math.random() * volatility * direction;
+    const close = open + move;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+
+    candles.push({ time: dateStr, open, high, low, close });
+    price = close;
+  }
+  return candles;
+}
+
+function generateMockVolume(candles: { close: number; open: number }[]) {
+  return candles.map((c, i) => ({
+    time: candles[i] ? (candles[i] as any).time : '',
+    value: 500 + Math.random() * 3000,
+    color: c.close >= c.open ? 'rgba(38,166,154,0.3)' : 'rgba(239,83,80,0.3)',
+  }));
+}
 
 export default function PriceChartWidget() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    let frame: number;
-    let t = 0;
+    const chart = createChart(container, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: 'rgba(255,255,255,0.4)',
+        fontSize: 10,
+        fontFamily: "'Inter', 'Roboto Mono', monospace",
+      },
+      grid: {
+        vertLines: { color: 'rgba(255,255,255,0.03)' },
+        horzLines: { color: 'rgba(255,255,255,0.03)' },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: 'rgba(0,240,255,0.15)', width: 1, style: 2, labelBackgroundColor: '#0a1628' },
+        horzLine: { color: 'rgba(0,240,255,0.15)', width: 1, style: 2, labelBackgroundColor: '#0a1628' },
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(255,255,255,0.06)',
+        scaleMargins: { top: 0.1, bottom: 0.2 },
+      },
+      timeScale: {
+        borderColor: 'rgba(255,255,255,0.06)',
+        timeVisible: false,
+      },
+      handleScroll: true,
+      handleScale: true,
+    });
 
-    const draw = () => {
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-      canvas.width = w * 2;
-      canvas.height = h * 2;
-      ctx.scale(2, 2);
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderDownColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+    });
 
-      ctx.clearRect(0, 0, w, h);
+    const candles = generateMockCandles(200);
+    candleSeries.setData(candles as any);
 
-      // Grid
-      ctx.strokeStyle = 'rgba(0,240,255,0.04)';
-      ctx.lineWidth = 0.5;
-      for (let y = 0; y < h; y += 20) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      }
+    const volumeSeries = chart.addHistogramSeries({
+      priceFormat: { type: 'volume' },
+      priceScaleId: '',
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+    volumeSeries.setData(generateMockVolume(candles) as any);
 
-      // Price line
-      const points: { x: number; y: number }[] = [];
-      for (let x = 0; x < w; x += 3) {
-        const y = h * 0.5 +
-          Math.sin((x + t) * 0.015) * h * 0.15 +
-          Math.sin((x + t) * 0.007) * h * 0.1 +
-          Math.cos((x + t * 0.5) * 0.02) * h * 0.08;
-        points.push({ x, y });
-      }
+    chart.timeScale().fitContent();
 
-      // Gradient fill below line
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, 'rgba(0,240,255,0.15)');
-      grad.addColorStop(1, 'rgba(0,240,255,0.0)');
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      points.forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.lineTo(w, h);
-      ctx.lineTo(0, h);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      // Glow line
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = '#00f0ff';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Moving dot
-      const last = points[points.length - 1];
-      ctx.fillStyle = '#00f0ff';
-      ctx.shadowColor = '#00f0ff';
-      ctx.shadowBlur = 15;
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      t += 1.5;
-      frame = requestAnimationFrame(draw);
+    const handleResize = () => {
+      chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
     };
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(container);
 
-    draw();
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      observer.disconnect();
+      chart.remove();
+    };
   }, []);
 
   return (
     <div className="w-full h-full relative">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute top-2 left-2 text-[10px] tracking-widest text-[#00f0ff]/50 font-mono uppercase">
-        Live Preview
+      <div ref={containerRef} className="w-full h-full" />
+      <div className="absolute top-1.5 left-2 flex items-center gap-2">
+        <span className="text-[10px] font-mono text-white/30 tracking-wider">BTC/USDT</span>
+        <span className="text-[10px] font-mono text-white/20">1D</span>
       </div>
     </div>
   );

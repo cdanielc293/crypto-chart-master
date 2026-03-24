@@ -19,91 +19,91 @@ export interface WidgetDefinition {
   label: string;
   description: string;
   category: WidgetCategory;
-  icon: string;
+  icon: string; // lucide icon name
   defaultSize: { colSpan: number; rowSpan: number };
-  previewColor: string; // neon accent for preview card
+  previewColor: string;
 }
 
 export type WidgetCategory = 'charts' | 'analytics' | 'social' | 'trading' | 'data';
 
-export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string; icon: string }[] = [
-  { id: 'charts', label: 'Charts & Visuals', icon: '📊' },
-  { id: 'analytics', label: 'Analytics', icon: '🔬' },
-  { id: 'social', label: 'Social & Sentiment', icon: '🌐' },
-  { id: 'trading', label: 'Trading Tools', icon: '⚡' },
-  { id: 'data', label: 'Data Feeds', icon: '📡' },
+export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string }[] = [
+  { id: 'charts', label: 'Charts' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'social', label: 'Sentiment' },
+  { id: 'trading', label: 'Trading' },
+  { id: 'data', label: 'Data Feeds' },
 ];
 
 export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     type: 'price-chart',
     label: 'Price Chart',
-    description: 'High-end futuristic candlestick chart with neon glow lines, gradient fills, and liquid-smooth animations.',
+    description: 'Professional candlestick chart with volume, crosshair, and full zoom/scroll. Powered by Lightweight Charts.',
     category: 'charts',
-    icon: '📈',
+    icon: 'candlestick-chart',
     defaultSize: { colSpan: 2, rowSpan: 2 },
-    previewColor: '#00f0ff',
+    previewColor: '#26a69a',
   },
   {
     type: 'whale-bubbles',
-    label: 'Whale Trade Bubbles',
-    description: '3D floating bubbles that visualize large trades in real-time. Size represents volume, color represents direction.',
-    category: 'analytics',
-    icon: '🐋',
+    label: 'Whale Tracker',
+    description: 'Real-time feed of large institutional trades across major exchanges with size, direction, and timing.',
+    category: 'trading',
+    icon: 'anchor',
     defaultSize: { colSpan: 2, rowSpan: 2 },
-    previewColor: '#a855f7',
+    previewColor: '#8b5cf6',
   },
   {
     type: 'sentiment-heatmap',
-    label: 'AI Sentiment Heatmap',
-    description: 'Visual heatmap showing market sentiment (Bullish/Bearish) powered by social data analysis and AI scoring.',
+    label: 'Sentiment Heatmap',
+    description: 'Multi-timeframe sentiment scores for top assets. Color-coded from bearish (red) to bullish (green).',
     category: 'social',
-    icon: '🧠',
+    icon: 'grid-3x3',
     defaultSize: { colSpan: 2, rowSpan: 1 },
-    previewColor: '#f97316',
+    previewColor: '#f59e0b',
   },
   {
     type: 'performance-dna',
-    label: 'Performance DNA Spiral',
-    description: 'Artistic spiral visualization analyzing your trading history. Patterns reveal strengths and weaknesses.',
+    label: 'Performance Metrics',
+    description: 'Key trading statistics: win rate, profit factor, average win/loss, drawdown — all in one compact view.',
     category: 'analytics',
-    icon: '🧬',
+    icon: 'bar-chart-3',
     defaultSize: { colSpan: 1, rowSpan: 2 },
-    previewColor: '#22d3ee',
+    previewColor: '#06b6d4',
   },
   {
     type: 'volatility-vortex',
-    label: 'Volatility Vortex',
-    description: 'Dynamic vortex animation that morphs based on market volatility. Faster swirl = higher volatility.',
+    label: 'Volatility Gauge',
+    description: 'Radial gauge displaying current market volatility level with low-to-high gradient scale.',
     category: 'charts',
-    icon: '🌀',
+    icon: 'gauge',
     defaultSize: { colSpan: 1, rowSpan: 1 },
-    previewColor: '#ec4899',
+    previewColor: '#ef4444',
   },
   {
     type: 'orderbook-depth',
-    label: 'Depth Visualizer',
-    description: 'Futuristic order book depth chart with glowing bid/ask walls and real-time liquidity mapping.',
+    label: 'Order Book Depth',
+    description: 'Visualize bid/ask depth with stacked liquidity view across price levels.',
     category: 'trading',
-    icon: '📊',
+    icon: 'layers',
     defaultSize: { colSpan: 2, rowSpan: 1 },
     previewColor: '#10b981',
   },
   {
     type: 'ticker-tape',
-    label: 'Live Ticker Tape',
-    description: 'Scrolling neon ticker showing real-time price changes across your watchlist with spark lines.',
+    label: 'Ticker Tape',
+    description: 'Compact scrolling ticker showing real-time price updates across your watchlist.',
     category: 'data',
-    icon: '📡',
+    icon: 'radio',
     defaultSize: { colSpan: 4, rowSpan: 1 },
     previewColor: '#eab308',
   },
   {
     type: 'correlation-matrix',
     label: 'Correlation Matrix',
-    description: 'Interactive heatmap showing correlations between your tracked assets with animated transitions.',
+    description: 'Asset correlation heatmap showing statistical relationships between tracked instruments.',
     category: 'analytics',
-    icon: '🔗',
+    icon: 'grid-2x2',
     defaultSize: { colSpan: 2, rowSpan: 2 },
     previewColor: '#6366f1',
   },
