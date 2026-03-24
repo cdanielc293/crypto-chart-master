@@ -25,7 +25,7 @@ export interface WidgetDefinition {
   previewColor: string;
 }
 
-export type WidgetCategory = 'charts' | 'analytics' | 'social' | 'trading' | 'data';
+export type WidgetCategory = 'charts' | 'analytics' | 'social' | 'trading' | 'data' | 'media';
 
 export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string }[] = [
   { id: 'charts', label: 'Charts' },
@@ -33,6 +33,7 @@ export const WIDGET_CATEGORIES: { id: WidgetCategory; label: string }[] = [
   { id: 'social', label: 'Sentiment' },
   { id: 'trading', label: 'Trading' },
   { id: 'data', label: 'Data Feeds' },
+  { id: 'media', label: 'Media & Social' },
 ];
 
 export const WIDGET_REGISTRY: WidgetDefinition[] = [
@@ -107,5 +108,50 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     icon: 'grid-2x2',
     defaultSize: { colSpan: 2, rowSpan: 2 },
     previewColor: '#6366f1',
+  },
+  {
+    type: 'youtube',
+    label: 'YouTube',
+    description: 'Embed YouTube videos directly in your workspace. Watch market analysis and tutorials while trading.',
+    category: 'media',
+    icon: 'play-circle',
+    defaultSize: { colSpan: 2, rowSpan: 2 },
+    previewColor: '#ef4444',
+  },
+  {
+    type: 'spotify',
+    label: 'Spotify',
+    description: 'Listen to music, podcasts, and playlists while trading. Embed any Spotify content.',
+    category: 'media',
+    icon: 'music',
+    defaultSize: { colSpan: 1, rowSpan: 2 },
+    previewColor: '#22c55e',
+  },
+  {
+    type: 'twitter',
+    label: 'X / Twitter',
+    description: 'Follow real-time market commentary and crypto news from X/Twitter profiles.',
+    category: 'media',
+    icon: 'at-sign',
+    defaultSize: { colSpan: 1, rowSpan: 2 },
+    previewColor: '#38bdf8',
+  },
+  {
+    type: 'tiktok',
+    label: 'TikTok',
+    description: 'Watch TikTok videos in your workspace. Follow trading content creators.',
+    category: 'media',
+    icon: 'clapperboard',
+    defaultSize: { colSpan: 1, rowSpan: 2 },
+    previewColor: '#ec4899',
+  },
+  {
+    type: 'instagram',
+    label: 'Instagram',
+    description: 'View Instagram posts and reels directly in your trading workspace.',
+    category: 'media',
+    icon: 'camera',
+    defaultSize: { colSpan: 1, rowSpan: 2 },
+    previewColor: '#c084fc',
   },
 ];

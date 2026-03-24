@@ -108,7 +108,6 @@ export default function WidgetWrapper({
     <div
       className={`newui-glass newui-widget h-full flex flex-col ${widget.locked ? 'ring-1 ring-white/10' : ''}`}
       onMouseDown={() => onFocus(widget.id)}
-      onWheelCapture={(e) => e.preventDefault()}
     >
       {/* Header */}
       <div
