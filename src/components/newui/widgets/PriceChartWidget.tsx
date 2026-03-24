@@ -77,7 +77,7 @@ async function fetchBTCKlines(interval: string, limit: number): Promise<Candle[]
 
 // ─── Formatting ───
 function formatPrice(p: number): string {
-  if (p >= 10000) return p.toFixed(1);
+  if (p >= 10000) return p.toFixed(2);
   if (p >= 100) return p.toFixed(2);
   if (p >= 1) return p.toFixed(3);
   return p.toFixed(6);
