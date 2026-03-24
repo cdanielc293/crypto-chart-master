@@ -456,6 +456,106 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
           <CheckField label="Price labels" checked={!!localProps.priceLabels} onChange={v => updateLocal('priceLabels', v)} />
         </div>
       )}
+
+      {/* Channel-specific: Levels */}
+      {isChannelTool && (
+        <div className="pt-2 border-t border-border space-y-3">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">Channel Levels</span>
+          {(localProps.channelLevels || DEFAULT_CHANNEL_LEVELS).map((level: { value: number; visible: boolean; color: string; style: string }, idx: number) => {
+            const levels = localProps.channelLevels || DEFAULT_CHANNEL_LEVELS;
+            const updateLevel = (key: string, val: any) => {
+              const updated = levels.map((l: any, i: number) => i === idx ? { ...l, [key]: val } : l);
+              updateLocal('channelLevels', updated);
+            };
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={level.visible}
+                  onChange={e => updateLevel('visible', e.target.checked)}
+                  className="rounded border-border"
+                />
+                <input
+                  type="text"
+                  value={level.value}
+                  readOnly
+                  className="w-14 bg-muted border border-border rounded px-2 py-1 text-sm text-foreground text-center"
+                />
+                <input
+                  type="color"
+                  value={level.color}
+                  onChange={e => updateLevel('color', e.target.value)}
+                  className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent"
+                />
+                <div className="flex border border-border rounded overflow-hidden">
+                  {[
+                    { v: 'solid', el: <span className="inline-block w-4 border-t-2 border-current" /> },
+                    { v: 'dashed', el: <span className="inline-block w-4 border-t-2 border-dashed border-current" /> },
+                    { v: 'dotted', el: <span className="inline-block w-4 border-t-2 border-dotted border-current" /> },
+                  ].map(s => (
+                    <button
+                      key={s.v}
+                      onClick={() => updateLevel('style', s.v)}
+                      className={`px-1.5 py-1 text-xs ${level.style === s.v ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50'}`}
+                    >
+                      {s.el}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="pt-2 space-y-2">
+            <CheckField label="Use one color" checked={!!localProps.useOneColor} onChange={v => updateLocal('useOneColor', v)} />
+            {localProps.useOneColor && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Color</span>
+                <input
+                  type="color"
+                  value={localProps.oneColorValue || localColor}
+                  onChange={e => updateLocal('oneColorValue', e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Extend</span>
+            <CheckField label="Extend left line" checked={!!localProps.extendLeft} onChange={v => updateLocal('extendLeft', v)} />
+            <CheckField label="Extend right line" checked={!!localProps.extendRight} onChange={v => updateLocal('extendRight', v)} />
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <CheckField label="Background" checked={!!localProps.showBackground} onChange={v => updateLocal('showBackground', v)} />
+            {localProps.showBackground && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Opacity</span>
+                <input
+                  type="range" min={0} max={100}
+                  value={Math.round((localProps.backgroundOpacity ?? 0.06) * 100)}
+                  onChange={e => updateLocal('backgroundOpacity', Number(e.target.value) / 100)}
+                  className="w-32"
+                />
+                <span className="text-xs text-muted-foreground ml-2 w-8">{Math.round((localProps.backgroundOpacity ?? 0.06) * 100)}%</span>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <CheckField label="Show labels" checked={!!localProps.showLabels} onChange={v => updateLocal('showLabels', v)} />
+            {localProps.showLabels && (
+              <SelectField
+                label="Label position"
+                value={localProps.labelPosition || 'right'}
+                options={[{ value: 'left', label: 'Left' }, { value: 'right', label: 'Right' }]}
+                onChange={v => updateLocal('labelPosition', v)}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
