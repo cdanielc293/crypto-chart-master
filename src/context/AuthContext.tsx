@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
-import { lovable } from '@/integrations/lovable/index';
 import { toast } from 'sonner';
 
 interface AuthContextType {
