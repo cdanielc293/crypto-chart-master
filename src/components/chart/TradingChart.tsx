@@ -656,6 +656,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     replayStartTimeRef.current = Number(candles[clampedStartIndex].time);
   }, [replayState, replayBarIndex, replayStartIndex, symbol, interval]);
 
+  useEffect(() => {
+    setBarsLimitReached(false);
+  }, [symbol, interval, chartType]);
+
   const resetChartView = useCallback(() => {
     const chart = chartRef.current;
     if (chart) chart.timeScale().fitContent();
