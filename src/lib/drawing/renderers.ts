@@ -1326,6 +1326,8 @@ const RENDERERS: Record<string, Renderer> = {
   headshoulders: renderXabcd,
   threedrives: renderXabcd,
   anchoredvwap: renderAnchoredVwap,
+  fixedrangevolume: renderFixedRangeVolume,
+  anchoredvolume: renderFixedRangeVolume,
 };
 
 
