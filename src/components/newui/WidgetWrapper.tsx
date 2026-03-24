@@ -1,6 +1,6 @@
 // Widget container — draggable/resizable professional terminal module
 import { useCallback } from 'react';
-import { Settings, X, GripVertical, Lock, Unlock, MoveDiagonal2 } from 'lucide-react';
+import { Settings, X, GripVertical, Lock, Unlock, MoveDiagonal2, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
 import type { WidgetInstance, WidgetPosition } from './types';
 import { WIDGET_REGISTRY } from './types';
 
@@ -10,6 +10,8 @@ interface Props {
   onUpdatePosition: (id: string, patch: Partial<WidgetPosition>) => void;
   onToggleLock: (id: string) => void;
   onFocus: (id: string) => void;
+  onBringToFront: (id: string) => void;
+  onSendToBack: (id: string) => void;
   workspaceSize: { width: number; height: number };
   children: React.ReactNode;
 }
@@ -23,6 +25,8 @@ export default function WidgetWrapper({
   onUpdatePosition,
   onToggleLock,
   onFocus,
+  onBringToFront,
+  onSendToBack,
   workspaceSize,
   children,
 }: Props) {
@@ -128,6 +132,22 @@ export default function WidgetWrapper({
           title={widget.locked ? 'Unlock widget' : 'Lock widget'}
         >
           {widget.locked ? <Lock size={11} /> : <Unlock size={11} />}
+        </button>
+
+        <button
+          className="p-0.5 rounded hover:bg-white/5 text-white/20 hover:text-white/50 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onBringToFront(widget.id); }}
+          title="Bring to front"
+        >
+          <ArrowUpToLine size={11} />
+        </button>
+
+        <button
+          className="p-0.5 rounded hover:bg-white/5 text-white/20 hover:text-white/50 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSendToBack(widget.id); }}
+          title="Send to back"
+        >
+          <ArrowDownToLine size={11} />
         </button>
 
         <button

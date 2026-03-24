@@ -142,6 +142,24 @@ export function useNewUILayout() {
     persist(next);
   }, [widgets, persist]);
 
+  const bringToFront = useCallback((id: string) => {
+    const idx = widgets.findIndex(w => w.id === id);
+    if (idx === -1 || idx === widgets.length - 1) return;
+    const next = [...widgets];
+    const [picked] = next.splice(idx, 1);
+    next.push(picked);
+    persist(next);
+  }, [widgets, persist]);
+
+  const sendToBack = useCallback((id: string) => {
+    const idx = widgets.findIndex(w => w.id === id);
+    if (idx <= 0) return;
+    const next = [...widgets];
+    const [picked] = next.splice(idx, 1);
+    next.unshift(picked);
+    persist(next);
+  }, [widgets, persist]);
+
   const toggleFavorite = useCallback((type: string) => {
     const next = favorites.includes(type) ? favorites.filter(f => f !== type) : [...favorites, type];
     setFavoritesState(next);
@@ -159,6 +177,8 @@ export function useNewUILayout() {
     updateWidgetPosition,
     toggleWidgetLock,
     focusWidget,
+    bringToFront,
+    sendToBack,
     favorites,
     toggleFavorite,
   };

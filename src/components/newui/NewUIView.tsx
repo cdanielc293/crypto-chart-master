@@ -16,6 +16,8 @@ export default function NewUIView() {
     updateWidgetPosition,
     toggleWidgetLock,
     focusWidget,
+    bringToFront,
+    sendToBack,
     favorites,
     toggleFavorite,
   } = useNewUILayout();
@@ -90,6 +92,8 @@ export default function NewUIView() {
                 onUpdatePosition={updateWidgetPosition}
                 onToggleLock={toggleWidgetLock}
                 onFocus={focusWidget}
+                onBringToFront={bringToFront}
+                onSendToBack={sendToBack}
                 workspaceSize={workspaceSize}
               >
                 <WidgetRenderer widget={widget} />
