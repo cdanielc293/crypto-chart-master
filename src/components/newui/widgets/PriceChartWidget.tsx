@@ -772,7 +772,7 @@ export default function PriceChartWidget() {
         ))}
       </div>
 
-      <div className="absolute top-1.5 right-[112px]' flex items-center gap-2 pointer-events-none">
+      <div className="absolute top-1.5 right-[112px] flex items-center gap-2 pointer-events-none">
         <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">
           BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}
         </span>
