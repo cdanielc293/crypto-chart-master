@@ -388,18 +388,23 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     pendingPointsRef.current = [...pendingPointsRef.current, pointToAdd];
 
     if (pendingPointsRef.current.length >= toolPoints) {
+      const defaultTmpl = getDefaultTemplate(drawingTool);
+      let drawingProps: Record<string, any> | undefined = drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
+           : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
+           : undefined;
+      if (defaultTmpl) {
+        drawingProps = { ...drawingProps, ...defaultTmpl.props };
+      }
       const newDrawing: Drawing = {
         id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         type: drawingTool as Drawing['type'],
         points: [...pendingPointsRef.current],
-        color: getDefaultColor(drawingTool),
-        lineWidth: 2,
+        color: defaultTmpl?.color || getDefaultColor(drawingTool),
+        lineWidth: defaultTmpl?.lineWidth || 2,
         selected: false,
         visible: true,
         locked: false,
-        props: drawingTool === 'text' ? { text: 'Text', fontSize: 14 } 
-             : drawingTool === 'emoji' ? (() => { try { const s = localStorage.getItem('drawingToolProps'); return s ? JSON.parse(s) : { emoji: '😀' }; } catch { return { emoji: '😀' }; } })()
-             : undefined,
+        props: drawingProps,
       };
       addDrawing(newDrawing);
       pendingPointsRef.current = [];
