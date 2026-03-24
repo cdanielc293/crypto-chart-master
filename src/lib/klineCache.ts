@@ -778,6 +778,8 @@ export async function getOlderKlinesFromCache(
   beforeTime: number,
   limit = OLDER_PAGE_LIMIT,
 ): Promise<RawKline[]> {
+  const { raw } = parseSymbol(symbol);
+  const cleanSymbol = raw.trim().toUpperCase();
   const sourceInterval = getBinanceSourceInterval(interval);
   const sourceBarsPerTarget = getEstimatedSourceBarsPerTargetBar(interval);
   const sourceLimit = Math.min(Math.max(limit * sourceBarsPerTarget * 2, limit), MAX_SOURCE_QUERY_LIMIT);
