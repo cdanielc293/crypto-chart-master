@@ -1,14 +1,21 @@
 import { useState, useMemo } from 'react';
-import { Search, X, Star, BarChart3 } from 'lucide-react';
+import { Search, X, Star, BarChart3, Lock } from 'lucide-react';
 import { useChart } from '@/context/ChartContext';
 import DraggableDialog from './DraggableDialog';
 import { getAllIndicators, getCategories, getIndicatorsByCategory } from '@/lib/indicators/registry';
+import { useProfile } from '@/hooks/useProfile';
+import { getPlanLimits } from '@/lib/planLimits';
+import { useNavigate } from 'react-router-dom';
 
 interface Props { open: boolean; onClose: () => void; }
 
 export default function IndicatorsDialog({ open, onClose }: Props) {
   const ctx = useChart();
-  const { activePanelIndex, gridLayout, addIndicator, addPanelIndicator } = ctx;
+  const { activePanelIndex, gridLayout, addIndicator, addPanelIndicator, indicators } = ctx;
+  const { profile } = useProfile();
+  const limits = getPlanLimits(profile?.plan);
+  const navigate = useNavigate();
+  const atLimit = indicators.length >= limits.indicatorsPerChart;
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [favorites, setFavorites] = useState<Set<string>>(() => {
