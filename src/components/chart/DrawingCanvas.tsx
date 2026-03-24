@@ -572,7 +572,26 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     }
   }, [chartDrawings, drawings, getCoordHelper, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, setDrawingTool]);
 
-  const handleDoubleClick = useCallback(() => {
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    // Double-click on text/note drawing → open settings for editing
+    if (drawingTool === 'cursor' || drawingTool === 'dot' || drawingTool === 'arrow_cursor') {
+      const coords = getMouseCoords(e as unknown as MouseEvent);
+      const coord = getCoordHelper();
+      const container = containerRef.current;
+      if (coords && coord && container) {
+        const { mx, my } = coords;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        for (let i = chartDrawings.length - 1; i >= 0; i--) {
+          const d = chartDrawings[i];
+          if ((d.type === 'text' || d.type === 'note') && hitTestDrawing(d, mx, my, coord, w, h)) {
+            setSettingsDrawingId(d.id);
+            return;
+          }
+        }
+      }
+    }
+
     const toolPoints = getToolPointCount(drawingTool);
     if (toolPoints === -1 && pendingPointsRef.current.length >= 2) {
       const newDrawing: Drawing = {
@@ -591,7 +610,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       // Auto-switch back to cursor after multi-point drawing
       setDrawingTool('cursor');
     }
-  }, [drawingTool, addDrawing, setDrawingTool]);
+  }, [drawingTool, addDrawing, setDrawingTool, chartDrawings, getMouseCoords, getCoordHelper, containerRef]);
 
   // Keyboard
   useEffect(() => {
