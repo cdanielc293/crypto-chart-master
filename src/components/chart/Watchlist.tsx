@@ -340,7 +340,7 @@ function SymbolDetailsPanel({ symbol, price }: { symbol: string; price: Watchlis
 
 // ─── Main Watchlist ───
 
-export default function Watchlist() {
+export default function Watchlist({ panelWidth }: { panelWidth?: number }) {
   const {
     symbol, setSymbol, removeFromWatchlist, addToWatchlist,
     watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId,
@@ -545,9 +545,85 @@ export default function Watchlist() {
     return sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />;
   };
 
+  // ─── Drag and drop ───
+  const [dragItem, setDragItem] = useState<{ sym: string; sectionId: string } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<{ sym: string; sectionId: string; position: 'above' | 'below' } | null>(null);
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent, sym: string, sectionId: string) => {
+    setDragItem({ sym, sectionId });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', sym);
+    // Make the drag image subtle
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = '0.5';
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+    setDragItem(null);
+    setDragOverTarget(null);
+    setDragOverSection(null);
+  }, []);
+
+  const handleDragOverSymbol = useCallback((e: React.DragEvent, sym: string, sectionId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const position = e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+    setDragOverTarget({ sym, sectionId, position });
+    setDragOverSection(null);
+  }, []);
+
+  const handleDragOverSection = useCallback((e: React.DragEvent, sectionId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverSection(sectionId);
+    setDragOverTarget(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragItem) return;
+
+    setWatchlists(prev => prev.map(list => {
+      if (list.id !== activeWatchlistId) return list;
+
+      // Remove from source section
+      let sections = list.sections.map(s => {
+        if (s.id !== dragItem.sectionId) return s;
+        return { ...s, symbols: s.symbols.filter(sym => sym !== dragItem.sym) };
+      });
+
+      // Add to target
+      if (dragOverTarget) {
+        sections = sections.map(s => {
+          if (s.id !== dragOverTarget.sectionId) return s;
+          const idx = s.symbols.indexOf(dragOverTarget.sym);
+          if (idx === -1) return { ...s, symbols: [...s.symbols, dragItem.sym] };
+          const newSyms = [...s.symbols];
+          const insertIdx = dragOverTarget.position === 'above' ? idx : idx + 1;
+          newSyms.splice(insertIdx, 0, dragItem.sym);
+          return { ...s, symbols: newSyms };
+        });
+      } else if (dragOverSection) {
+        sections = sections.map(s => {
+          if (s.id !== dragOverSection) return s;
+          return { ...s, symbols: [...s.symbols, dragItem.sym] };
+        });
+      }
+
+      return { ...list, sections };
+    }));
+
+    setDragItem(null);
+    setDragOverTarget(null);
+    setDragOverSection(null);
+  }, [dragItem, dragOverTarget, dragOverSection, activeWatchlistId, setWatchlists]);
+
   return (
     <>
-      <div className="flex flex-col w-[min(300px,38vw)] min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden">
+      <div className="flex flex-col min-w-0 bg-toolbar-bg border-l border-chart-border select-none overflow-hidden" style={{ width: panelWidth || 300 }}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-chart-border relative">
           {renamingList ? (
@@ -641,10 +717,14 @@ export default function Watchlist() {
         <div className="flex-1 overflow-y-auto">
           {activeList?.sections.map(section => (
             <div key={section.id}>
-              {/* Section header */}
+              {/* Section header - drop zone */}
               <div
-                className="flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-toolbar-hover group"
+                className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-toolbar-hover group ${
+                  dragOverSection === section.id ? 'bg-primary/10 border-b-2 border-primary' : ''
+                }`}
                 onClick={() => toggleSectionCollapse(section.id)}
+                onDragOver={(e) => handleDragOverSection(e, section.id)}
+                onDrop={handleDrop}
               >
                 {section.collapsed ? <ChevronRight size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
                 {renamingSectionId === section.id ? (
@@ -688,15 +768,21 @@ export default function Watchlist() {
                 const isDetailSelected = sym === selectedSymbol;
                 const ticker = sym.replace('USDT', '');
                 const symColor = getSymbolColor(sym);
+                const isDragOver = dragOverTarget?.sym === sym && dragOverTarget?.sectionId === section.id;
 
                 return (
                   <div
-                    key={sym}
+                    key={`${section.id}-${sym}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, sym, section.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOverSymbol(e, sym, section.id)}
+                    onDrop={handleDrop}
                     onClick={() => handleSymbolClick(sym)}
                     onDoubleClick={() => setSelectedSymbol(prev => prev === sym ? null : sym)}
-                    className={`flex items-center px-3 py-2 cursor-pointer text-[13px] transition-colors group ${
+                    className={`flex items-center px-3 py-2 cursor-grab text-[13px] transition-colors group ${
                       isSelected ? 'bg-accent' : isDetailSelected ? 'bg-toolbar-hover/50' : 'hover:bg-toolbar-hover'
-                    }`}
+                    } ${isDragOver && dragOverTarget?.position === 'above' ? 'border-t-2 border-primary' : ''}${isDragOver && dragOverTarget?.position === 'below' ? 'border-b-2 border-primary' : ''}`}
                   >
                     {/* Colored symbol icon */}
                     <div

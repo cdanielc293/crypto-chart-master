@@ -119,7 +119,7 @@ interface Props {
 }
 
 export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
-  const { setSymbol, addToWatchlist } = useChart();
+  const { setSymbol, addToWatchlist, watchlists, activeWatchlistId } = useChart();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +127,13 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get all symbols in active watchlist for "in list" indicator
+  const watchlistSymbols = useMemo(() => {
+    const active = watchlists.find(l => l.id === activeWatchlistId) || watchlists[0];
+    if (!active) return new Set<string>();
+    return new Set(active.sections.flatMap(s => s.symbols));
+  }, [watchlists, activeWatchlistId]);
 
   // Fetch all symbols from all exchanges on mount
   useEffect(() => {
@@ -279,6 +286,8 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
         ) : (
           filtered.map((result, idx) => {
             const color = getSymbolColor(result.baseAsset);
+            const cleanSym = result.symbol.replace('.P', '');
+            const isInList = watchlistSymbols.has(cleanSym);
             return (
               <button
                 key={`${result.exchangeId}-${result.symbol}-${idx}`}
@@ -305,6 +314,13 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
                 <span className="flex-1 text-left text-muted-foreground truncate mr-3">
                   {result.fullName}
                 </span>
+
+                {/* In watchlist badge */}
+                {isInList && (
+                  <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded mr-2 shrink-0">
+                    In list
+                  </span>
+                )}
 
                 {/* Tags */}
                 <div className="flex items-center gap-1.5 mr-3">

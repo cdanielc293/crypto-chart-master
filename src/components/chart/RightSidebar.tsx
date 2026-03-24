@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { BookOpen, Bell, Layers, MessageSquare, BarChart3 } from 'lucide-react';
 import Watchlist from './Watchlist';
 import AlertsPanel from './AlertsPanel';
@@ -15,22 +15,75 @@ const TABS: { id: RightPanel; icon: typeof BookOpen; label: string }[] = [
   { id: 'chat', icon: MessageSquare, label: 'Chat' },
 ];
 
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 600;
+const DEFAULT_WIDTH = 300;
+
 export default function RightSidebar() {
   const [activePanel, setActivePanel] = useState<RightPanel>('watchlist');
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('vizionx-watchlist-width');
+    return saved ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parseInt(saved, 10))) : DEFAULT_WIDTH;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const togglePanel = (id: RightPanel) => {
     setActivePanel(prev => prev === id ? null : id);
   };
 
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeRef.current = { startX: e.clientX, startWidth: panelWidth };
+  }, [panelWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = resizeRef.current.startX - e.clientX;
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeRef.current.startWidth + delta));
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem('vizionx-watchlist-width', String(panelWidth));
+      resizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, panelWidth]);
+
   return (
     <div className="flex h-full shrink-0">
+      {/* Resize handle */}
+      {activePanel && (
+        <div
+          onMouseDown={handleResizeStart}
+          className={`w-1 cursor-col-resize hover:bg-primary/40 transition-colors shrink-0 ${
+            isResizing ? 'bg-primary/40' : 'bg-transparent'
+          }`}
+        />
+      )}
+
       {/* Panel content */}
-      {activePanel === 'watchlist' && <Watchlist />}
+      {activePanel === 'watchlist' && <Watchlist panelWidth={panelWidth} />}
       {activePanel === 'advanced' && <AdvancedWatchlist onClose={() => setActivePanel('watchlist')} />}
       {activePanel === 'alerts' && <AlertsPanel />}
       {activePanel === 'objects' && <ObjectTreePanel />}
       {activePanel === 'chat' && (
-        <div className="flex flex-col w-[300px] min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center">
+        <div
+          className="flex flex-col min-w-0 bg-toolbar-bg border-l border-chart-border items-center justify-center"
+          style={{ width: panelWidth }}
+        >
           <p className="text-muted-foreground text-xs">Chat coming soon</p>
         </div>
       )}
