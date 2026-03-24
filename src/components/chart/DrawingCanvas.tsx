@@ -712,7 +712,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
     window.addEventListener('keydown', handler);
     window.addEventListener('keyup', upHandler);
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
-  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing]);
+  }, [selectedDrawingId, selectedDrawingIds, drawings, removeDrawing, setSelectedDrawingId, setSelectedDrawingIds, updateDrawing, undoDrawing, redoDrawing]);
 
   useEffect(() => {
     pendingPointsRef.current = [];
