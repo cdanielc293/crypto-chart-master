@@ -110,6 +110,33 @@ export type Database = {
         }
         Relationships: []
       }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          resolved: boolean
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          resolved?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       session_devices: {
         Row: {
           created_at: string
@@ -136,6 +163,30 @@ export type Database = {
           real_user_agent?: string | null
           session_id?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_active_tab: {
+        Row: {
+          ip_address: string | null
+          tab_id: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          ip_address?: string | null
+          tab_id: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          ip_address?: string | null
+          tab_id?: string
+          updated_at?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
