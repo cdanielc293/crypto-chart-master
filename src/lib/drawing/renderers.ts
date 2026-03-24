@@ -1393,6 +1393,7 @@ const RENDERERS: Record<string, Renderer> = {
   brush: renderBrush,
   highlighter: renderBrush,
   text: renderText,
+  note: renderNote,
   emoji: renderEmoji,
   pitchfork: renderPitchfork,
   schiffpitchfork: renderPitchfork,
