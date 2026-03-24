@@ -571,8 +571,6 @@ interface TradingChartProps {
 export default function TradingChart({ panelIndex, overrideSymbol, compact }: TradingChartProps = {}) {
   const ctx = useChart();
   const { data: profile } = useProfile();
-  const maxBars = getHistoricalBarsLimit(profile?.plan);
-  const earliestAllowed = getEarliestAllowedTimestamp(profile?.plan, ctx.interval);
   const symbol = overrideSymbol || ctx.symbol;
   const isMultiPanel = panelIndex !== undefined && ctx.gridLayout.count > 1;
 
@@ -585,6 +583,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   // Per-panel interval and chartType
   const interval = isMultiPanel && panelState?.interval ? panelState.interval : ctx.interval;
   const chartType = isMultiPanel && panelState?.chartType ? panelState.chartType : ctx.chartType;
+  const maxBars = getHistoricalBarsLimit(profile?.plan);
+  const earliestAllowed = getEarliestAllowedTimestamp(profile?.plan, interval);
 
   const localAddIndicator = isMultiPanel
     ? (defId: string) => ctx.addPanelIndicator(panelIndex!, defId)
@@ -626,6 +626,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const activeDataKeyRef = useRef('');
   const loadingOlderRef = useRef(false);
   const hasMoreOlderRef = useRef(true);
+  const userScrollIntentUntilRef = useRef(0);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [barsLimitReached, setBarsLimitReached] = useState(false);
   const [countdown, setCountdown] = useState('');
@@ -659,6 +660,23 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   useEffect(() => {
     setBarsLimitReached(false);
   }, [symbol, interval, chartType]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const markUserIntent = () => {
+      userScrollIntentUntilRef.current = Date.now() + 1500;
+    };
+
+    container.addEventListener('wheel', markUserIntent, { passive: true });
+    container.addEventListener('pointerdown', markUserIntent, { passive: true });
+
+    return () => {
+      container.removeEventListener('wheel', markUserIntent);
+      container.removeEventListener('pointerdown', markUserIntent);
+    };
+  }, []);
 
   const resetChartView = useCallback(() => {
     const chart = chartRef.current;
@@ -1432,7 +1450,6 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
     let cancelled = false;
     let previousRangeFrom: number | null = null;
-    const suppressAutoEventsUntil = Date.now() + 2200;
 
     const loadOlderBars = async (range: { from: number; to: number } | null) => {
       if (!range || cancelled) return;
@@ -1442,7 +1459,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
       if (range.from > 50) return;
       if (!movedLeft) return;
-      if (Date.now() < suppressAutoEventsUntil) return;
+      if (Date.now() > userScrollIntentUntilRef.current) return;
 
       if (loadingOlderRef.current || !hasMoreOlderRef.current) return;
       if (activeDataKeyRef.current !== cacheKey) return;
