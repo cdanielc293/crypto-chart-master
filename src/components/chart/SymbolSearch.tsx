@@ -240,7 +240,8 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
   }, [results, activeCategory, sourceFilter, typeFilter, query]);
 
   const selectSymbol = useCallback((result: SearchResult) => {
-    const sym = result.symbol.replace('.P', ''); // Clean for watchlist
+    const rawSym = result.symbol.replace('.P', '');
+    const sym = formatSymbol(rawSym, result.exchangeId);
     if (onSelectSymbol) {
       onSelectSymbol(sym);
     } else {
@@ -252,7 +253,8 @@ export default function SymbolSearch({ onClose, onSelectSymbol }: Props) {
 
   const addToList = useCallback((e: React.MouseEvent, result: SearchResult) => {
     e.stopPropagation();
-    const sym = result.symbol.replace('.P', '');
+    const rawSym = result.symbol.replace('.P', '');
+    const sym = formatSymbol(rawSym, result.exchangeId);
     addToWatchlist(sym);
   }, [addToWatchlist]);
 
