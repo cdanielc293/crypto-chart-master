@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Zap, Crown, Star, Gem, ChevronDown } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
+import PolicyFooter from '@/components/PolicyFooter';
 import {
   Accordion,
   AccordionContent,
