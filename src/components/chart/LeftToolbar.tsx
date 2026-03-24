@@ -370,12 +370,20 @@ const bottomActions = [
 export default function LeftToolbar() {
   const { drawingTool, setDrawingTool, drawings, removeDrawing } = useChart();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [starredTools, setStarredToolsState] = useState<Set<string>>(getStarredTools);
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     magnet: false,
     lock: false,
     visibility: true,
   });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleStar = useCallback((tool: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = toggleStarredTool(tool);
+    setStarredToolsState(new Set(updated));
+    window.dispatchEvent(new Event('starred-tools-changed'));
+  }, []);
 
   // Track which tool was selected per category
   const [selectedPerCategory, setSelectedPerCategory] = useState<Record<string, DrawingTool>>({
