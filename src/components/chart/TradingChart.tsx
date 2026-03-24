@@ -591,7 +591,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     : ctx.updateIndicatorConfig;
 
   const {
-    interval, chartType, drawingTool, drawings,
+    interval, chartType, drawingTool, drawings, removeDrawing,
     replayState, setReplayState, replayBarIndex, setReplayBarIndex,
     replayStartIndex, setReplayStartIndex, replaySpeed, chartSettings, toggleIndicator,
   } = ctx;
