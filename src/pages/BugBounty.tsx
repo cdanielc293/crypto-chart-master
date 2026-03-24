@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bug, Globe, Smartphone, BarChart3, Monitor, AlertTriangle, ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import InlineContactForm from '@/components/InlineContactForm';
-import vizionLogo from '@/assets/vizionx-logo.png';
 
 const coverageAreas = [
   { icon: Globe, title: 'Website', desc: 'Vulnerabilities on vizionx.pro and its subdomains.' },
