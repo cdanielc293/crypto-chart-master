@@ -20,9 +20,12 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, signInWithEmail, signUpWithEmail, signInWithOAuth, signingIn, enterAsGuest } = useAuth();
-  const tier = searchParams.get('tier') || 'zenith';
-  const tierLabel = tierNames[tier] || 'VizionX Zenith';
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
+  const tier = searchParams.get('tier') || '';
+  const tierLabel = tier ? (tierNames[tier] || 'VizionX Start') : '';
+  const initialMode = searchParams.get('mode') === 'login' ? 'signin' : 'signup';
+  // If signup mode but no tier selected, redirect to pricing
+  const hasTier = !!searchParams.get('tier');
+  const [mode, setMode] = useState<'signup' | 'signin'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +36,13 @@ export default function Signup() {
   useEffect(() => {
     if (user && !showBetaPass) navigate('/chart', { replace: true });
   }, [user, navigate, showBetaPass]);
+
+  // Redirect to pricing if trying to sign up without selecting a plan
+  useEffect(() => {
+    if (mode === 'signup' && !hasTier && !user) {
+      navigate('/pricing', { replace: true });
+    }
+  }, [mode, hasTier, user, navigate]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,7 +60,7 @@ export default function Signup() {
         toast.error('Passwords do not match.');
         return;
       }
-      await signUpWithEmail(trimmedEmail, password, { plan: tier });
+      await signUpWithEmail(trimmedEmail, password, { plan: tier || 'start' });
       // Show Beta Pass on successful signup (when user appears)
       setSignedUpName(trimmedEmail.split('@')[0]);
       setShowBetaPass(true);
@@ -270,7 +280,14 @@ export default function Signup() {
             {mode === 'signup' ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               type="button"
-              onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
+              onClick={() => {
+                if (mode === 'signin') {
+                  // When switching to signup, redirect to pricing to pick a plan
+                  navigate('/pricing');
+                } else {
+                  setMode('signin');
+                }
+              }}
               className="text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
             >
               {mode === 'signup' ? 'Sign In' : 'Sign Up'}
