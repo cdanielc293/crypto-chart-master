@@ -76,7 +76,8 @@ export default function TopToolbar() {
     };
   }, []);
 
-  const pair = symbol.replace('USDT', ' / TetherUS');
+  const parsed = parseSymbol(symbol);
+  const pair = getDisplayPair(symbol);
   const currentChartLabel = chartTypes.find(c => c.value === chartType)?.label ?? 'Candles';
 
   // Group intervals for dropdown
