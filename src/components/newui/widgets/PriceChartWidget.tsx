@@ -990,7 +990,8 @@ export default function PriceChartWidget() {
 
     // ─── Drawings ───
     for (const drawing of drawingsRef.current) {
-      renderDrawing(ctx, drawing, timeToX, priceToY, chartW, priceH);
+      const drawingWithSel = { ...drawing, selected: drawing.id === selectedDrawingId };
+      renderDrawing(ctx, drawingWithSel, timeToX, priceToY, chartW, priceH);
     }
 
     // Draft preview: show in-progress drawing
