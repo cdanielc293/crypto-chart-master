@@ -43,6 +43,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   const dragStartRef = useRef<{ mx: number; my: number; points: DrawingPoint[] } | null>(null);
   const isBrushingRef = useRef(false);
   const brushDrawingIdRef = useRef<string | null>(null);
+  const shiftKeyRef = useRef(false);
 
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
   const [isHoveringDrawing, setIsHoveringDrawing] = useState(false);
@@ -87,6 +88,30 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       yToPrice: (y: number) => series.coordinateToPrice(y),
     };
   }, [chart, series, candles]);
+
+  // Snap angle to 45-degree increments when Shift is held
+  const snapAngle45 = useCallback((basePoint: DrawingPoint, rawPoint: DrawingPoint): DrawingPoint => {
+    if (!shiftKeyRef.current) return rawPoint;
+    const coord = getCoordHelper();
+    if (!coord) return rawPoint;
+    const bx = coord.timeToX(basePoint.time);
+    const by = coord.priceToY(basePoint.price);
+    const rx = coord.timeToX(rawPoint.time);
+    const ry = coord.priceToY(rawPoint.price);
+    if (bx === null || by === null || rx === null || ry === null) return rawPoint;
+    const dx = rx - bx;
+    const dy = ry - by;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return rawPoint;
+    const angle = Math.atan2(dy, dx);
+    const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+    const nx = bx + dist * Math.cos(snapped);
+    const ny = by + dist * Math.sin(snapped);
+    const newTime = coord.xToTime(nx);
+    const newPrice = coord.yToPrice(ny);
+    if (newTime === null || newPrice === null) return rawPoint;
+    return { time: newTime, price: newPrice };
+  }, [getCoordHelper]);
 
   const getMouseCoords = useCallback((e: MouseEvent | React.MouseEvent): { mx: number; my: number; time: number; price: number } | null => {
     const canvas = canvasRef.current;
@@ -293,7 +318,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    pendingPointsRef.current = [...pendingPointsRef.current, { time, price }];
+    // Shift-snap for second point on line-type tools
+    let pointToAdd = { time, price };
+    if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
+      pointToAdd = snapAngle45(pendingPointsRef.current[0], pointToAdd);
+    }
+    pendingPointsRef.current = [...pendingPointsRef.current, pointToAdd];
 
     if (pendingPointsRef.current.length >= toolPoints) {
       const newDrawing: Drawing = {
@@ -367,9 +397,13 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       return;
     }
 
-    // Preview
+    // Preview with Shift-snap
     if (pendingPointsRef.current.length > 0 && drawingTool !== 'cursor') {
-      previewPointRef.current = { time, price };
+      let previewPt = { time, price };
+      if (pendingPointsRef.current.length === 1 && ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'].includes(drawingTool)) {
+        previewPt = snapAngle45(pendingPointsRef.current[0], previewPt);
+      }
+      previewPointRef.current = previewPt;
     }
 
     // Cursor
@@ -438,6 +472,7 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
   // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      shiftKeyRef.current = e.shiftKey;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
         // Don't delete if focused on an input
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
@@ -461,8 +496,10 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
         }
       }
     };
+    const upHandler = (e: KeyboardEvent) => { shiftKeyRef.current = e.shiftKey; };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keyup', upHandler);
+    return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', upHandler); };
   }, [selectedDrawingId, drawings, removeDrawing, setSelectedDrawingId, updateDrawing]);
 
   useEffect(() => {

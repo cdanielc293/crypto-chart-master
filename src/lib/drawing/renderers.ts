@@ -38,11 +38,134 @@ const renderTrendline: Renderer = (ctx, d, coord) => {
   const p2 = toXY(coord, d.points[1].time, d.points[1].price);
   if (!p1 || !p2) return;
   setupStroke(ctx, d);
+
+  const props = d.props || {};
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+
+  // Draw the main line
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
   ctx.lineTo(p2.x, p2.y);
   ctx.stroke();
+
+  // Arrow ends
+  const arrowSize = Math.max(8, d.lineWidth * 3);
+  const angle = Math.atan2(dy, dx);
+  if (props.leftArrow) {
+    drawArrowhead(ctx, p1.x, p1.y, angle + Math.PI, arrowSize, d.color);
+  }
+  if (props.rightArrow) {
+    drawArrowhead(ctx, p2.x, p2.y, angle, arrowSize, d.color);
+  }
+
+  // Middle point
+  if (props.middlePoint) {
+    const mx = (p1.x + p2.x) / 2;
+    const my = (p1.y + p2.y) / 2;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.arc(mx, my, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Price labels on price axis
+  if (props.priceLabels) {
+    ctx.save();
+    ctx.fillStyle = d.color;
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'left';
+    // Draw small labels near the right edge
+    const labelX = Math.max(p1.x, p2.x) + 8;
+    ctx.fillText(d.points[0].price.toFixed(2), labelX, p1.y + 4);
+    ctx.fillText(d.points[1].price.toFixed(2), labelX, p2.y + 4);
+    ctx.restore();
+  }
+
+  // Stats
+  const showStats = d.selected || props.alwaysShowStats;
+  if (showStats && hasAnyStats(props)) {
+    const statsLines = buildStatsLines(d, p1, p2, props);
+    if (statsLines.length > 0) {
+      const statsPos = props.statsPosition || 'right';
+      let sx: number, sy: number;
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+      if (statsPos === 'left') { sx = Math.min(p1.x, p2.x) - 8; }
+      else if (statsPos === 'center') { sx = midX; }
+      else { sx = Math.max(p1.x, p2.x) + 8; }
+      sy = midY - (statsLines.length * 14) / 2;
+
+      ctx.save();
+      ctx.font = '11px monospace';
+      ctx.textAlign = statsPos === 'left' ? 'right' : statsPos === 'center' ? 'center' : 'left';
+      // Background
+      const metrics = statsLines.map(l => ctx.measureText(l));
+      const maxW = Math.max(...metrics.map(m => m.width)) + 8;
+      const totalH = statsLines.length * 14 + 6;
+      const bgX = statsPos === 'right' ? sx - 4 : statsPos === 'center' ? sx - maxW / 2 - 4 : sx - maxW - 4;
+      ctx.fillStyle = 'rgba(19,23,34,0.85)';
+      ctx.fillRect(bgX, sy - 12, maxW + 8, totalH);
+      ctx.fillStyle = d.color;
+      statsLines.forEach((line, i) => {
+        ctx.fillText(line, sx, sy + i * 14);
+      });
+      ctx.restore();
+    }
+  }
 };
+
+function drawArrowhead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - size * Math.cos(angle - Math.PI / 6), y - size * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(x - size * Math.cos(angle + Math.PI / 6), y - size * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function hasAnyStats(props: Record<string, any>): boolean {
+  return !!(props.statsPriceRange || props.statsPercentChange || props.statsPips || props.statsBarsRange || props.statsDateTimeRange || props.statsDistance || props.statsAngle);
+}
+
+function buildStatsLines(d: ChartDrawing, p1: { x: number; y: number }, p2: { x: number; y: number }, props: Record<string, any>): string[] {
+  const lines: string[] = [];
+  const priceDiff = d.points[1].price - d.points[0].price;
+  const pctChange = (priceDiff / d.points[0].price) * 100;
+  const timeDiff = d.points[1].time - d.points[0].time;
+
+  if (props.statsPriceRange) {
+    lines.push(`${priceDiff >= 0 ? '+' : ''}${priceDiff.toFixed(2)}`);
+  }
+  if (props.statsPercentChange) {
+    lines.push(`${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%`);
+  }
+  if (props.statsPips) {
+    lines.push(`${Math.abs(priceDiff * 10000).toFixed(1)} pips`);
+  }
+  if (props.statsBarsRange) {
+    // Approximate bars from time diff (assumes 1-min bars for simplicity)
+    const bars = Math.abs(Math.round(timeDiff / 60));
+    lines.push(`${bars} bars`);
+  }
+  if (props.statsDateTimeRange) {
+    const d1 = new Date(d.points[0].time * 1000);
+    const d2 = new Date(d.points[1].time * 1000);
+    lines.push(`${d1.toLocaleDateString()} – ${d2.toLocaleDateString()}`);
+  }
+  if (props.statsDistance) {
+    const dist = Math.round(Math.hypot(p2.x - p1.x, p2.y - p1.y));
+    lines.push(`${dist}px`);
+  }
+  if (props.statsAngle) {
+    const angle = Math.atan2(p1.y - p2.y, p2.x - p1.x) * (180 / Math.PI);
+    lines.push(`${angle.toFixed(1)}°`);
+  }
+  return lines;
+}
 
 const renderRay: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 2) return;
