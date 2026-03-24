@@ -71,6 +71,15 @@ export default function ChartCanvasContextMenu({
           {indicatorCount > 0 ? `Remove ${indicatorCount} indicator${indicatorCount > 1 ? 's' : ''}` : 'No indicators to remove'}
         </ContextMenuItem>
 
+        <ContextMenuItem
+          onClick={onRemoveDrawings}
+          disabled={drawingCount === 0}
+          className="gap-2"
+        >
+          <Pencil size={14} className="text-muted-foreground" />
+          {drawingCount > 0 ? `Remove ${drawingCount} drawing${drawingCount > 1 ? 's' : ''}` : 'No drawings to remove'}
+        </ContextMenuItem>
+
         <ContextMenuSeparator />
 
         <ContextMenuItem onClick={onOpenSettings} className="gap-2">
