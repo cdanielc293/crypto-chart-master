@@ -365,6 +365,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_layouts: {
+        Row: {
+          chart_settings: Json
+          created_at: string
+          grid_layout_id: string
+          id: string
+          is_active: boolean
+          name: string
+          panels: Json
+          sort_order: number
+          sync_options: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chart_settings?: Json
+          created_at?: string
+          grid_layout_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          panels?: Json
+          sort_order?: number
+          sync_options?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chart_settings?: Json
+          created_at?: string
+          grid_layout_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          panels?: Json
+          sort_order?: number
+          sync_options?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_login_log: {
         Row: {
           id: string

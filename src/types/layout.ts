@@ -14,17 +14,30 @@ export const DEFAULT_SYNC_OPTIONS: LayoutSyncOptions = {
   dateRange: false,
 };
 
-export interface ChartLayout {
-  id: string;
-  name: string;
+/** Per-panel state stored inside a layout */
+export interface LayoutPanel {
   symbol: string;
   interval: string;
   chartType: string;
   indicators: string[];
+  indicatorConfigs: Record<string, any>;
+  hiddenIndicators: string[];
   drawings: any[];
-  chartSettings: any;
-  createdAt: number;
-  updatedAt: number;
+}
+
+/** Full workspace layout stored in DB */
+export interface ChartLayout {
+  id: string;
+  user_id: string;
+  name: string;
+  is_active: boolean;
+  grid_layout_id: string;
+  sync_options: LayoutSyncOptions;
+  panels: LayoutPanel[];
+  chart_settings: any;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 /** Each cell: column start (0-based), row start (0-based), col span, row span */
