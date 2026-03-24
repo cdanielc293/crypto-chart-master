@@ -21,6 +21,7 @@ import Cookies from "./pages/Cookies.tsx";
 import Accessibility from "./pages/Accessibility.tsx";
 import SecurityPage from "./pages/SecurityPage.tsx";
 import BugBounty from "./pages/BugBounty.tsx";
+import Status from "./pages/Status.tsx";
 
 const queryClient = new QueryClient();
 
