@@ -201,6 +201,7 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSymbolRaw(s);
     localStorage.setItem('lastSymbol', s);
     setSelectedDrawingId(null);
+    setSelectedDrawingIds(new Set());
   }, []);
 
   // Persistence state for auto-save
