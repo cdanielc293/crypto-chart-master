@@ -803,6 +803,23 @@ export default function PriceChartWidget() {
     scheduleRender();
   }, [scheduleRender]);
 
+  const cloneDrawing = useCallback((id: string) => {
+    const d = drawingsRef.current.find(dd => dd.id === id);
+    if (!d) return;
+    pushUndo();
+    const clone: WidgetDrawing = {
+      ...d,
+      id: `${d.type}-${Date.now()}`,
+      points: d.points.map(p => ({ time: p.time, price: p.price * 1.001 })),
+      selected: false,
+    };
+    drawingsRef.current = [...drawingsRef.current, clone];
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(clone.id);
+    scheduleRender();
+  }, [scheduleRender, pushUndo]);
+
   const createPointFromScreen = useCallback((x: number, y: number): DrawingPoint | null => {
     const proj = projectionRef.current;
     const data = dataRef.current;
