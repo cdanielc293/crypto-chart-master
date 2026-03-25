@@ -119,13 +119,55 @@ export default function TopToolbar() {
     setThemeOpen(false);
   };
 
+  // ─── New UI: minimal top bar ───
+  if (viewMode === 'newui') {
+    return (
+      <div className="relative flex items-center h-10 px-3 gap-2 text-sm select-none"
+        style={{ background: 'var(--surface-0, #060a14)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        {/* User Profile - left */}
+        <UserProfileMenu />
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Center: Logo + View Toggle */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <img src={vizionLogo} alt="VizionX" className="h-5 w-5" />
+            <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+              VizionX
+            </span>
+            <span className="relative ml-1.5 px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase rounded-full border border-cyan-500/30 text-cyan-400 bg-cyan-500/10 animate-beta-glow">
+              Beta
+              <span className="absolute inset-0 rounded-full bg-cyan-400/20 animate-beta-pulse" />
+            </span>
+          </div>
+          <div className="pointer-events-auto">
+            <ViewModeToggle />
+          </div>
+        </div>
+
+        {/* Right: keyboard shortcuts */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('shortcut:show-shortcuts'))}
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-[rgba(255,255,255,0.3)] hover:text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.04)] text-[13px] transition-colors"
+          title="Keyboard shortcuts (?)"
+        >
+          <Keyboard size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Classic: full toolbar ───
   return (
     <>
       <div className="relative flex items-center h-12 bg-toolbar-bg border-b border-chart-border px-2 gap-1 text-sm select-none">
         {/* Absolutely centered logo + beta badge + view toggle */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none">
           <div className="flex items-center gap-1.5">
-            <img src={vizionLogo} alt="VizionXX" className="h-5 w-5" />
+            <img src={vizionLogo} alt="VizionX" className="h-5 w-5" />
             <span className="text-sm font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
               VizionX
             </span>
