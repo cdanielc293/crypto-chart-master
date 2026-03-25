@@ -36,6 +36,7 @@ import type { Point } from '@/types/indicators';
 import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './NewUIChartSettings';
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
+import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 
 // ─── Types ───
 interface Candle {
@@ -231,6 +232,23 @@ function persistDrawings(drawings: WidgetDrawing[]) {
 
 // ─── Hit testing for drawings ───
 const HIT_RADIUS = 8;
+const ANCHOR_RADIUS = 7;
+
+function hitTestAnchor(
+  d: WidgetDrawing,
+  mx: number, my: number,
+  timeToX: (t: number) => number | null,
+  priceToY: (p: number) => number,
+): number {
+  if (d.visible === false) return -1;
+  for (let i = 0; i < d.points.length; i++) {
+    const x = timeToX(d.points[i].time);
+    if (x === null) continue;
+    const y = priceToY(d.points[i].price);
+    if (Math.hypot(mx - x, my - y) <= ANCHOR_RADIUS) return i;
+  }
+  return -1;
+}
 
 function distToSegment(mx: number, my: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
@@ -623,6 +641,8 @@ export default function PriceChartWidget() {
   const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
+  const anchorDragRef = useRef<{ id: string; anchorIndex: number; startMx: number; startMy: number; origPoint: DrawingPoint } | null>(null);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
 
   // Undo/Redo stacks
   const undoStackRef = useRef<WidgetDrawing[][]>([]);
@@ -783,6 +803,23 @@ export default function PriceChartWidget() {
     scheduleRender();
   }, [scheduleRender]);
 
+  const cloneDrawing = useCallback((id: string) => {
+    const d = drawingsRef.current.find(dd => dd.id === id);
+    if (!d) return;
+    pushUndo();
+    const clone: WidgetDrawing = {
+      ...d,
+      id: `${d.type}-${Date.now()}`,
+      points: d.points.map(p => ({ time: p.time, price: p.price * 1.001 })),
+      selected: false,
+    };
+    drawingsRef.current = [...drawingsRef.current, clone];
+    persistDrawings(drawingsRef.current);
+    setDrawingsCount(drawingsRef.current.length);
+    setSelectedDrawingId(clone.id);
+    scheduleRender();
+  }, [scheduleRender, pushUndo]);
+
   const createPointFromScreen = useCallback((x: number, y: number): DrawingPoint | null => {
     const proj = projectionRef.current;
     const data = dataRef.current;
@@ -805,6 +842,7 @@ export default function PriceChartWidget() {
         draftPointsRef.current = [];
         setDrawingTool('none');
         setSelectedDrawingId(null);
+        setToolbarPos(null);
         scheduleRender();
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
@@ -1267,33 +1305,58 @@ export default function PriceChartWidget() {
     return 'pan';
   }, []);
 
-  // Helper: find drawing under cursor
-  const findDrawingAtPoint = useCallback((x: number, y: number): WidgetDrawing | null => {
+  // Shared coord helpers for hit testing
+  const getCoordHelpers = useCallback(() => {
     const proj = projectionRef.current;
     const data = dataRef.current;
-    if (!proj || data.length === 0) return null;
     const st = stateRef.current;
     const container = containerRef.current;
-    if (!container) return null;
+    if (!proj || data.length === 0 || !container) return null;
     const chartW = container.clientWidth - PRICE_W;
     const priceH = container.clientHeight - TIME_H - (configRef.current.showVolume ? (container.clientHeight - TIME_H) * VOL_RATIO : 0);
-
     const totalRange = proj.maxPrice - proj.minPrice;
     const priceToY = (p: number) => priceH * (1 - (p - proj.minPrice) / totalRange);
     const timeMap = new Map<number, number>();
     for (let i = 0; i < data.length; i++) {
-      const px = (i - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-      timeMap.set(data[i].time, px);
+      timeMap.set(data[i].time, (i - st.offsetX) * st.candleWidth + st.candleWidth / 2);
     }
     const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    return { chartW, priceH, totalRange, priceToY, timeToX };
+  }, []);
 
-    // Test in reverse order (topmost drawing first)
+  // Helper: find drawing under cursor
+  const findDrawingAtPoint = useCallback((x: number, y: number): WidgetDrawing | null => {
+    const h = getCoordHelpers();
+    if (!h) return null;
     for (let i = drawingsRef.current.length - 1; i >= 0; i--) {
       const d = drawingsRef.current[i];
-      if (hitTestWidgetDrawing(d, x, y, timeToX, priceToY, chartW, priceH)) return d;
+      if (hitTestWidgetDrawing(d, x, y, h.timeToX, h.priceToY, h.chartW, h.priceH)) return d;
     }
     return null;
-  }, []);
+  }, [getCoordHelpers]);
+
+  // Helper: find anchor of a specific drawing under cursor
+  const findAnchorAtPoint = useCallback((drawingId: string, x: number, y: number): number => {
+    const h = getCoordHelpers();
+    if (!h) return -1;
+    const d = drawingsRef.current.find(dd => dd.id === drawingId);
+    if (!d) return -1;
+    return hitTestAnchor(d, x, y, h.timeToX, h.priceToY);
+  }, [getCoordHelpers]);
+
+  // Update toolbar position for selected drawing
+  const updateToolbarPos = useCallback((drawingId: string | null) => {
+    if (!drawingId) { setToolbarPos(null); return; }
+    const h = getCoordHelpers();
+    if (!h) { setToolbarPos(null); return; }
+    const d = drawingsRef.current.find(dd => dd.id === drawingId);
+    if (!d || d.points.length === 0) { setToolbarPos(null); return; }
+    // Position at first anchor
+    const px = h.timeToX(d.points[0].time);
+    const py = h.priceToY(d.points[0].price);
+    if (px !== null) setToolbarPos({ x: px, y: py });
+    else setToolbarPos(null);
+  }, [getCoordHelpers]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -1305,6 +1368,24 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Anchor dragging
+    const ad = anchorDragRef.current;
+    if (ad) {
+      const point = createPointFromScreen(x, y);
+      if (point) {
+        drawingsRef.current = drawingsRef.current.map(d => {
+          if (d.id !== ad.id) return d;
+          const newPoints = [...d.points];
+          newPoints[ad.anchorIndex] = point;
+          return { ...d, points: newPoints };
+        });
+        st.crosshair = { x, y };
+        setCursor('grabbing');
+      }
+      scheduleRender();
+      return;
+    }
 
     // Dragging a selected drawing
     const dd = dragDrawingRef.current;
@@ -1362,8 +1443,19 @@ export default function PriceChartWidget() {
 
       // Hover cursor for drawings
       if (isCursorTool && x < chartW && y < chartH) {
-        const hit = findDrawingAtPoint(x, y);
-        setCursor(hit ? 'pointer' : 'crosshair');
+        // Check anchor hover first for selected drawing
+        if (selectedDrawingId) {
+          const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
+          if (anchorIdx >= 0) {
+            setCursor('grab');
+          } else {
+            const hit = findDrawingAtPoint(x, y);
+            setCursor(hit ? 'pointer' : 'crosshair');
+          }
+        } else {
+          const hit = findDrawingAtPoint(x, y);
+          setCursor(hit ? 'pointer' : 'crosshair');
+        }
       } else if (tool !== 'none' && tool !== 'cursor' && x < chartW && y < chartH) {
         setCursor('crosshair');
       } else {
@@ -1380,7 +1472,7 @@ export default function PriceChartWidget() {
       }
     }
     scheduleRender();
-  }, [getDragZone, scheduleRender, createPointFromScreen, findDrawingAtPoint]);
+  }, [getDragZone, scheduleRender, createPointFromScreen, findDrawingAtPoint, findAnchorAtPoint, selectedDrawingId]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 2) return;
@@ -1398,9 +1490,31 @@ export default function PriceChartWidget() {
 
     // In cursor mode, try to select/drag a drawing
     if (isCursorTool && x < chartW && y < chartH) {
+      // Check anchor drag first for selected drawing
+      if (selectedDrawingId) {
+        const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
+        if (selDrawing && !selDrawing.locked) {
+          const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
+          if (anchorIdx >= 0) {
+            pushUndo();
+            anchorDragRef.current = {
+              id: selectedDrawingId,
+              anchorIndex: anchorIdx,
+              startMx: x,
+              startMy: y,
+              origPoint: { ...selDrawing.points[anchorIdx] },
+            };
+            setCursor('grabbing');
+            scheduleRender();
+            return;
+          }
+        }
+      }
+
       const hit = findDrawingAtPoint(x, y);
       if (hit) {
         setSelectedDrawingId(hit.id);
+        updateToolbarPos(hit.id);
         if (!hit.locked) {
           pushUndo();
           dragDrawingRef.current = {
@@ -1415,6 +1529,7 @@ export default function PriceChartWidget() {
         return;
       } else {
         setSelectedDrawingId(null);
+        setToolbarPos(null);
         // Fall through to pan
       }
     }
@@ -1477,16 +1592,27 @@ export default function PriceChartWidget() {
     st.dragStartPanY = st.panOffsetY;
     st.crosshair = null;
     if (zone === 'pan') setCursor('grabbing');
-  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing, findDrawingAtPoint]);
+  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing, findDrawingAtPoint, findAnchorAtPoint, selectedDrawingId, pushUndo, updateToolbarPos]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     const tool = drawingToolRef.current;
+
+    // Finalize anchor drag
+    if (anchorDragRef.current) {
+      persistDrawings(drawingsRef.current);
+      anchorDragRef.current = null;
+      setCursor('pointer');
+      updateToolbarPos(selectedDrawingId);
+      scheduleRender();
+      return;
+    }
 
     // Finalize dragging a drawing
     if (dragDrawingRef.current) {
       persistDrawings(drawingsRef.current);
       dragDrawingRef.current = null;
       setCursor('pointer');
+      updateToolbarPos(selectedDrawingId);
       scheduleRender();
       return;
     }
@@ -1506,7 +1632,7 @@ export default function PriceChartWidget() {
 
     stateRef.current.dragMode = 'none';
     setCursor('crosshair');
-  }, [commitDrawing, scheduleRender]);
+  }, [commitDrawing, scheduleRender, selectedDrawingId, updateToolbarPos]);
 
   const handleMouseLeave = useCallback(() => {
     stateRef.current.dragMode = 'none';
@@ -1666,12 +1792,44 @@ export default function PriceChartWidget() {
               const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
               if (!selDrawing) return null;
               const toolLabel = selDrawing.type.charAt(0).toUpperCase() + selDrawing.type.slice(1).replace(/([A-Z])/g, ' $1');
+              const CTX_COLORS = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#e91e63', '#00bcd4', '#ffeb3b', '#ffffff', '#778ba4'];
               return (
                 <>
                   <div className="px-2 py-1.5 text-xs font-semibold text-white/70 flex items-center gap-2">
                     <Pencil size={12} className="text-white/40" />
                     {toolLabel}
                   </div>
+                  {/* Color row */}
+                  <div className="px-2 py-1.5 flex items-center gap-1">
+                    {CTX_COLORS.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => updateDrawing(selectedDrawingId, { color: c })}
+                        className="w-4 h-4 rounded-sm border border-white/20 hover:scale-125 transition-transform"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  {/* Line width */}
+                  <div className="px-2 py-1 flex items-center gap-1 text-[10px]">
+                    <span className="text-white/30 mr-1">Width:</span>
+                    {[1, 1.5, 2, 3, 4].map(w => (
+                      <button
+                        key={w}
+                        onClick={() => updateDrawing(selectedDrawingId, { lineWidth: w })}
+                        className={`w-6 h-6 rounded flex items-center justify-center font-mono transition-colors ${
+                          selDrawing.lineWidth === w ? 'bg-white/10 text-cyan-400' : 'text-white/40 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => cloneDrawing(selectedDrawingId)} className="gap-2 text-xs">
+                    <Copy size={14} className="text-white/40" />
+                    Clone
+                  </ContextMenuItem>
                   <ContextMenuItem onClick={() => {
                     updateDrawing(selectedDrawingId, { locked: !selDrawing.locked });
                   }} className="gap-2 text-xs">
@@ -1810,6 +1968,21 @@ export default function PriceChartWidget() {
             {drawingTool}: place point {draftPointsRef.current.length + 1}/{getPointCount(drawingTool) === -1 ? '∞' : getPointCount(drawingTool)} (Esc to cancel)
           </div>
         )}
+
+        {/* Floating drawing toolbar */}
+        {selectedDrawingId && toolbarPos && (() => {
+          const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
+          if (!selDrawing) return null;
+          return (
+            <NewUIDrawingToolbar
+              drawing={selDrawing}
+              position={toolbarPos}
+              onUpdate={updateDrawing}
+              onClone={cloneDrawing}
+              onDelete={(id) => { removeDrawing(id); setToolbarPos(null); }}
+            />
+          );
+        })()}
 
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
       </div>
