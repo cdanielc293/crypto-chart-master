@@ -125,14 +125,14 @@ const TF_BINANCE: Record<Timeframe, string> = {
   '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w',
 };
 
-const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number; interval: Interval }> = {
-  '1m': { label: '1m', intervalSec: 60, count: 500, interval: '1m' },
-  '5m': { label: '5m', intervalSec: 300, count: 500, interval: '5m' },
-  '15m': { label: '15m', intervalSec: 900, count: 500, interval: '15m' },
-  '1h': { label: '1H', intervalSec: 3600, count: 500, interval: '1h' },
-  '4h': { label: '4H', intervalSec: 14400, count: 500, interval: '4h' },
-  '1D': { label: '1D', intervalSec: 86400, count: 365, interval: '1d' },
-  '1W': { label: '1W', intervalSec: 604800, count: 200, interval: '1w' },
+const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; interval: Interval }> = {
+  '1m': { label: '1m', intervalSec: 60, interval: '1m' },
+  '5m': { label: '5m', intervalSec: 300, interval: '5m' },
+  '15m': { label: '15m', intervalSec: 900, interval: '15m' },
+  '1h': { label: '1H', intervalSec: 3600, interval: '1h' },
+  '4h': { label: '4H', intervalSec: 14400, interval: '4h' },
+  '1D': { label: '1D', intervalSec: 86400, interval: '1d' },
+  '1W': { label: '1W', intervalSec: 604800, interval: '1w' },
 };
 
 // ─── Constants ───
@@ -144,15 +144,41 @@ const MAX_CW = 50;
 const DEFAULT_CW = 8;
 const DRAWINGS_STORAGE_KEY = 'newui-chart-drawings-v2';
 
-// ─── Data fetch ───
-async function fetchBTCKlines(interval: string, limit: number): Promise<Candle[]> {
-  const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
-  if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
-  const data = await res.json();
-  return data.map((k: any[]) => ({
-    time: Math.floor(k[0] / 1000),
-    open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5],
-  }));
+// ─── Data fetch (paginated to support plan limits beyond 1000) ───
+async function fetchBTCKlines(interval: string, totalLimit: number): Promise<Candle[]> {
+  const BINANCE_MAX = 1000;
+  let allCandles: Candle[] = [];
+  let endTime: number | undefined = undefined;
+  let remaining = totalLimit;
+
+  while (remaining > 0) {
+    const batchSize = Math.min(remaining, BINANCE_MAX);
+    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    if (endTime !== undefined) url += `&endTime=${endTime}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
+    const data = await res.json();
+    if (!data.length) break;
+    const batch: Candle[] = data.map((k: any[]) => ({
+      time: Math.floor(k[0] / 1000),
+      open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5],
+    }));
+    // Prepend older candles
+    if (endTime !== undefined) {
+      // Remove last element if it overlaps with existing first
+      if (allCandles.length && batch.length && batch[batch.length - 1].time >= allCandles[0].time) {
+        batch.pop();
+      }
+      allCandles = [...batch, ...allCandles];
+    } else {
+      allCandles = batch;
+    }
+    remaining -= batchSize;
+    if (data.length < batchSize) break; // No more historical data
+    // Set endTime to the earliest candle's open time - 1ms for next batch
+    endTime = data[0][0] - 1;
+  }
+  return allCandles;
 }
 
 // ─── Formatting ───
@@ -979,7 +1005,7 @@ export default function PriceChartWidget() {
   useEffect(() => {
     const cfg = TIMEFRAME_CONFIG[timeframe];
     intervalSecRef.current = cfg.intervalSec;
-    const barLimit = Math.min(cfg.count, planLimits.historicalBars);
+    const barLimit = planLimits.historicalBars;
     setLoading(true);
     fetchBTCKlines(TF_BINANCE[timeframe], barLimit)
       .then(candles => {
