@@ -2,6 +2,7 @@ import vizionLogo from '@/assets/vizionx-logo.png';
 import { parseSymbol, getDisplayPair } from '@/lib/symbolUtils';
 import { useChart } from '@/context/ChartContext';
 import { useTheme, THEMES } from '@/context/ThemeContext';
+import { useViewMode } from '@/context/ViewModeContext';
 import type { Interval, ChartType } from '@/types/chart';
 import { ALL_INTERVALS } from '@/types/chart';
 import { useState, useMemo, useEffect } from 'react';
