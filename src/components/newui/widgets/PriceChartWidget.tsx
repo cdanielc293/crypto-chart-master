@@ -891,14 +891,32 @@ export default function PriceChartWidget() {
     const data = dataRef.current;
     if (!proj || data.length === 0) return null;
 
-    // Find nearest candle time
     const idx = Math.round(proj.startIdx + x / proj.candleWidth);
-    const clampedIdx = Math.max(0, Math.min(proj.dataLength - 1, idx));
-    const candle = data[clampedIdx];
-    if (!candle) return null;
-
     const price = proj.minPrice + (1 - y / proj.priceH) * (proj.maxPrice - proj.minPrice);
-    return { time: candle.time, price };
+
+    // Allow drawing beyond data range — extrapolate time
+    if (idx >= 0 && idx < data.length) {
+      return { time: data[idx].time, price };
+    }
+
+    // Beyond latest candle: extrapolate time into the future
+    if (idx >= data.length && data.length >= 2) {
+      const lastTime = data[data.length - 1].time;
+      const intervalSec = intervalSecRef.current;
+      const barsAhead = idx - (data.length - 1);
+      return { time: lastTime + barsAhead * intervalSec, price };
+    }
+
+    // Before first candle
+    if (idx < 0 && data.length >= 2) {
+      const firstTime = data[0].time;
+      const intervalSec = intervalSecRef.current;
+      return { time: firstTime + idx * intervalSec, price };
+    }
+
+    // Fallback
+    const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+    return { time: data[clampedIdx].time, price };
   }, []);
 
   // ─── Keyboard ───
