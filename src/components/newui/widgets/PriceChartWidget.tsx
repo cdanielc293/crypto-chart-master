@@ -1499,6 +1499,19 @@ export default function PriceChartWidget() {
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
+    // Replay: click to select start point
+    if (replayStateRef.current === 'selecting' && x < chartW && y < chartH) {
+      const st = stateRef.current;
+      const data = dataRef.current;
+      const idx = Math.round(st.offsetX + x / st.candleWidth);
+      const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+      setReplayStartIndex(clampedIdx);
+      setReplayBarIndex(clampedIdx);
+      setReplayState('paused');
+      scheduleRender();
+      return;
+    }
+
     const tool = drawingToolRef.current;
     const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
