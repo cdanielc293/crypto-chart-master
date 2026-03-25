@@ -1128,13 +1128,31 @@ export default function PriceChartWidget() {
     const yToPrice = (y: number) => minPrice + (1 - y / priceH) * totalRange;
     const xToIdx = (x: number) => Math.max(0, Math.min(data.length - 1, startIdx + Math.floor(x / st.candleWidth)));
 
-    // Build time→x map for drawings
+    // Build time→x map for drawings (supports extrapolated future/past times)
     const timeMap = new Map<number, number>();
     for (let i = 0; i < data.length; i++) {
       const x = (i - st.offsetX) * st.candleWidth + st.candleWidth / 2;
       timeMap.set(data[i].time, x);
     }
-    const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    const iSec = intervalSecRef.current;
+    const timeToX = (t: number): number | null => {
+      const mapped = timeMap.get(t);
+      if (mapped !== undefined) return mapped;
+      // Extrapolate: find position relative to data bounds
+      if (data.length >= 2) {
+        const lastTime = data[data.length - 1].time;
+        const firstTime = data[0].time;
+        if (t > lastTime) {
+          const barsAhead = Math.round((t - lastTime) / iSec);
+          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+        if (t < firstTime) {
+          const barsBefore = Math.round((firstTime - t) / iSec);
+          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+      }
+      return null;
+    };
 
     ctx.save();
     ctx.beginPath();
@@ -1496,7 +1514,24 @@ export default function PriceChartWidget() {
     for (let i = 0; i < data.length; i++) {
       timeMap.set(data[i].time, (i - st.offsetX) * st.candleWidth + st.candleWidth / 2);
     }
-    const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    const iSec = intervalSecRef.current;
+    const timeToX = (t: number): number | null => {
+      const mapped = timeMap.get(t);
+      if (mapped !== undefined) return mapped;
+      if (data.length >= 2) {
+        const lastTime = data[data.length - 1].time;
+        const firstTime = data[0].time;
+        if (t > lastTime) {
+          const barsAhead = Math.round((t - lastTime) / iSec);
+          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+        if (t < firstTime) {
+          const barsBefore = Math.round((firstTime - t) / iSec);
+          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+      }
+      return null;
+    };
     return { chartW, priceH, totalRange, priceToY, timeToX };
   }, []);
 
