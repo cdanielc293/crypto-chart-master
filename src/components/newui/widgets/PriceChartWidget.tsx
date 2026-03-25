@@ -1451,6 +1451,12 @@ export default function PriceChartWidget() {
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
+    // Logo hover detection
+    const lb = logoBoundsRef.current;
+    const wasHover = logoHoverRef.current;
+    logoHoverRef.current = x >= lb.x && x <= lb.x + lb.w && y >= lb.y && y <= lb.y + lb.h;
+    if (logoHoverRef.current !== wasHover) scheduleRender();
+
     // Anchor dragging
     const ad = anchorDragRef.current;
     if (ad) {
