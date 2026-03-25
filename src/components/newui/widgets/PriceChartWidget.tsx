@@ -1304,33 +1304,58 @@ export default function PriceChartWidget() {
     return 'pan';
   }, []);
 
-  // Helper: find drawing under cursor
-  const findDrawingAtPoint = useCallback((x: number, y: number): WidgetDrawing | null => {
+  // Shared coord helpers for hit testing
+  const getCoordHelpers = useCallback(() => {
     const proj = projectionRef.current;
     const data = dataRef.current;
-    if (!proj || data.length === 0) return null;
     const st = stateRef.current;
     const container = containerRef.current;
-    if (!container) return null;
+    if (!proj || data.length === 0 || !container) return null;
     const chartW = container.clientWidth - PRICE_W;
     const priceH = container.clientHeight - TIME_H - (configRef.current.showVolume ? (container.clientHeight - TIME_H) * VOL_RATIO : 0);
-
     const totalRange = proj.maxPrice - proj.minPrice;
     const priceToY = (p: number) => priceH * (1 - (p - proj.minPrice) / totalRange);
     const timeMap = new Map<number, number>();
     for (let i = 0; i < data.length; i++) {
-      const px = (i - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-      timeMap.set(data[i].time, px);
+      timeMap.set(data[i].time, (i - st.offsetX) * st.candleWidth + st.candleWidth / 2);
     }
     const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    return { chartW, priceH, totalRange, priceToY, timeToX };
+  }, []);
 
-    // Test in reverse order (topmost drawing first)
+  // Helper: find drawing under cursor
+  const findDrawingAtPoint = useCallback((x: number, y: number): WidgetDrawing | null => {
+    const h = getCoordHelpers();
+    if (!h) return null;
     for (let i = drawingsRef.current.length - 1; i >= 0; i--) {
       const d = drawingsRef.current[i];
-      if (hitTestWidgetDrawing(d, x, y, timeToX, priceToY, chartW, priceH)) return d;
+      if (hitTestWidgetDrawing(d, x, y, h.timeToX, h.priceToY, h.chartW, h.priceH)) return d;
     }
     return null;
-  }, []);
+  }, [getCoordHelpers]);
+
+  // Helper: find anchor of a specific drawing under cursor
+  const findAnchorAtPoint = useCallback((drawingId: string, x: number, y: number): number => {
+    const h = getCoordHelpers();
+    if (!h) return -1;
+    const d = drawingsRef.current.find(dd => dd.id === drawingId);
+    if (!d) return -1;
+    return hitTestAnchor(d, x, y, h.timeToX, h.priceToY);
+  }, [getCoordHelpers]);
+
+  // Update toolbar position for selected drawing
+  const updateToolbarPos = useCallback((drawingId: string | null) => {
+    if (!drawingId) { setToolbarPos(null); return; }
+    const h = getCoordHelpers();
+    if (!h) { setToolbarPos(null); return; }
+    const d = drawingsRef.current.find(dd => dd.id === drawingId);
+    if (!d || d.points.length === 0) { setToolbarPos(null); return; }
+    // Position at first anchor
+    const px = h.timeToX(d.points[0].time);
+    const py = h.priceToY(d.points[0].price);
+    if (px !== null) setToolbarPos({ x: px, y: py });
+    else setToolbarPos(null);
+  }, [getCoordHelpers]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -1342,6 +1367,24 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Anchor dragging
+    const ad = anchorDragRef.current;
+    if (ad) {
+      const point = createPointFromScreen(x, y);
+      if (point) {
+        drawingsRef.current = drawingsRef.current.map(d => {
+          if (d.id !== ad.id) return d;
+          const newPoints = [...d.points];
+          newPoints[ad.anchorIndex] = point;
+          return { ...d, points: newPoints };
+        });
+        st.crosshair = { x, y };
+        setCursor('grabbing');
+      }
+      scheduleRender();
+      return;
+    }
 
     // Dragging a selected drawing
     const dd = dragDrawingRef.current;
@@ -1399,8 +1442,19 @@ export default function PriceChartWidget() {
 
       // Hover cursor for drawings
       if (isCursorTool && x < chartW && y < chartH) {
-        const hit = findDrawingAtPoint(x, y);
-        setCursor(hit ? 'pointer' : 'crosshair');
+        // Check anchor hover first for selected drawing
+        if (selectedDrawingId) {
+          const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
+          if (anchorIdx >= 0) {
+            setCursor('grab');
+          } else {
+            const hit = findDrawingAtPoint(x, y);
+            setCursor(hit ? 'pointer' : 'crosshair');
+          }
+        } else {
+          const hit = findDrawingAtPoint(x, y);
+          setCursor(hit ? 'pointer' : 'crosshair');
+        }
       } else if (tool !== 'none' && tool !== 'cursor' && x < chartW && y < chartH) {
         setCursor('crosshair');
       } else {
@@ -1417,7 +1471,7 @@ export default function PriceChartWidget() {
       }
     }
     scheduleRender();
-  }, [getDragZone, scheduleRender, createPointFromScreen, findDrawingAtPoint]);
+  }, [getDragZone, scheduleRender, createPointFromScreen, findDrawingAtPoint, findAnchorAtPoint, selectedDrawingId]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 2) return;
@@ -1435,9 +1489,31 @@ export default function PriceChartWidget() {
 
     // In cursor mode, try to select/drag a drawing
     if (isCursorTool && x < chartW && y < chartH) {
+      // Check anchor drag first for selected drawing
+      if (selectedDrawingId) {
+        const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
+        if (selDrawing && !selDrawing.locked) {
+          const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
+          if (anchorIdx >= 0) {
+            pushUndo();
+            anchorDragRef.current = {
+              id: selectedDrawingId,
+              anchorIndex: anchorIdx,
+              startMx: x,
+              startMy: y,
+              origPoint: { ...selDrawing.points[anchorIdx] },
+            };
+            setCursor('grabbing');
+            scheduleRender();
+            return;
+          }
+        }
+      }
+
       const hit = findDrawingAtPoint(x, y);
       if (hit) {
         setSelectedDrawingId(hit.id);
+        updateToolbarPos(hit.id);
         if (!hit.locked) {
           pushUndo();
           dragDrawingRef.current = {
@@ -1452,6 +1528,7 @@ export default function PriceChartWidget() {
         return;
       } else {
         setSelectedDrawingId(null);
+        setToolbarPos(null);
         // Fall through to pan
       }
     }
@@ -1514,16 +1591,27 @@ export default function PriceChartWidget() {
     st.dragStartPanY = st.panOffsetY;
     st.crosshair = null;
     if (zone === 'pan') setCursor('grabbing');
-  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing, findDrawingAtPoint]);
+  }, [createPointFromScreen, getDragZone, scheduleRender, commitDrawing, findDrawingAtPoint, findAnchorAtPoint, selectedDrawingId, pushUndo, updateToolbarPos]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     const tool = drawingToolRef.current;
+
+    // Finalize anchor drag
+    if (anchorDragRef.current) {
+      persistDrawings(drawingsRef.current);
+      anchorDragRef.current = null;
+      setCursor('pointer');
+      updateToolbarPos(selectedDrawingId);
+      scheduleRender();
+      return;
+    }
 
     // Finalize dragging a drawing
     if (dragDrawingRef.current) {
       persistDrawings(drawingsRef.current);
       dragDrawingRef.current = null;
       setCursor('pointer');
+      updateToolbarPos(selectedDrawingId);
       scheduleRender();
       return;
     }
@@ -1543,7 +1631,7 @@ export default function PriceChartWidget() {
 
     stateRef.current.dragMode = 'none';
     setCursor('crosshair');
-  }, [commitDrawing, scheduleRender]);
+  }, [commitDrawing, scheduleRender, selectedDrawingId, updateToolbarPos]);
 
   const handleMouseLeave = useCallback(() => {
     stateRef.current.dragMode = 'none';
