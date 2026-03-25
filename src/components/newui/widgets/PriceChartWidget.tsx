@@ -232,8 +232,94 @@ async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTime
 
   return allCandles;
 }
+// ─── Data transforms ───
+function toHeikinAshi(candles: Candle[]): Candle[] {
+  const ha: Candle[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const prev = ha[i - 1];
+    const haClose = (c.open + c.high + c.low + c.close) / 4;
+    const haOpen = prev ? (prev.open + prev.close) / 2 : (c.open + c.close) / 2;
+    ha.push({ time: c.time, open: haOpen, high: Math.max(c.high, haOpen, haClose), low: Math.min(c.low, haOpen, haClose), close: haClose, volume: c.volume });
+  }
+  return ha;
+}
 
-// ─── Formatting ───
+function toRenko(candles: Candle[]): Candle[] {
+  if (candles.length === 0) return [];
+  const prices = candles.map(c => c.close);
+  const boxSize = Math.max((Math.max(...prices) - Math.min(...prices)) / 50, 0.01);
+  const bricks: Candle[] = [];
+  let lastClose = Math.round(candles[0].close / boxSize) * boxSize;
+  let tIdx = 0;
+  for (const c of candles) {
+    const diff = c.close - lastClose;
+    const n = Math.floor(Math.abs(diff) / boxSize);
+    const dir = diff > 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      const o = lastClose, cl = lastClose + dir * boxSize;
+      bricks.push({ time: candles[0].time + tIdx * 60, open: o, close: cl, high: Math.max(o, cl), low: Math.min(o, cl), volume: c.volume });
+      lastClose = cl; tIdx++;
+    }
+  }
+  return bricks;
+}
+
+function toLineBreak(candles: Candle[], lineCount = 3): Candle[] {
+  if (candles.length === 0) return [];
+  const lines: Candle[] = [];
+  let tIdx = 0;
+  for (const c of candles) {
+    if (lines.length === 0) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: c.open, close: c.close, high: Math.max(c.open, c.close), low: Math.min(c.open, c.close), volume: c.volume });
+      tIdx++; continue;
+    }
+    const last = lines[lines.length - 1];
+    const isUp = last.close >= last.open;
+    if (isUp && c.close > last.close) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: c.close, low: last.close, volume: c.volume }); tIdx++;
+    } else if (!isUp && c.close < last.close) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: last.close, low: c.close, volume: c.volume }); tIdx++;
+    } else {
+      const lb = lines.slice(-lineCount);
+      const maxH = Math.max(...lb.map(l => Math.max(l.open, l.close)));
+      const minL = Math.min(...lb.map(l => Math.min(l.open, l.close)));
+      if (isUp && c.close < minL) {
+        lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: last.close, low: c.close, volume: c.volume }); tIdx++;
+      } else if (!isUp && c.close > maxH) {
+        lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: c.close, low: last.close, volume: c.volume }); tIdx++;
+      }
+    }
+  }
+  return lines;
+}
+
+function toKagi(candles: Candle[]): Candle[] {
+  if (candles.length === 0) return [];
+  const lines: Candle[] = [];
+  let dir = 0, lastP = candles[0].close, cH = lastP, cL = lastP, tIdx = 0;
+  const base = candles[0].time;
+  const rPct = 0.04;
+  for (const c of candles) {
+    const p = c.close;
+    if (dir === 0) { dir = p >= lastP ? 1 : -1; lastP = p; cH = Math.max(cH, p); cL = Math.min(cL, p); continue; }
+    if (dir === 1) {
+      if (p > cH) cH = p;
+      else if (p <= cH * (1 - rPct)) {
+        lines.push({ time: base + tIdx * 60, open: cL, close: cH, high: cH, low: cL, volume: c.volume }); tIdx++; dir = -1; cL = p; cH = p;
+      }
+    } else {
+      if (p < cL) cL = p;
+      else if (p >= cL * (1 + rPct)) {
+        lines.push({ time: base + tIdx * 60, open: cH, close: cL, high: cH, low: cL, volume: c.volume }); tIdx++; dir = 1; cH = p; cL = p;
+      }
+    }
+  }
+  lines.push({ time: base + tIdx * 60, open: dir === 1 ? cL : cH, close: dir === 1 ? cH : cL, high: cH, low: cL, volume: 0 });
+  return lines;
+}
+
+
 function formatPrice(p: number): string {
   if (p >= 10000) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 100) return p.toFixed(2);
