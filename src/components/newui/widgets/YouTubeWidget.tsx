@@ -185,7 +185,7 @@ export default function YouTubeWidget() {
             className="h-full w-full border-0"
             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
             allowFullScreen
-            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+            referrerPolicy="no-referrer"
             title="YouTube Player"
           />
         </div>
