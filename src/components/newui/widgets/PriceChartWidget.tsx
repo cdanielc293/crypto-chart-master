@@ -642,6 +642,9 @@ export default function PriceChartWidget() {
   const replayTimerRef = useRef<number | null>(null);
   const replayStateRef = useRef<NewUIReplayState>('off');
   const replayBarIndexRef = useRef(0);
+  // Store timestamps so we can restore position after timeframe change
+  const replayBarTimestampRef = useRef<number | null>(null);
+  const replayStartTimestampRef = useRef<number | null>(null);
   useEffect(() => { replayStateRef.current = replayState; }, [replayState]);
   useEffect(() => { replayBarIndexRef.current = replayBarIndex; }, [replayBarIndex]);
 
