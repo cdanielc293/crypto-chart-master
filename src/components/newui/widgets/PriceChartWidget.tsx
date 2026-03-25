@@ -565,7 +565,17 @@ function renderDrawing(
     ctx.lineTo(pts[1].x, pts[1].y + offY);
     ctx.lineTo(pts[0].x, pts[0].y + offY);
     ctx.closePath(); ctx.fill();
-    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    if (d.selected) {
+      // Render 6 anchors: 3 on top line + 3 on bottom line
+      const offY = pts[2].y - pts[0].y;
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      const allAnchors = [
+        pts[0], { x: midX, y: midY }, pts[1],                        // top: left, mid, right
+        { x: pts[0].x, y: pts[0].y + offY }, { x: midX, y: midY + offY }, { x: pts[1].x, y: pts[1].y + offY }, // bottom
+      ];
+      renderSelectionAnchors(ctx, allAnchors, d.color);
+    }
     return;
   }
 
