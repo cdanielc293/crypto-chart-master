@@ -700,6 +700,9 @@ export default function PriceChartWidget() {
 
   // Load logo image for watermark
   const logoImgRef = useRef<HTMLImageElement | null>(null);
+  const logoHoverRef = useRef(false);
+  const logoTextAlphaRef = useRef(0);
+  const logoBoundsRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
   useEffect(() => {
     const img = new Image();
     img.src = vizionLogo;
@@ -1327,14 +1330,28 @@ export default function PriceChartWidget() {
       const padding = 16;
       const logoX = chartW - logoW - padding;
       const logoY = priceH - logoH - padding - 20;
+      logoBoundsRef.current = { x: logoX, y: logoY, w: logoW, h: logoH + 30 };
       ctx.globalAlpha = 0.18;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
-      ctx.globalAlpha = 0.15;
-      ctx.font = `bold ${Math.min(24, priceH * 0.045)}px Inter, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
+
+      // Animate text alpha toward target
+      const targetAlpha = logoHoverRef.current ? 0.35 : 0;
+      const speed = 0.08;
+      logoTextAlphaRef.current += (targetAlpha - logoTextAlphaRef.current) * speed;
+      if (Math.abs(logoTextAlphaRef.current - targetAlpha) > 0.005) {
+        scheduleRender(); // keep animating
+      }
+
+      if (logoTextAlphaRef.current > 0.01) {
+        ctx.globalAlpha = logoTextAlphaRef.current;
+        const fontSize = Math.min(24, priceH * 0.045);
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#00d4ff';
+        ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
+      }
+
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
@@ -1433,6 +1450,12 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Logo hover detection
+    const lb = logoBoundsRef.current;
+    const wasHover = logoHoverRef.current;
+    logoHoverRef.current = x >= lb.x && x <= lb.x + lb.w && y >= lb.y && y <= lb.y + lb.h;
+    if (logoHoverRef.current !== wasHover) scheduleRender();
 
     // Anchor dragging
     const ad = anchorDragRef.current;
