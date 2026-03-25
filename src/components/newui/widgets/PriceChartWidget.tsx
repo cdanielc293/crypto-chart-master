@@ -624,6 +624,8 @@ export default function PriceChartWidget() {
   const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
+  const anchorDragRef = useRef<{ id: string; anchorIndex: number; startMx: number; startMy: number; origPoint: DrawingPoint } | null>(null);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
 
   // Undo/Redo stacks
   const undoStackRef = useRef<WidgetDrawing[][]>([]);
