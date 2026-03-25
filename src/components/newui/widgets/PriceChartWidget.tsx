@@ -1548,7 +1548,36 @@ export default function PriceChartWidget() {
     const cw = st.candleWidth;
     const offDelta = st.offsetX - startIdx;
 
-    if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
+    if (ct === 'point_figure' && pfResult) {
+      // Render X and O boxes
+      const bs = pfResult.boxSize;
+      const boxPxH = Math.abs(priceToY(minPrice) - priceToY(minPrice + bs));
+      const fontSize = Math.min(Math.max(boxPxH * 0.75, 8), cw * 0.85, 18);
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const box of pfResult.boxes) {
+        const colIdx = pfResult.columns.findIndex(c => c.time === box.time);
+        if (colIdx < 0) continue;
+        const dataIdx = colIdx; // pfCandles index matches column index
+        if (dataIdx < startIdx || dataIdx >= endIdx) continue;
+        const bx = (dataIdx - st.offsetX) * cw + cw / 2;
+        const by = priceToY(box.price);
+        if (bx < -20 || bx > chartW + 20 || by < -20 || by > priceH + 20) continue;
+        if (box.type === 'X') {
+          ctx.strokeStyle = cfg.candleUp;
+          ctx.lineWidth = Math.max(1, fontSize * 0.12);
+          const half = fontSize * 0.35;
+          ctx.beginPath(); ctx.moveTo(bx - half, by - half); ctx.lineTo(bx + half, by + half); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bx + half, by - half); ctx.lineTo(bx - half, by + half); ctx.stroke();
+        } else {
+          ctx.strokeStyle = cfg.candleDown;
+          ctx.lineWidth = Math.max(1, fontSize * 0.12);
+          const r = fontSize * 0.35;
+          ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+    } else if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
       ctx.strokeStyle = cfg.candleUp;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
