@@ -1571,9 +1571,9 @@ export default function PriceChartWidget() {
     const offDelta = st.offsetX - startIdx;
 
     if (ct === 'point_figure' && pfResult) {
-      // ─── Professional Point & Figure rendering ───
+      // ─── Professional Point & Figure rendering (TradingView-style) ───
       const bs = pfResult.boxSize;
-      const boxPxH = Math.abs(priceToY(minPrice) - priceToY(minPrice + bs));
+      const lastColIdx = pfResult.columns.length - 1;
 
       // Draw subtle horizontal grid at every box level
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
@@ -1592,15 +1592,13 @@ export default function PriceChartWidget() {
       }
 
       // Render each X/O box
-      const padding = 0.12; // fraction of box to leave as padding
+      const padding = 0.12;
       for (const box of pfResult.boxes) {
         const colIdx = timeToCol.get(box.time);
         if (colIdx === undefined || colIdx < startIdx || colIdx >= endIdx) continue;
 
         const bx = (colIdx - st.offsetX) * cw + cw / 2;
-        // Box vertical center
         const by = priceToY(box.price);
-        // Box boundaries
         const boxTop = priceToY(box.price + bs / 2);
         const boxBot = priceToY(box.price - bs / 2);
         const cellH = Math.abs(boxBot - boxTop);
@@ -1613,10 +1611,15 @@ export default function PriceChartWidget() {
         const drawW = cellW - padX * 2;
         const drawH = cellH - padY * 2;
 
+        // Last column = projection (semi-transparent)
+        const isProjection = colIdx === lastColIdx;
+        const alpha = isProjection ? 0.4 : 1.0;
+
+        const lw = Math.max(1.2, Math.min(Math.min(drawW, drawH) * 0.15, 3));
+
         if (box.type === 'X') {
-          // Draw X with two diagonal lines — green
-          ctx.strokeStyle = cfg.candleUp;
-          ctx.lineWidth = Math.max(1.2, Math.min(drawW * 0.12, 2.5));
+          ctx.strokeStyle = isProjection ? hexToRgba(cfg.candleUp, alpha) : cfg.candleUp;
+          ctx.lineWidth = lw;
           ctx.lineCap = 'round';
           const x1 = bx - drawW / 2;
           const x2 = bx + drawW / 2;
@@ -1625,9 +1628,8 @@ export default function PriceChartWidget() {
           ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(x2, y1); ctx.lineTo(x1, y2); ctx.stroke();
         } else {
-          // Draw O with an ellipse — red
-          ctx.strokeStyle = cfg.candleDown;
-          ctx.lineWidth = Math.max(1.2, Math.min(drawW * 0.12, 2.5));
+          ctx.strokeStyle = isProjection ? hexToRgba(cfg.candleDown, alpha) : cfg.candleDown;
+          ctx.lineWidth = lw;
           ctx.lineCap = 'round';
           const rx = drawW / 2;
           const ry = drawH / 2;
