@@ -1410,7 +1410,12 @@ export default function PriceChartWidget() {
     const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
     const rawData = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
     const ct = chartTypeRef.current;
-    const data = ct === 'heikin_ashi' ? toHeikinAshi(rawData)
+
+    // Point & Figure uses its own column-based data
+    const pfResult = ct === 'point_figure' ? computePointAndFigure(rawData) : null;
+
+    const data = ct === 'point_figure' ? (pfResult?.columns.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume })) ?? [])
+      : ct === 'heikin_ashi' ? toHeikinAshi(rawData)
       : ct === 'renko' ? toRenko(rawData)
       : ct === 'line_break' ? toLineBreak(rawData)
       : ct === 'kagi' ? toKagi(rawData)
