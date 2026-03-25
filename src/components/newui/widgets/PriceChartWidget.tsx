@@ -1553,8 +1553,15 @@ export default function PriceChartWidget() {
         const x = (i - (st.offsetX - startIdx)) * st.candleWidth;
         const barW = Math.max(1, st.candleWidth * 0.7);
         const barH = maxVol > 0 ? (c.volume / maxVol) * volumeH * 0.85 : 0;
-        const bull = c.close >= c.open;
-        ctx.fillStyle = bull ? hexToRgba(cfg.candleUp, 0.15) : hexToRgba(cfg.candleDown, 0.15);
+        // For P&F, use column direction; for others use close >= open
+        let bull: boolean;
+        if (ct === 'point_figure' && pfResult) {
+          const colIdx = startIdx + i;
+          bull = colIdx < pfResult.columns.length ? pfResult.columns[colIdx].dir === 1 : true;
+        } else {
+          bull = c.close >= c.open;
+        }
+        ctx.fillStyle = bull ? hexToRgba(cfg.candleUp, 0.25) : hexToRgba(cfg.candleDown, 0.25);
         ctx.fillRect(x + (st.candleWidth - barW) / 2, priceH + (volumeH - barH), barW, barH);
       }
     }
