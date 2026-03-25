@@ -1323,7 +1323,13 @@ export default function PriceChartWidget() {
 
     const allData = dataRef.current;
     const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
-    const data = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
+    const rawData = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
+    const ct = chartTypeRef.current;
+    const data = ct === 'heikin_ashi' ? toHeikinAshi(rawData)
+      : ct === 'renko' ? toRenko(rawData)
+      : ct === 'line_break' ? toLineBreak(rawData)
+      : ct === 'kagi' ? toKagi(rawData)
+      : rawData;
     const st = stateRef.current;
     const cfg = configRef.current;
     const chartW = w - PRICE_W;
