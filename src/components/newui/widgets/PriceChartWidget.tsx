@@ -1292,14 +1292,14 @@ export default function PriceChartWidget() {
       const padding = 16;
       const logoX = chartW - logoW - padding;
       const logoY = priceH - logoH - padding - 30;
-      ctx.globalAlpha = 0.10;
+      ctx.globalAlpha = 0.18;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
-      ctx.globalAlpha = 0.08;
+      ctx.globalAlpha = 0.15;
       ctx.font = `bold ${Math.min(48, priceH * 0.09)}px Inter, sans-serif`;
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VIZIONX', chartW - padding, logoY + logoH + 10);
+      ctx.fillText('VizionX', chartW - padding, logoY + logoH + 10);
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
