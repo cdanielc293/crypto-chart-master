@@ -2690,6 +2690,34 @@ export default function PriceChartWidget() {
 
           <div className="w-px h-4 bg-white/[0.06] mx-1" />
 
+          {/* Chart type selector */}
+          <div className="relative">
+            <button
+              onClick={() => setChartTypeOpen(prev => !prev)}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+            >
+              <BarChart3 size={12} />
+              {CHART_TYPE_OPTIONS.find(o => o.value === chartType)?.label ?? 'Candles'}
+            </button>
+            {chartTypeOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-[#0a1628]/95 backdrop-blur-md border border-white/[0.08] rounded-md py-1 min-w-[140px] z-50 max-h-[320px] overflow-y-auto">
+                {CHART_TYPE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setChartType(opt.value); setChartTypeOpen(false); }}
+                    className={`w-full text-left px-3 py-1 text-[11px] font-mono transition-colors ${
+                      chartType === opt.value ? 'text-cyan-400 bg-white/[0.05]' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {opt.label} {chartType === opt.value ? '✓' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="w-px h-4 bg-white/[0.06] mx-1" />
+
           <NewUIIndicatorPanel indicators={indicators} onAdd={addIndicator} onRemove={removeIndicator} onToggle={toggleIndicator}>
             <button className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors">
               <TrendingUp size={12} />
