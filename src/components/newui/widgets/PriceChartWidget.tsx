@@ -243,12 +243,41 @@ function hitTestAnchor(
   priceToY: (p: number) => number,
 ): number {
   if (d.visible === false) return -1;
+
+  // Check real points first
   for (let i = 0; i < d.points.length; i++) {
     const x = timeToX(d.points[i].time);
     if (x === null) continue;
     const y = priceToY(d.points[i].price);
     if (Math.hypot(mx - x, my - y) <= ANCHOR_RADIUS) return i;
   }
+
+  // For parallel channel: 6 virtual anchors (3 top midpoint + 3 bottom line)
+  if (d.type === 'parallelchannel' && d.points.length >= 3) {
+    const p0x = timeToX(d.points[0].time);
+    const p1x = timeToX(d.points[1].time);
+    const p2x = timeToX(d.points[2].time);
+    if (p0x !== null && p1x !== null && p2x !== null) {
+      const p0y = priceToY(d.points[0].price);
+      const p1y = priceToY(d.points[1].price);
+      const p2y = priceToY(d.points[2].price);
+      const offY = p2y - p0y;
+      const midX = (p0x + p1x) / 2;
+      const midY = (p0y + p1y) / 2;
+
+      // 10=bottom-left, 11=bottom-mid, 12=bottom-right, 13=top-mid
+      const virtualAnchors = [
+        { x: p0x, y: p0y + offY, idx: 10 },
+        { x: midX, y: midY + offY, idx: 11 },
+        { x: p1x, y: p1y + offY, idx: 12 },
+        { x: midX, y: midY, idx: 13 },
+      ];
+      for (const va of virtualAnchors) {
+        if (Math.hypot(mx - va.x, my - va.y) <= ANCHOR_RADIUS) return va.idx;
+      }
+    }
+  }
+
   return -1;
 }
 
