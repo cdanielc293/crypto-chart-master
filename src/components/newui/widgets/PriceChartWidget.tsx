@@ -55,6 +55,30 @@ interface Candle {
 
 type DragMode = 'none' | 'pan' | 'price-scale' | 'time-scale';
 type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1D' | '1W';
+type NewUIChartType = 'candles' | 'bars' | 'hollow' | 'volume_candles'
+  | 'line' | 'line_markers' | 'step_line'
+  | 'area' | 'hlc_area' | 'baseline'
+  | 'columns' | 'high_low'
+  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi';
+
+const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
+  { label: 'Candles', value: 'candles' },
+  { label: 'Bars', value: 'bars' },
+  { label: 'Hollow', value: 'hollow' },
+  { label: 'Vol Candles', value: 'volume_candles' },
+  { label: 'Line', value: 'line' },
+  { label: 'Line+Markers', value: 'line_markers' },
+  { label: 'Step Line', value: 'step_line' },
+  { label: 'Area', value: 'area' },
+  { label: 'HLC Area', value: 'hlc_area' },
+  { label: 'Baseline', value: 'baseline' },
+  { label: 'Columns', value: 'columns' },
+  { label: 'High-Low', value: 'high_low' },
+  { label: 'Heikin Ashi', value: 'heikin_ashi' },
+  { label: 'Renko', value: 'renko' },
+  { label: 'Line Break', value: 'line_break' },
+  { label: 'Kagi', value: 'kagi' },
+];
 
 interface ChartState {
   offsetX: number;
