@@ -842,6 +842,7 @@ export default function PriceChartWidget() {
         draftPointsRef.current = [];
         setDrawingTool('none');
         setSelectedDrawingId(null);
+        setToolbarPos(null);
         scheduleRender();
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedDrawingId) {
