@@ -144,6 +144,7 @@ const MAX_CW = 50;
 const DEFAULT_CW = 8;
 const DRAWINGS_STORAGE_KEY = 'newui-chart-drawings-v2';
 const TIMEFRAME_CACHE_TTL_MS = 60_000;
+const FAST_INITIAL_BARS = 1200;
 
 // ─── Data fetch (paginated to support plan limits beyond 1000) ───
 async function fetchBTCKlines(interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
@@ -177,6 +178,34 @@ async function fetchBTCKlines(interval: string, totalLimit: number, signal?: Abo
     if (data.length < batchSize) break;
     endTime = data[0][0] - 1;
   }
+  return allCandles;
+}
+
+async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTimeMs: number, signal?: AbortSignal): Promise<Candle[]> {
+  const BINANCE_MAX = 1000;
+  let allCandles: Candle[] = [];
+  let endTime: number | undefined = endTimeMs;
+  let remaining = totalLimit;
+
+  while (remaining > 0) {
+    if (signal?.aborted) break;
+    const batchSize = Math.min(remaining, BINANCE_MAX);
+    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    if (endTime !== undefined) url += `&endTime=${endTime}`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
+    const data = await res.json();
+    if (!data.length) break;
+    const batch: Candle[] = data.map((k: any[]) => ({
+      time: Math.floor(k[0] / 1000),
+      open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5],
+    }));
+    allCandles = [...batch, ...allCandles];
+    remaining -= batch.length;
+    if (data.length < batchSize) break;
+    endTime = data[0][0] - 1;
+  }
+
   return allCandles;
 }
 
@@ -1034,7 +1063,8 @@ export default function PriceChartWidget() {
     intervalSecRef.current = cfg.intervalSec;
     const barLimit = planLimits.historicalBars;
 
-    const applyCandles = (candles: Candle[]) => {
+    const applyCandles = (candles: Candle[], options?: { preserveView?: boolean }) => {
+      const prevLen = dataRef.current.length;
       dataRef.current = candles;
 
       if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting' && replayBarTimestampRef.current != null) {
@@ -1062,7 +1092,10 @@ export default function PriceChartWidget() {
       if (container) {
         const chartW = container.clientWidth - PRICE_W - 44;
         const visibleCandles = Math.floor(chartW / stateRef.current.candleWidth);
-        if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+        if (options?.preserveView) {
+          const added = Math.max(0, candles.length - prevLen);
+          stateRef.current.offsetX = Math.max(0, stateRef.current.offsetX + added);
+        } else if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
           const rIdx = replayBarIndexRef.current;
           stateRef.current.offsetX = Math.max(0, rIdx - Math.floor(visibleCandles * 0.7));
         } else {
@@ -1077,34 +1110,56 @@ export default function PriceChartWidget() {
 
     const cached = timeframeCacheRef.current.get(timeframe);
     const hasCached = !!cached && cached.candles.length > 0;
-    const isFreshCache = hasCached && (Date.now() - cached.cachedAt) < TIMEFRAME_CACHE_TTL_MS;
-
-    if (hasCached) {
-      applyCandles(cached!.candles);
-      setLoading(!isFreshCache);
-      if (isFreshCache) return;
-    } else {
-      setLoading(true);
-    }
 
     fetchAbortRef.current?.abort();
     const controller = new AbortController();
     fetchAbortRef.current = controller;
     const reqSeq = ++fetchSeqRef.current;
 
-    fetchBTCKlines(TF_BINANCE[timeframe], barLimit, controller.signal)
+    const finishWithError = (err: unknown) => {
+      if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+      console.error('Failed to fetch Binance data:', err);
+      toast.error('Failed to load market data.');
+      setLoading(false);
+    };
+
+    const loadMissingOlder = (baseCandles: Candle[]) => {
+      const remaining = Math.max(0, barLimit - baseCandles.length);
+      if (remaining === 0 || baseCandles.length === 0) return;
+      const endTimeMs = baseCandles[0].time * 1000 - 1;
+      fetchOlderBTCKlines(TF_BINANCE[timeframe], remaining, endTimeMs, controller.signal)
+        .then(older => {
+          if (controller.signal.aborted || reqSeq !== fetchSeqRef.current || older.length === 0) return;
+          const merged = [...older, ...baseCandles];
+          timeframeCacheRef.current.set(timeframe, { candles: merged, cachedAt: Date.now() });
+          applyCandles(merged, { preserveView: true });
+        })
+        .catch(err => {
+          if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+          console.warn('Background history hydration failed:', err);
+        });
+    };
+
+    if (hasCached) {
+      applyCandles(cached!.candles);
+      setLoading(false);
+      if ((Date.now() - cached!.cachedAt) > TIMEFRAME_CACHE_TTL_MS || cached!.candles.length < barLimit) {
+        loadMissingOlder(cached!.candles);
+      }
+      return () => controller.abort();
+    }
+
+    setLoading(true);
+    const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
+    fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
       .then(candles => {
         if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
         timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
         applyCandles(candles);
         setLoading(false);
+        loadMissingOlder(candles);
       })
-      .catch(err => {
-        if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
-        console.error('Failed to fetch Binance data:', err);
-        toast.error('Failed to load market data.');
-        setLoading(false);
-      });
+      .catch(finishWithError);
 
     return () => controller.abort();
   }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
