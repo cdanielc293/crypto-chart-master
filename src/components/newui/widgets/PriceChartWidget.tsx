@@ -3,6 +3,9 @@
 // Fully isolated from Classic view.
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useProfile } from '@/hooks/useProfile';
+import { getPlanLimits, clampReplayTimestamp } from '@/lib/planLimits';
+import type { Interval } from '@/types/chart';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ContextMenu,
