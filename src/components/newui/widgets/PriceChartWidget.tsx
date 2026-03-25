@@ -639,6 +639,10 @@ export default function PriceChartWidget() {
   const [replayBarIndex, setReplayBarIndex] = useState(0);
   const [replayStartIndex, setReplayStartIndex] = useState(0);
   const replayTimerRef = useRef<number | null>(null);
+  const replayStateRef = useRef<NewUIReplayState>('off');
+  const replayBarIndexRef = useRef(0);
+  useEffect(() => { replayStateRef.current = replayState; }, [replayState]);
+  useEffect(() => { replayBarIndexRef.current = replayBarIndex; }, [replayBarIndex]);
 
   const [config, setConfig] = useState<ChartConfig>(loadConfig);
   const [indicators, setIndicators] = useState<ActiveIndicator[]>(loadIndicators);
