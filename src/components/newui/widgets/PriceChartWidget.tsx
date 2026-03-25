@@ -1193,20 +1193,27 @@ export default function PriceChartWidget() {
     const timeToX = (t: number): number | null => {
       const mapped = timeMap.get(t);
       if (mapped !== undefined) return mapped;
-      // Extrapolate: find position relative to data bounds
-      if (data.length >= 2) {
-        const lastTime = data[data.length - 1].time;
-        const firstTime = data[0].time;
-        if (t > lastTime) {
-          const barsAhead = Math.round((t - lastTime) / iSec);
-          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-        }
-        if (t < firstTime) {
-          const barsBefore = Math.round((firstTime - t) / iSec);
-          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-        }
+      if (data.length < 2) return null;
+      const lastTime = data[data.length - 1].time;
+      const firstTime = data[0].time;
+      if (t > lastTime) {
+        const barsAhead = (t - lastTime) / iSec;
+        return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
       }
-      return null;
+      if (t < firstTime) {
+        const barsBefore = (firstTime - t) / iSec;
+        return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+      }
+      // Interpolate: find surrounding candles via binary search
+      let lo = 0, hi = data.length - 1;
+      while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (data[mid].time <= t) lo = mid; else hi = mid;
+      }
+      const tLo = data[lo].time, tHi = data[hi].time;
+      const frac = tHi !== tLo ? (t - tLo) / (tHi - tLo) : 0;
+      const idx = lo + frac;
+      return (idx - st.offsetX) * st.candleWidth + st.candleWidth / 2;
     };
 
     ctx.save();
@@ -1573,19 +1580,26 @@ export default function PriceChartWidget() {
     const timeToX = (t: number): number | null => {
       const mapped = timeMap.get(t);
       if (mapped !== undefined) return mapped;
-      if (data.length >= 2) {
-        const lastTime = data[data.length - 1].time;
-        const firstTime = data[0].time;
-        if (t > lastTime) {
-          const barsAhead = Math.round((t - lastTime) / iSec);
-          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-        }
-        if (t < firstTime) {
-          const barsBefore = Math.round((firstTime - t) / iSec);
-          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
-        }
+      if (data.length < 2) return null;
+      const lastTime = data[data.length - 1].time;
+      const firstTime = data[0].time;
+      if (t > lastTime) {
+        const barsAhead = (t - lastTime) / iSec;
+        return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
       }
-      return null;
+      if (t < firstTime) {
+        const barsBefore = (firstTime - t) / iSec;
+        return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+      }
+      let lo = 0, hi = data.length - 1;
+      while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (data[mid].time <= t) lo = mid; else hi = mid;
+      }
+      const tLo = data[lo].time, tHi = data[hi].time;
+      const frac = tHi !== tLo ? (t - tLo) / (tHi - tLo) : 0;
+      const idx = lo + frac;
+      return (idx - st.offsetX) * st.candleWidth + st.candleWidth / 2;
     };
     return { chartW, priceH, totalRange, priceToY, timeToX };
   }, []);
@@ -2319,7 +2333,7 @@ export default function PriceChartWidget() {
         </ContextMenu>
 
         {/* Top bar: timeframes + indicators + settings */}
-        <div className="absolute top-1.5 left-2 z-10 flex items-center gap-1 pointer-events-auto">
+        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 pointer-events-auto">
           {(Object.keys(TIMEFRAME_CONFIG) as Timeframe[]).map(tf => (
             <button
               key={tf}
