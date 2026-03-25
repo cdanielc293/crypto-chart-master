@@ -1549,32 +1549,69 @@ export default function PriceChartWidget() {
     const offDelta = st.offsetX - startIdx;
 
     if (ct === 'point_figure' && pfResult) {
-      // Render X and O boxes
+      // ─── Professional Point & Figure rendering ───
       const bs = pfResult.boxSize;
       const boxPxH = Math.abs(priceToY(minPrice) - priceToY(minPrice + bs));
-      const fontSize = Math.min(Math.max(boxPxH * 0.75, 8), cw * 0.85, 18);
-      ctx.font = `bold ${fontSize}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+
+      // Draw subtle horizontal grid at every box level
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 0.5;
+      const gridStart = Math.floor(minPrice / bs) * bs;
+      for (let p = gridStart; p <= maxPrice; p += bs) {
+        const gy = priceToY(p);
+        if (gy < -5 || gy > priceH + 5) continue;
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(chartW, gy); ctx.stroke();
+      }
+
+      // Build a time→colIndex lookup for fast access
+      const timeToCol = new Map<number, number>();
+      for (let i = 0; i < pfResult.columns.length; i++) {
+        timeToCol.set(pfResult.columns[i].time, i);
+      }
+
+      // Render each X/O box
+      const padding = 0.12; // fraction of box to leave as padding
       for (const box of pfResult.boxes) {
-        const colIdx = pfResult.columns.findIndex(c => c.time === box.time);
-        if (colIdx < 0) continue;
-        const dataIdx = colIdx; // pfCandles index matches column index
-        if (dataIdx < startIdx || dataIdx >= endIdx) continue;
-        const bx = (dataIdx - st.offsetX) * cw + cw / 2;
+        const colIdx = timeToCol.get(box.time);
+        if (colIdx === undefined || colIdx < startIdx || colIdx >= endIdx) continue;
+
+        const bx = (colIdx - st.offsetX) * cw + cw / 2;
+        // Box vertical center
         const by = priceToY(box.price);
-        if (bx < -20 || bx > chartW + 20 || by < -20 || by > priceH + 20) continue;
+        // Box boundaries
+        const boxTop = priceToY(box.price + bs / 2);
+        const boxBot = priceToY(box.price - bs / 2);
+        const cellH = Math.abs(boxBot - boxTop);
+        const cellW = cw;
+
+        if (bx < -cellW || bx > chartW + cellW || by < -cellH || by > priceH + cellH) continue;
+
+        const padX = cellW * padding;
+        const padY = cellH * padding;
+        const drawW = cellW - padX * 2;
+        const drawH = cellH - padY * 2;
+
         if (box.type === 'X') {
+          // Draw X with two diagonal lines — green
           ctx.strokeStyle = cfg.candleUp;
-          ctx.lineWidth = Math.max(1, fontSize * 0.12);
-          const half = fontSize * 0.35;
-          ctx.beginPath(); ctx.moveTo(bx - half, by - half); ctx.lineTo(bx + half, by + half); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(bx + half, by - half); ctx.lineTo(bx - half, by + half); ctx.stroke();
+          ctx.lineWidth = Math.max(1.2, Math.min(drawW * 0.12, 2.5));
+          ctx.lineCap = 'round';
+          const x1 = bx - drawW / 2;
+          const x2 = bx + drawW / 2;
+          const y1 = boxTop + padY;
+          const y2 = boxBot - padY;
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x2, y1); ctx.lineTo(x1, y2); ctx.stroke();
         } else {
+          // Draw O with an ellipse — red
           ctx.strokeStyle = cfg.candleDown;
-          ctx.lineWidth = Math.max(1, fontSize * 0.12);
-          const r = fontSize * 0.35;
-          ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
+          ctx.lineWidth = Math.max(1.2, Math.min(drawW * 0.12, 2.5));
+          ctx.lineCap = 'round';
+          const rx = drawW / 2;
+          const ry = drawH / 2;
+          ctx.beginPath();
+          ctx.ellipse(bx, by, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
         }
       }
     } else if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
