@@ -1810,6 +1810,8 @@ export default function PriceChartWidget() {
       }
       replayBarIndexRef.current = next;
       setReplayBarIndex(next);
+      // Save timestamp for timeframe persistence
+      replayBarTimestampRef.current = dataRef.current[next]?.time ?? null;
       scheduleRender();
     }, delay);
     return () => {
