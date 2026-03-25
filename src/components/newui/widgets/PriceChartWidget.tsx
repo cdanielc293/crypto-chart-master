@@ -37,6 +37,7 @@ import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './Ne
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
+import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
 
 // ─── Types ───
 interface Candle {
