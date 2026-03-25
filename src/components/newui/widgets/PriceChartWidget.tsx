@@ -882,6 +882,7 @@ export default function PriceChartWidget() {
         const total = dataRef.current.length;
         const next = Math.min(replayBarIndexRef.current + 1, total - 1);
         setReplayBarIndex(next);
+        replayBarTimestampRef.current = dataRef.current[next]?.time ?? null;
         setReplayState('paused');
         scheduleRender();
         return;
