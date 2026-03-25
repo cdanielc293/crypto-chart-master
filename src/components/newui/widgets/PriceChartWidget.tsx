@@ -1330,14 +1330,28 @@ export default function PriceChartWidget() {
       const padding = 16;
       const logoX = chartW - logoW - padding;
       const logoY = priceH - logoH - padding - 20;
+      logoBoundsRef.current = { x: logoX, y: logoY, w: logoW, h: logoH + 30 };
       ctx.globalAlpha = 0.18;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
-      ctx.globalAlpha = 0.15;
-      ctx.font = `bold ${Math.min(24, priceH * 0.045)}px Inter, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
+
+      // Animate text alpha toward target
+      const targetAlpha = logoHoverRef.current ? 0.35 : 0;
+      const speed = 0.08;
+      logoTextAlphaRef.current += (targetAlpha - logoTextAlphaRef.current) * speed;
+      if (Math.abs(logoTextAlphaRef.current - targetAlpha) > 0.005) {
+        scheduleRender(); // keep animating
+      }
+
+      if (logoTextAlphaRef.current > 0.01) {
+        ctx.globalAlpha = logoTextAlphaRef.current;
+        const fontSize = Math.min(24, priceH * 0.045);
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#00d4ff';
+        ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
+      }
+
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
