@@ -1331,10 +1331,10 @@ export default function PriceChartWidget() {
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
       ctx.globalAlpha = 0.15;
       ctx.font = `bold ${Math.min(24, priceH * 0.045)}px Inter, sans-serif`;
-      ctx.textAlign = 'right';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VizionX', chartW - padding, logoY + logoH + 2);
+      ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
