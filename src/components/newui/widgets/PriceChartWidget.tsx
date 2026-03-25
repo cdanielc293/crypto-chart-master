@@ -59,7 +59,7 @@ type NewUIChartType = 'candles' | 'bars' | 'hollow' | 'volume_candles'
   | 'line' | 'line_markers' | 'step_line'
   | 'area' | 'hlc_area' | 'baseline'
   | 'columns' | 'high_low'
-  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi';
+  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi' | 'point_figure';
 
 const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
   { label: 'Candles', value: 'candles' },
@@ -78,6 +78,7 @@ const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
   { label: 'Renko', value: 'renko' },
   { label: 'Line Break', value: 'line_break' },
   { label: 'Kagi', value: 'kagi' },
+  { label: 'Point & Figure', value: 'point_figure' },
 ];
 
 interface ChartState {
@@ -317,6 +318,82 @@ function toKagi(candles: Candle[]): Candle[] {
   }
   lines.push({ time: base + tIdx * 60, open: dir === 1 ? cL : cH, close: dir === 1 ? cH : cL, high: cH, low: cL, volume: 0 });
   return lines;
+}
+
+// ─── Point & Figure ───
+interface PFBox { time: number; price: number; type: 'X' | 'O'; }
+interface PFResult { columns: PFCandle[]; boxes: PFBox[]; boxSize: number; }
+interface PFCandle { time: number; open: number; high: number; low: number; close: number; volume: number; dir: number; }
+
+function calculateATR(candles: Candle[], period = 14): number {
+  if (candles.length < 2) return 1;
+  const trs: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const tr = Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
+function computePointAndFigure(candles: Candle[], reversalBoxes = 3, atrLength = 14): PFResult {
+  if (candles.length < 2) return { columns: [], boxes: [], boxSize: 100 };
+  const atr = calculateATR(candles, atrLength);
+  const prices = candles.map(c => c.close);
+  const range = Math.max(...prices) - Math.min(...prices);
+  const atrBased = Math.max(Math.round(atr), 1);
+  const rangeBased = Math.max(Math.round(range / 40), 1);
+  const boxSize = Math.min(atrBased, rangeBased) || 1;
+  const reversalAmount = reversalBoxes * boxSize;
+
+  interface PFCol { dir: number; top: number; bot: number; }
+  const cols: PFCol[] = [];
+  const firstClose = candles[0].close;
+  let colTop = Math.ceil(firstClose / boxSize) * boxSize;
+  let colBot = Math.floor(firstClose / boxSize) * boxSize;
+  cols.push({ dir: 1, top: colTop, bot: colBot });
+
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i];
+    const high = Math.ceil(c.high / boxSize) * boxSize;
+    const low = Math.floor(c.low / boxSize) * boxSize;
+    const lastCol = cols[cols.length - 1];
+    if (lastCol.dir === 1) {
+      if (high > lastCol.top) { lastCol.top = high; }
+      if (lastCol.top - low >= reversalAmount) {
+        cols.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
+      }
+    } else {
+      if (low < lastCol.bot) { lastCol.bot = low; }
+      if (high - lastCol.bot >= reversalAmount) {
+        cols.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
+      }
+    }
+  }
+
+  const baseTime = candles[0].time;
+  const totalTime = candles[candles.length - 1].time - baseTime;
+  const colCount = cols.length;
+  const timeStep = colCount > 1 ? Math.max(Math.floor(totalTime / colCount), 60) : 86400;
+
+  const boxes: PFBox[] = [];
+  const pfCandles: PFCandle[] = [];
+  for (let i = 0; i < cols.length; i++) {
+    const col = cols[i];
+    const t = baseTime + i * timeStep;
+    pfCandles.push({ time: t, open: col.bot, high: col.top, low: col.bot, close: col.top, volume: 0, dir: col.dir });
+    for (let p = col.bot; p < col.top; p += boxSize) {
+      boxes.push({ time: t, price: p + boxSize / 2, type: col.dir === 1 ? 'X' : 'O' });
+    }
+  }
+  return { columns: pfCandles, boxes, boxSize };
 }
 
 
@@ -1333,7 +1410,12 @@ export default function PriceChartWidget() {
     const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
     const rawData = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
     const ct = chartTypeRef.current;
-    const data = ct === 'heikin_ashi' ? toHeikinAshi(rawData)
+
+    // Point & Figure uses its own column-based data
+    const pfResult = ct === 'point_figure' ? computePointAndFigure(rawData) : null;
+
+    const data = ct === 'point_figure' ? (pfResult?.columns.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume })) ?? [])
+      : ct === 'heikin_ashi' ? toHeikinAshi(rawData)
       : ct === 'renko' ? toRenko(rawData)
       : ct === 'line_break' ? toLineBreak(rawData)
       : ct === 'kagi' ? toKagi(rawData)
@@ -1466,7 +1548,36 @@ export default function PriceChartWidget() {
     const cw = st.candleWidth;
     const offDelta = st.offsetX - startIdx;
 
-    if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
+    if (ct === 'point_figure' && pfResult) {
+      // Render X and O boxes
+      const bs = pfResult.boxSize;
+      const boxPxH = Math.abs(priceToY(minPrice) - priceToY(minPrice + bs));
+      const fontSize = Math.min(Math.max(boxPxH * 0.75, 8), cw * 0.85, 18);
+      ctx.font = `bold ${fontSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const box of pfResult.boxes) {
+        const colIdx = pfResult.columns.findIndex(c => c.time === box.time);
+        if (colIdx < 0) continue;
+        const dataIdx = colIdx; // pfCandles index matches column index
+        if (dataIdx < startIdx || dataIdx >= endIdx) continue;
+        const bx = (dataIdx - st.offsetX) * cw + cw / 2;
+        const by = priceToY(box.price);
+        if (bx < -20 || bx > chartW + 20 || by < -20 || by > priceH + 20) continue;
+        if (box.type === 'X') {
+          ctx.strokeStyle = cfg.candleUp;
+          ctx.lineWidth = Math.max(1, fontSize * 0.12);
+          const half = fontSize * 0.35;
+          ctx.beginPath(); ctx.moveTo(bx - half, by - half); ctx.lineTo(bx + half, by + half); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bx + half, by - half); ctx.lineTo(bx - half, by + half); ctx.stroke();
+        } else {
+          ctx.strokeStyle = cfg.candleDown;
+          ctx.lineWidth = Math.max(1, fontSize * 0.12);
+          const r = fontSize * 0.35;
+          ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+    } else if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
       ctx.strokeStyle = cfg.candleUp;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
