@@ -1518,7 +1518,7 @@ export default function PriceChartWidget() {
     logoHoverRef.current = x >= lb.x && x <= lb.x + lb.w && y >= lb.y && y <= lb.y + lb.h;
     if (logoHoverRef.current !== wasHover) scheduleRender();
 
-    // Anchor dragging
+    // Anchor dragging (including virtual anchors for parallel channel)
     const ad = anchorDragRef.current;
     if (ad) {
       const point = createPointFromScreen(x, y);
@@ -1526,7 +1526,45 @@ export default function PriceChartWidget() {
         drawingsRef.current = drawingsRef.current.map(d => {
           if (d.id !== ad.id) return d;
           const newPoints = [...d.points];
-          newPoints[ad.anchorIndex] = point;
+          const ai = ad.anchorIndex;
+
+          if (ai < 10) {
+            // Regular anchor
+            newPoints[ai] = point;
+          } else if (d.type === 'parallelchannel' && newPoints.length >= 3) {
+            // Virtual anchors for parallel channel
+            const h = getCoordHelpers();
+            if (h) {
+              const p0y = h.priceToY(newPoints[0].price);
+              const p1y = h.priceToY(newPoints[1].price);
+              const p2y = h.priceToY(newPoints[2].price);
+              const offY = p2y - p0y;
+
+              if (ai === 10) {
+                // Bottom-left: move point[2] to maintain offset from point[0]
+                const newOff = point.price - newPoints[0].price;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
+              } else if (ai === 12) {
+                // Bottom-right: adjust offset based on movement
+                const newOff = point.price - newPoints[1].price;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
+              } else if (ai === 11) {
+                // Bottom-mid: shift entire bottom line (change offset)
+                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+                const origOffPrice = newPoints[2].price - newPoints[0].price;
+                const origMidBottom = midPrice + origOffPrice;
+                const priceDelta = point.price - origMidBottom;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[2].price + priceDelta };
+              } else if (ai === 13) {
+                // Top-mid: shift entire top line
+                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+                const priceDelta = point.price - midPrice;
+                newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
+                newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
+              }
+            }
+          }
+
           return { ...d, points: newPoints };
         });
         st.crosshair = { x, y };
