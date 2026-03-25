@@ -3,6 +3,9 @@
 // Fully isolated from Classic view.
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useProfile } from '@/hooks/useProfile';
+import { getPlanLimits, clampReplayTimestamp } from '@/lib/planLimits';
+import type { Interval } from '@/types/chart';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ContextMenu,
@@ -122,14 +125,14 @@ const TF_BINANCE: Record<Timeframe, string> = {
   '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w',
 };
 
-const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number }> = {
-  '1m': { label: '1m', intervalSec: 60, count: 500 },
-  '5m': { label: '5m', intervalSec: 300, count: 500 },
-  '15m': { label: '15m', intervalSec: 900, count: 500 },
-  '1h': { label: '1H', intervalSec: 3600, count: 500 },
-  '4h': { label: '4H', intervalSec: 14400, count: 500 },
-  '1D': { label: '1D', intervalSec: 86400, count: 365 },
-  '1W': { label: '1W', intervalSec: 604800, count: 200 },
+const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number; interval: Interval }> = {
+  '1m': { label: '1m', intervalSec: 60, count: 500, interval: '1m' },
+  '5m': { label: '5m', intervalSec: 300, count: 500, interval: '5m' },
+  '15m': { label: '15m', intervalSec: 900, count: 500, interval: '15m' },
+  '1h': { label: '1H', intervalSec: 3600, count: 500, interval: '1h' },
+  '4h': { label: '4H', intervalSec: 14400, count: 500, interval: '4h' },
+  '1D': { label: '1D', intervalSec: 86400, count: 365, interval: '1d' },
+  '1W': { label: '1W', intervalSec: 604800, count: 200, interval: '1w' },
 };
 
 // ─── Constants ───
@@ -668,6 +671,11 @@ export default function PriceChartWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Plan limits
+  const { data: profile } = useProfile();
+  const userPlan = profile?.plan ?? 'start';
+  const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
+
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -817,12 +825,18 @@ export default function PriceChartWidget() {
   const addIndicator = useCallback((defId: string) => {
     const def = getIndicator(defId);
     if (!def) return;
+    // Plan-based indicator limit
+    const currentCount = indicators.filter(i => i.visible).length;
+    if (currentCount >= planLimits.indicatorsPerChart) {
+      toast.error(`Your plan allows up to ${planLimits.indicatorsPerChart} indicators. Upgrade for more.`);
+      return;
+    }
     const id = `${defId}-${Date.now()}`;
     const color = def.lines[0]?.color ?? '#ffffff';
     const params: Record<string, any> = {};
     for (const p of def.params) params[p.key] = p.default;
     setIndicators(prev => [...prev, { id, defId, params, color, visible: true }]);
-  }, []);
+  }, [indicators, planLimits]);
 
   const removeIndicator = useCallback((id: string) => setIndicators(prev => prev.filter(i => i.id !== id)), []);
   const toggleIndicator = useCallback((id: string) => setIndicators(prev => prev.map(i => i.id === id ? { ...i, visible: !i.visible } : i)), []);
@@ -883,14 +897,32 @@ export default function PriceChartWidget() {
     const data = dataRef.current;
     if (!proj || data.length === 0) return null;
 
-    // Find nearest candle time
     const idx = Math.round(proj.startIdx + x / proj.candleWidth);
-    const clampedIdx = Math.max(0, Math.min(proj.dataLength - 1, idx));
-    const candle = data[clampedIdx];
-    if (!candle) return null;
-
     const price = proj.minPrice + (1 - y / proj.priceH) * (proj.maxPrice - proj.minPrice);
-    return { time: candle.time, price };
+
+    // Allow drawing beyond data range — extrapolate time
+    if (idx >= 0 && idx < data.length) {
+      return { time: data[idx].time, price };
+    }
+
+    // Beyond latest candle: extrapolate time into the future
+    if (idx >= data.length && data.length >= 2) {
+      const lastTime = data[data.length - 1].time;
+      const intervalSec = intervalSecRef.current;
+      const barsAhead = idx - (data.length - 1);
+      return { time: lastTime + barsAhead * intervalSec, price };
+    }
+
+    // Before first candle
+    if (idx < 0 && data.length >= 2) {
+      const firstTime = data[0].time;
+      const intervalSec = intervalSecRef.current;
+      return { time: firstTime + idx * intervalSec, price };
+    }
+
+    // Fallback
+    const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+    return { time: data[clampedIdx].time, price };
   }, []);
 
   // ─── Keyboard ───
@@ -943,8 +975,9 @@ export default function PriceChartWidget() {
   useEffect(() => {
     const cfg = TIMEFRAME_CONFIG[timeframe];
     intervalSecRef.current = cfg.intervalSec;
+    const barLimit = Math.min(cfg.count, planLimits.historicalBars);
     setLoading(true);
-    fetchBTCKlines(TF_BINANCE[timeframe], cfg.count)
+    fetchBTCKlines(TF_BINANCE[timeframe], barLimit)
       .then(candles => {
         dataRef.current = candles;
 
@@ -995,7 +1028,7 @@ export default function PriceChartWidget() {
         toast.error('Failed to load market data.');
         setLoading(false);
       });
-  }, [timeframe, recalcIndicators, scheduleRender]);
+  }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
 
   // ─── WebSocket ───
   useEffect(() => {
@@ -1095,13 +1128,31 @@ export default function PriceChartWidget() {
     const yToPrice = (y: number) => minPrice + (1 - y / priceH) * totalRange;
     const xToIdx = (x: number) => Math.max(0, Math.min(data.length - 1, startIdx + Math.floor(x / st.candleWidth)));
 
-    // Build time→x map for drawings
+    // Build time→x map for drawings (supports extrapolated future/past times)
     const timeMap = new Map<number, number>();
     for (let i = 0; i < data.length; i++) {
       const x = (i - st.offsetX) * st.candleWidth + st.candleWidth / 2;
       timeMap.set(data[i].time, x);
     }
-    const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    const iSec = intervalSecRef.current;
+    const timeToX = (t: number): number | null => {
+      const mapped = timeMap.get(t);
+      if (mapped !== undefined) return mapped;
+      // Extrapolate: find position relative to data bounds
+      if (data.length >= 2) {
+        const lastTime = data[data.length - 1].time;
+        const firstTime = data[0].time;
+        if (t > lastTime) {
+          const barsAhead = Math.round((t - lastTime) / iSec);
+          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+        if (t < firstTime) {
+          const barsBefore = Math.round((firstTime - t) / iSec);
+          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+      }
+      return null;
+    };
 
     ctx.save();
     ctx.beginPath();
@@ -1463,7 +1514,24 @@ export default function PriceChartWidget() {
     for (let i = 0; i < data.length; i++) {
       timeMap.set(data[i].time, (i - st.offsetX) * st.candleWidth + st.candleWidth / 2);
     }
-    const timeToX = (t: number): number | null => timeMap.get(t) ?? null;
+    const iSec = intervalSecRef.current;
+    const timeToX = (t: number): number | null => {
+      const mapped = timeMap.get(t);
+      if (mapped !== undefined) return mapped;
+      if (data.length >= 2) {
+        const lastTime = data[data.length - 1].time;
+        const firstTime = data[0].time;
+        if (t > lastTime) {
+          const barsAhead = Math.round((t - lastTime) / iSec);
+          return ((data.length - 1 + barsAhead) - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+        if (t < firstTime) {
+          const barsBefore = Math.round((firstTime - t) / iSec);
+          return (-barsBefore - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        }
+      }
+      return null;
+    };
     return { chartW, priceH, totalRange, priceToY, timeToX };
   }, []);
 
@@ -1678,11 +1746,27 @@ export default function PriceChartWidget() {
       const data = dataRef.current;
       const idx = Math.round(st.offsetX + x / st.candleWidth);
       const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
-      setReplayStartIndex(clampedIdx);
-      setReplayBarIndex(clampedIdx);
+
+      // Clamp replay start to plan limits
+      const cfg = TIMEFRAME_CONFIG[timeframe];
+      const candleTime = data[clampedIdx]?.time ?? 0;
+      const clampedTime = clampReplayTimestamp(candleTime, userPlan, cfg.interval);
+      // Find the index closest to the clamped time
+      let finalIdx = clampedIdx;
+      if (clampedTime > candleTime) {
+        for (let i = clampedIdx; i < data.length; i++) {
+          if (data[i].time >= clampedTime) { finalIdx = i; break; }
+        }
+        if (finalIdx !== clampedIdx) {
+          toast.error('Replay start limited by your plan. Upgrade for deeper history.');
+        }
+      }
+
+      setReplayStartIndex(finalIdx);
+      setReplayBarIndex(finalIdx);
       // Save timestamps for timeframe-change persistence
-      replayStartTimestampRef.current = data[clampedIdx]?.time ?? null;
-      replayBarTimestampRef.current = data[clampedIdx]?.time ?? null;
+      replayStartTimestampRef.current = data[finalIdx]?.time ?? null;
+      replayBarTimestampRef.current = data[finalIdx]?.time ?? null;
       setReplayState('paused');
       scheduleRender();
       return;
