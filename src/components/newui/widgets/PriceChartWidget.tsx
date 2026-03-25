@@ -1705,7 +1705,9 @@ export default function PriceChartWidget() {
               anchorIndex: anchorIdx,
               startMx: x,
               startMy: y,
-              origPoint: { ...selDrawing.points[anchorIdx] },
+              origPoint: anchorIdx < selDrawing.points.length
+                ? { ...selDrawing.points[anchorIdx] }
+                : { ...selDrawing.points[0] }, // virtual anchor fallback
             };
             setCursor('grabbing');
             scheduleRender();
