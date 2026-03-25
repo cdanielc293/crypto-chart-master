@@ -1347,7 +1347,7 @@ export default function PriceChartWidget() {
       if (logoTextAlphaRef.current > 0.005) {
         const t = logoTextAlphaRef.current / 0.45; // normalized 0→1
         const fontSize = Math.min(24, priceH * 0.045);
-        const textY = logoY + logoH - 4 + t * 4; // slides down slightly as it appears
+        const textY = logoY + logoH - 10 + t * 3; // tight under logo, slides down slightly
         const scale = 0.85 + t * 0.15; // subtle scale-up
 
         ctx.save();
