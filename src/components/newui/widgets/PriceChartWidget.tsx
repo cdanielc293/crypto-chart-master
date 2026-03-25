@@ -870,6 +870,10 @@ export default function PriceChartWidget() {
   const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
 
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
+  const [chartType, setChartType] = useState<NewUIChartType>('candles');
+  const [chartTypeOpen, setChartTypeOpen] = useState(false);
+  const chartTypeRef = useRef<NewUIChartType>('candles');
+  useEffect(() => { chartTypeRef.current = chartType; }, [chartType]);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawingTool, setDrawingTool] = useState<NewUIDrawingTool>('none');
