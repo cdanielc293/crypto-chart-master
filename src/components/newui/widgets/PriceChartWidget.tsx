@@ -873,10 +873,21 @@ export default function PriceChartWidget() {
         redoDrawings();
         return;
       }
+      // Replay: Shift+ArrowRight = step forward, Shift+ArrowDown = play/pause
+      if (e.shiftKey && e.key === 'ArrowRight' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+        e.preventDefault();
+        replayStepForward();
+        return;
+      }
+      if (e.shiftKey && e.key === 'ArrowDown' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+        e.preventDefault();
+        setReplayState(replayStateRef.current === 'playing' ? 'paused' : 'playing');
+        return;
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings]);
+  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings, replayStepForward]);
 
   // ─── Data fetch ───
   useEffect(() => {
