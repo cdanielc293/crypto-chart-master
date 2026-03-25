@@ -59,7 +59,7 @@ type NewUIChartType = 'candles' | 'bars' | 'hollow' | 'volume_candles'
   | 'line' | 'line_markers' | 'step_line'
   | 'area' | 'hlc_area' | 'baseline'
   | 'columns' | 'high_low'
-  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi';
+  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi' | 'point_figure';
 
 const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
   { label: 'Candles', value: 'candles' },
@@ -78,6 +78,7 @@ const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
   { label: 'Renko', value: 'renko' },
   { label: 'Line Break', value: 'line_break' },
   { label: 'Kagi', value: 'kagi' },
+  { label: 'Point & Figure', value: 'point_figure' },
 ];
 
 interface ChartState {
