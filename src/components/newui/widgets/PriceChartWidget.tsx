@@ -232,6 +232,23 @@ function persistDrawings(drawings: WidgetDrawing[]) {
 
 // ─── Hit testing for drawings ───
 const HIT_RADIUS = 8;
+const ANCHOR_RADIUS = 7;
+
+function hitTestAnchor(
+  d: WidgetDrawing,
+  mx: number, my: number,
+  timeToX: (t: number) => number | null,
+  priceToY: (p: number) => number,
+): number {
+  if (d.visible === false) return -1;
+  for (let i = 0; i < d.points.length; i++) {
+    const x = timeToX(d.points[i].time);
+    if (x === null) continue;
+    const y = priceToY(d.points[i].price);
+    if (Math.hypot(mx - x, my - y) <= ANCHOR_RADIUS) return i;
+  }
+  return -1;
+}
 
 function distToSegment(mx: number, my: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
