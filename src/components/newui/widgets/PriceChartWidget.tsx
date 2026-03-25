@@ -876,7 +876,11 @@ export default function PriceChartWidget() {
       // Replay: Shift+ArrowRight = step forward, Shift+ArrowDown = play/pause
       if (e.shiftKey && e.key === 'ArrowRight' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
         e.preventDefault();
-        replayStepForward();
+        const total = dataRef.current.length;
+        const next = Math.min(replayBarIndexRef.current + 1, total - 1);
+        setReplayBarIndex(next);
+        setReplayState('paused');
+        scheduleRender();
         return;
       }
       if (e.shiftKey && e.key === 'ArrowDown' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
@@ -887,7 +891,7 @@ export default function PriceChartWidget() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings, replayStepForward]);
+  }, [scheduleRender, selectedDrawingId, removeDrawing, undoDrawings, redoDrawings]);
 
   // ─── Data fetch ───
   useEffect(() => {
