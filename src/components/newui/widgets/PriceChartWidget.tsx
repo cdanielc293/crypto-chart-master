@@ -951,8 +951,9 @@ export default function PriceChartWidget() {
   useEffect(() => {
     const cfg = TIMEFRAME_CONFIG[timeframe];
     intervalSecRef.current = cfg.intervalSec;
+    const barLimit = Math.min(cfg.count, planLimits.historicalBars);
     setLoading(true);
-    fetchBTCKlines(TF_BINANCE[timeframe], cfg.count)
+    fetchBTCKlines(TF_BINANCE[timeframe], barLimit)
       .then(candles => {
         dataRef.current = candles;
 
