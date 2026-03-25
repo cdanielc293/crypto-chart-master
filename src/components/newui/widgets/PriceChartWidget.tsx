@@ -236,8 +236,8 @@ function persistDrawings(drawings: WidgetDrawing[]) {
 }
 
 // ─── Hit testing for drawings ───
-const HIT_RADIUS = 8;
-const ANCHOR_RADIUS = 7;
+const HIT_RADIUS = 10;
+const ANCHOR_RADIUS = 12;
 
 function hitTestAnchor(
   d: WidgetDrawing,
@@ -655,10 +655,14 @@ function renderDrawing(
 
 function renderSelectionAnchors(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], color: string) {
   for (const p of pts) {
+    // Outer glow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.fill();
+    // White fill
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
   }
 }
@@ -1597,39 +1601,39 @@ export default function PriceChartWidget() {
           const ai = ad.anchorIndex;
 
           if (ai < 10) {
-            // Regular anchor
-            newPoints[ai] = point;
+            // Real anchor — point[0]=top-left, point[1]=top-right, point[2]=offset reference
+            if (ai === 0 || ai === 1) {
+              // Moving a top corner: update that point directly
+              newPoints[ai] = point;
+            } else if (ai === 2) {
+              // Point 2 defines the channel width offset
+              newPoints[2] = point;
+            }
           } else if (d.type === 'parallelchannel' && newPoints.length >= 3) {
-            // Virtual anchors for parallel channel
-            const h = getCoordHelpers();
-            if (h) {
-              const p0y = h.priceToY(newPoints[0].price);
-              const p1y = h.priceToY(newPoints[1].price);
-              const p2y = h.priceToY(newPoints[2].price);
-              const offY = p2y - p0y;
+            const offPrice = newPoints[2].price - newPoints[0].price;
 
-              if (ai === 10) {
-                // Bottom-left: move point[2] to maintain offset from point[0]
-                const newOff = point.price - newPoints[0].price;
-                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
-              } else if (ai === 12) {
-                // Bottom-right: adjust offset based on movement
-                const newOff = point.price - newPoints[1].price;
-                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
-              } else if (ai === 11) {
-                // Bottom-mid: shift entire bottom line (change offset)
-                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
-                const origOffPrice = newPoints[2].price - newPoints[0].price;
-                const origMidBottom = midPrice + origOffPrice;
-                const priceDelta = point.price - origMidBottom;
-                newPoints[2] = { time: newPoints[2].time, price: newPoints[2].price + priceDelta };
-              } else if (ai === 13) {
-                // Top-mid: shift entire top line
-                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
-                const priceDelta = point.price - midPrice;
-                newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
-                newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
-              }
+            if (ai === 10) {
+              // Bottom-left corner: move bottom-left freely → changes offset + left angle
+              const newOffPrice = point.price - newPoints[0].price;
+              newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOffPrice };
+              newPoints[0] = { ...newPoints[0], time: point.time };
+            } else if (ai === 12) {
+              // Bottom-right corner: move bottom-right freely → changes offset + right angle
+              const newOffPrice = point.price - newPoints[1].price;
+              newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOffPrice };
+              newPoints[1] = { ...newPoints[1], time: point.time };
+            } else if (ai === 11) {
+              // Bottom-mid: scale channel height from bottom (move offset up/down)
+              const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+              const currentBottomMid = midPrice + offPrice;
+              const priceDelta = point.price - currentBottomMid;
+              newPoints[2] = { time: newPoints[2].time, price: newPoints[2].price + priceDelta };
+            } else if (ai === 13) {
+              // Top-mid: scale channel height from top (move both top points up/down)
+              const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+              const priceDelta = point.price - midPrice;
+              newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
+              newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
             }
           }
 
