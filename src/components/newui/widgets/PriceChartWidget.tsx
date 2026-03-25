@@ -1968,6 +1968,21 @@ export default function PriceChartWidget() {
           </div>
         )}
 
+        {/* Floating drawing toolbar */}
+        {selectedDrawingId && toolbarPos && (() => {
+          const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
+          if (!selDrawing) return null;
+          return (
+            <NewUIDrawingToolbar
+              drawing={selDrawing}
+              position={toolbarPos}
+              onUpdate={updateDrawing}
+              onClone={cloneDrawing}
+              onDelete={(id) => { removeDrawing(id); setToolbarPos(null); }}
+            />
+          );
+        })()}
+
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
       </div>
     </div>
