@@ -29,6 +29,7 @@ import {
   Lock,
   Unlock,
   Pencil,
+  Rewind,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
@@ -37,6 +38,7 @@ import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './Ne
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
+import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
 
 // ─── Types ───
 interface Candle {
@@ -632,6 +634,17 @@ export default function PriceChartWidget() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawingTool, setDrawingTool] = useState<NewUIDrawingTool>('none');
 
+  // Replay state
+  const [replayState, setReplayState] = useState<NewUIReplayState>('off');
+  const [replaySpeed, setReplaySpeed] = useState(1);
+  const [replayBarIndex, setReplayBarIndex] = useState(0);
+  const [replayStartIndex, setReplayStartIndex] = useState(0);
+  const replayTimerRef = useRef<number | null>(null);
+  const replayStateRef = useRef<NewUIReplayState>('off');
+  const replayBarIndexRef = useRef(0);
+  useEffect(() => { replayStateRef.current = replayState; }, [replayState]);
+  useEffect(() => { replayBarIndexRef.current = replayBarIndex; }, [replayBarIndex]);
+
   const [config, setConfig] = useState<ChartConfig>(loadConfig);
   const [indicators, setIndicators] = useState<ActiveIndicator[]>(loadIndicators);
 
@@ -860,6 +873,21 @@ export default function PriceChartWidget() {
         redoDrawings();
         return;
       }
+      // Replay: Shift+ArrowRight = step forward, Shift+ArrowDown = play/pause
+      if (e.shiftKey && e.key === 'ArrowRight' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+        e.preventDefault();
+        const total = dataRef.current.length;
+        const next = Math.min(replayBarIndexRef.current + 1, total - 1);
+        setReplayBarIndex(next);
+        setReplayState('paused');
+        scheduleRender();
+        return;
+      }
+      if (e.shiftKey && e.key === 'ArrowDown' && replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+        e.preventDefault();
+        setReplayState(replayStateRef.current === 'playing' ? 'paused' : 'playing');
+        return;
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -935,7 +963,9 @@ export default function PriceChartWidget() {
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    const data = dataRef.current;
+    const allData = dataRef.current;
+    const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
+    const data = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
     const st = stateRef.current;
     const cfg = configRef.current;
     const chartW = w - PRICE_W;
@@ -1485,6 +1515,19 @@ export default function PriceChartWidget() {
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
+    // Replay: click to select start point
+    if (replayStateRef.current === 'selecting' && x < chartW && y < chartH) {
+      const st = stateRef.current;
+      const data = dataRef.current;
+      const idx = Math.round(st.offsetX + x / st.candleWidth);
+      const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+      setReplayStartIndex(clampedIdx);
+      setReplayBarIndex(clampedIdx);
+      setReplayState('paused');
+      scheduleRender();
+      return;
+    }
+
     const tool = drawingToolRef.current;
     const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
@@ -1744,6 +1787,58 @@ export default function PriceChartWidget() {
     scheduleRender();
   }, [scheduleRender]);
 
+  // ─── Replay: timer ───
+  useEffect(() => {
+    if (replayTimerRef.current) {
+      clearInterval(replayTimerRef.current);
+      replayTimerRef.current = null;
+    }
+    if (replayState !== 'playing') return;
+    const delay = replaySpeed >= 1 ? 1000 / replaySpeed : 1000 / replaySpeed;
+    replayTimerRef.current = window.setInterval(() => {
+      const total = dataRef.current.length;
+      const next = replayBarIndexRef.current + 1;
+      if (next >= total) {
+        setReplayState('paused');
+        return;
+      }
+      replayBarIndexRef.current = next;
+      setReplayBarIndex(next);
+      scheduleRender();
+    }, delay);
+    return () => {
+      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+    };
+  }, [replayState, replaySpeed, scheduleRender]);
+
+  // Replay: step forward
+  const replayStepForward = useCallback(() => {
+    if (replayState === 'playing') setReplayState('paused');
+    const total = dataRef.current.length;
+    const next = Math.min(replayBarIndex + 1, total - 1);
+    setReplayBarIndex(next);
+    scheduleRender();
+  }, [replayState, replayBarIndex, scheduleRender]);
+
+  // Replay: stop / jump to real-time
+  const replayStop = useCallback(() => {
+    setReplayState('off');
+    if (replayTimerRef.current) {
+      clearInterval(replayTimerRef.current);
+      replayTimerRef.current = null;
+    }
+    scheduleRender();
+  }, [scheduleRender]);
+
+  // Replay: start selecting
+  const replayStartSelecting = useCallback(() => {
+    setReplayState('selecting');
+    setDrawingTool('none');
+    draftPointsRef.current = [];
+    setSelectedDrawingId(null);
+    setToolbarPos(null);
+  }, []);
+
   // ═══ RENDER JSX ═══
   return (
     <div className="w-full h-full flex select-none">
@@ -1947,6 +2042,18 @@ export default function PriceChartWidget() {
           >
             <Settings size={12} />
           </button>
+
+          <div className="w-px h-4 bg-white/[0.06] mx-1" />
+
+          <button
+            onClick={replayState === 'off' ? replayStartSelecting : replayStop}
+            className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
+              replayState !== 'off' ? 'bg-cyan-500/10 text-cyan-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+            }`}
+          >
+            <Rewind size={12} />
+            Replay
+          </button>
         </div>
 
         {/* Status badges */}
@@ -1983,6 +2090,27 @@ export default function PriceChartWidget() {
             />
           );
         })()}
+
+        {/* Replay mode indicator */}
+        {replayState !== 'off' && replayState !== 'selecting' && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] px-3 py-1 rounded-full pointer-events-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-mono">Replay — Bar {replayBarIndex - replayStartIndex + 1}</span>
+          </div>
+        )}
+
+        {/* Replay controls */}
+        <NewUIReplayControls
+          replayState={replayState}
+          onSetState={setReplayState}
+          speed={replaySpeed}
+          onSetSpeed={setReplaySpeed}
+          barIndex={replayBarIndex}
+          startIndex={replayStartIndex}
+          totalBars={dataRef.current.length}
+          onStepForward={replayStepForward}
+          onStop={replayStop}
+        />
 
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
       </div>
