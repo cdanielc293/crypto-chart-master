@@ -443,6 +443,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_widget_layouts: {
+        Row: {
+          created_at: string
+          favorites: Json
+          id: string
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string
+          favorites?: Json
+          id?: string
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string
+          favorites?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
