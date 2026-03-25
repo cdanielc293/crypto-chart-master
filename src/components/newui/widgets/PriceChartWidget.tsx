@@ -1758,6 +1758,58 @@ export default function PriceChartWidget() {
     scheduleRender();
   }, [scheduleRender]);
 
+  // ─── Replay: timer ───
+  useEffect(() => {
+    if (replayTimerRef.current) {
+      clearInterval(replayTimerRef.current);
+      replayTimerRef.current = null;
+    }
+    if (replayState !== 'playing') return;
+    const delay = replaySpeed >= 1 ? 1000 / replaySpeed : 1000 / replaySpeed;
+    replayTimerRef.current = window.setInterval(() => {
+      const total = dataRef.current.length;
+      const next = replayBarIndexRef.current + 1;
+      if (next >= total) {
+        setReplayState('paused');
+        return;
+      }
+      replayBarIndexRef.current = next;
+      setReplayBarIndex(next);
+      scheduleRender();
+    }, delay);
+    return () => {
+      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
+    };
+  }, [replayState, replaySpeed, scheduleRender]);
+
+  // Replay: step forward
+  const replayStepForward = useCallback(() => {
+    if (replayState === 'playing') setReplayState('paused');
+    const total = dataRef.current.length;
+    const next = Math.min(replayBarIndex + 1, total - 1);
+    setReplayBarIndex(next);
+    scheduleRender();
+  }, [replayState, replayBarIndex, scheduleRender]);
+
+  // Replay: stop / jump to real-time
+  const replayStop = useCallback(() => {
+    setReplayState('off');
+    if (replayTimerRef.current) {
+      clearInterval(replayTimerRef.current);
+      replayTimerRef.current = null;
+    }
+    scheduleRender();
+  }, [scheduleRender]);
+
+  // Replay: start selecting
+  const replayStartSelecting = useCallback(() => {
+    setReplayState('selecting');
+    setDrawingTool('none');
+    draftPointsRef.current = [];
+    setSelectedDrawingId(null);
+    setToolbarPos(null);
+  }, []);
+
   // ═══ RENDER JSX ═══
   return (
     <div className="w-full h-full flex select-none">
