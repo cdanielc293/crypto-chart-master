@@ -243,12 +243,41 @@ function hitTestAnchor(
   priceToY: (p: number) => number,
 ): number {
   if (d.visible === false) return -1;
+
+  // Check real points first
   for (let i = 0; i < d.points.length; i++) {
     const x = timeToX(d.points[i].time);
     if (x === null) continue;
     const y = priceToY(d.points[i].price);
     if (Math.hypot(mx - x, my - y) <= ANCHOR_RADIUS) return i;
   }
+
+  // For parallel channel: 6 virtual anchors (3 top midpoint + 3 bottom line)
+  if (d.type === 'parallelchannel' && d.points.length >= 3) {
+    const p0x = timeToX(d.points[0].time);
+    const p1x = timeToX(d.points[1].time);
+    const p2x = timeToX(d.points[2].time);
+    if (p0x !== null && p1x !== null && p2x !== null) {
+      const p0y = priceToY(d.points[0].price);
+      const p1y = priceToY(d.points[1].price);
+      const p2y = priceToY(d.points[2].price);
+      const offY = p2y - p0y;
+      const midX = (p0x + p1x) / 2;
+      const midY = (p0y + p1y) / 2;
+
+      // 10=bottom-left, 11=bottom-mid, 12=bottom-right, 13=top-mid
+      const virtualAnchors = [
+        { x: p0x, y: p0y + offY, idx: 10 },
+        { x: midX, y: midY + offY, idx: 11 },
+        { x: p1x, y: p1y + offY, idx: 12 },
+        { x: midX, y: midY, idx: 13 },
+      ];
+      for (const va of virtualAnchors) {
+        if (Math.hypot(mx - va.x, my - va.y) <= ANCHOR_RADIUS) return va.idx;
+      }
+    }
+  }
+
   return -1;
 }
 
@@ -536,7 +565,17 @@ function renderDrawing(
     ctx.lineTo(pts[1].x, pts[1].y + offY);
     ctx.lineTo(pts[0].x, pts[0].y + offY);
     ctx.closePath(); ctx.fill();
-    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    if (d.selected) {
+      // Render 6 anchors: 3 on top line + 3 on bottom line
+      const offY = pts[2].y - pts[0].y;
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      const allAnchors = [
+        pts[0], { x: midX, y: midY }, pts[1],                        // top: left, mid, right
+        { x: pts[0].x, y: pts[0].y + offY }, { x: midX, y: midY + offY }, { x: pts[1].x, y: pts[1].y + offY }, // bottom
+      ];
+      renderSelectionAnchors(ctx, allAnchors, d.color);
+    }
     return;
   }
 
@@ -1479,7 +1518,7 @@ export default function PriceChartWidget() {
     logoHoverRef.current = x >= lb.x && x <= lb.x + lb.w && y >= lb.y && y <= lb.y + lb.h;
     if (logoHoverRef.current !== wasHover) scheduleRender();
 
-    // Anchor dragging
+    // Anchor dragging (including virtual anchors for parallel channel)
     const ad = anchorDragRef.current;
     if (ad) {
       const point = createPointFromScreen(x, y);
@@ -1487,7 +1526,45 @@ export default function PriceChartWidget() {
         drawingsRef.current = drawingsRef.current.map(d => {
           if (d.id !== ad.id) return d;
           const newPoints = [...d.points];
-          newPoints[ad.anchorIndex] = point;
+          const ai = ad.anchorIndex;
+
+          if (ai < 10) {
+            // Regular anchor
+            newPoints[ai] = point;
+          } else if (d.type === 'parallelchannel' && newPoints.length >= 3) {
+            // Virtual anchors for parallel channel
+            const h = getCoordHelpers();
+            if (h) {
+              const p0y = h.priceToY(newPoints[0].price);
+              const p1y = h.priceToY(newPoints[1].price);
+              const p2y = h.priceToY(newPoints[2].price);
+              const offY = p2y - p0y;
+
+              if (ai === 10) {
+                // Bottom-left: move point[2] to maintain offset from point[0]
+                const newOff = point.price - newPoints[0].price;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
+              } else if (ai === 12) {
+                // Bottom-right: adjust offset based on movement
+                const newOff = point.price - newPoints[1].price;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[0].price + newOff };
+              } else if (ai === 11) {
+                // Bottom-mid: shift entire bottom line (change offset)
+                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+                const origOffPrice = newPoints[2].price - newPoints[0].price;
+                const origMidBottom = midPrice + origOffPrice;
+                const priceDelta = point.price - origMidBottom;
+                newPoints[2] = { time: newPoints[2].time, price: newPoints[2].price + priceDelta };
+              } else if (ai === 13) {
+                // Top-mid: shift entire top line
+                const midPrice = (newPoints[0].price + newPoints[1].price) / 2;
+                const priceDelta = point.price - midPrice;
+                newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
+                newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
+              }
+            }
+          }
+
           return { ...d, points: newPoints };
         });
         st.crosshair = { x, y };
@@ -1628,7 +1705,9 @@ export default function PriceChartWidget() {
               anchorIndex: anchorIdx,
               startMx: x,
               startMy: y,
-              origPoint: { ...selDrawing.points[anchorIdx] },
+              origPoint: anchorIdx < selDrawing.points.length
+                ? { ...selDrawing.points[anchorIdx] }
+                : { ...selDrawing.points[0] }, // virtual anchor fallback
             };
             setCursor('grabbing');
             scheduleRender();
