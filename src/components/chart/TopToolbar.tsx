@@ -71,6 +71,7 @@ export default function TopToolbar() {
     ? (ct: ChartType) => setPanelChartType(activePanelIndex, ct)
     : setGlobalChartType;
   const { theme, setTheme } = useTheme();
+  const { viewMode } = useViewMode();
   const [searchOpen, setSearchOpen] = useState(false);
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(false);
