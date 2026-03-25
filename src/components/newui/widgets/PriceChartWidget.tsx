@@ -36,6 +36,7 @@ import type { Point } from '@/types/indicators';
 import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './NewUIChartSettings';
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
+import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 
 // ─── Types ───
 interface Candle {
