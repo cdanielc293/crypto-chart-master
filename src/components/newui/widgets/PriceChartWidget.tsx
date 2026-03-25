@@ -353,12 +353,12 @@ function computePointAndFigure(candles: Candle[], reversalBoxes = 3, atrLength =
   const boxSize = Math.min(atrBased, rangeBased) || 1;
   const reversalAmount = reversalBoxes * boxSize;
 
-  interface PFCol { dir: number; top: number; bot: number; }
+  interface PFCol { dir: number; top: number; bot: number; sIdx: number; eIdx: number; }
   const cols: PFCol[] = [];
   const firstClose = candles[0].close;
   let colTop = Math.ceil(firstClose / boxSize) * boxSize;
   let colBot = Math.floor(firstClose / boxSize) * boxSize;
-  cols.push({ dir: 1, top: colTop, bot: colBot });
+  cols.push({ dir: 1, top: colTop, bot: colBot, sIdx: 0, eIdx: 0 });
 
   for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
@@ -366,14 +366,14 @@ function computePointAndFigure(candles: Candle[], reversalBoxes = 3, atrLength =
     const low = Math.floor(c.low / boxSize) * boxSize;
     const lastCol = cols[cols.length - 1];
     if (lastCol.dir === 1) {
-      if (high > lastCol.top) { lastCol.top = high; }
+      if (high > lastCol.top) { lastCol.top = high; lastCol.eIdx = i; }
       if (lastCol.top - low >= reversalAmount) {
-        cols.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
+        cols.push({ dir: -1, top: lastCol.top - boxSize, bot: low, sIdx: i, eIdx: i });
       }
     } else {
-      if (low < lastCol.bot) { lastCol.bot = low; }
+      if (low < lastCol.bot) { lastCol.bot = low; lastCol.eIdx = i; }
       if (high - lastCol.bot >= reversalAmount) {
-        cols.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
+        cols.push({ dir: 1, top: high, bot: lastCol.bot + boxSize, sIdx: i, eIdx: i });
       }
     }
   }
@@ -388,7 +388,22 @@ function computePointAndFigure(candles: Candle[], reversalBoxes = 3, atrLength =
   for (let i = 0; i < cols.length; i++) {
     const col = cols[i];
     const t = baseTime + i * timeStep;
-    pfCandles.push({ time: t, open: col.bot, high: col.top, low: col.bot, close: col.top, volume: 0, dir: col.dir });
+    // Aggregate volume for this column from source candles
+    let colVol = 0;
+    for (let j = col.sIdx; j <= Math.min(col.eIdx, candles.length - 1); j++) {
+      colVol += candles[j].volume;
+    }
+    // For P&F: open=bot, close=top for X columns; open=top, close=bot for O columns
+    const isUp = col.dir === 1;
+    pfCandles.push({
+      time: t,
+      open: isUp ? col.bot : col.top,
+      high: col.top,
+      low: col.bot,
+      close: isUp ? col.top : col.bot,
+      volume: colVol,
+      dir: col.dir,
+    });
     for (let p = col.bot; p < col.top; p += boxSize) {
       boxes.push({ time: t, price: p + boxSize / 2, type: col.dir === 1 ? 'X' : 'O' });
     }
