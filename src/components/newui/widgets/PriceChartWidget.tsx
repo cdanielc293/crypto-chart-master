@@ -1334,22 +1334,44 @@ export default function PriceChartWidget() {
       ctx.globalAlpha = 0.18;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
 
-      // Animate text alpha toward target
-      const targetAlpha = logoHoverRef.current ? 0.35 : 0;
-      const speed = 0.08;
+      // Animate text alpha toward target — slow fade out
+      const targetAlpha = logoHoverRef.current ? 0.45 : 0;
+      const speed = logoHoverRef.current ? 0.06 : 0.015; // fade-in moderate, fade-out very slow
       logoTextAlphaRef.current += (targetAlpha - logoTextAlphaRef.current) * speed;
-      if (Math.abs(logoTextAlphaRef.current - targetAlpha) > 0.005) {
-        scheduleRender(); // keep animating
+      if (Math.abs(logoTextAlphaRef.current - targetAlpha) > 0.003) {
+        scheduleRender();
+      } else {
+        logoTextAlphaRef.current = targetAlpha;
       }
 
-      if (logoTextAlphaRef.current > 0.01) {
-        ctx.globalAlpha = logoTextAlphaRef.current;
+      if (logoTextAlphaRef.current > 0.005) {
+        const t = logoTextAlphaRef.current / 0.45; // normalized 0→1
         const fontSize = Math.min(24, priceH * 0.045);
+        const textY = logoY + logoH - 4 + t * 4; // slides down slightly as it appears
+        const scale = 0.85 + t * 0.15; // subtle scale-up
+
+        ctx.save();
+        const cx = logoX + logoW / 2;
+        ctx.translate(cx, textY);
+        ctx.scale(scale, scale);
+        ctx.translate(-cx, -textY);
+
+        // Glow effect
+        ctx.globalAlpha = logoTextAlphaRef.current * 0.5;
         ctx.font = `bold ${fontSize}px Inter, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
+        ctx.shadowColor = '#00d4ff';
+        ctx.shadowBlur = 18 * t;
         ctx.fillStyle = '#00d4ff';
-        ctx.fillText('VizionX', logoX + logoW / 2, logoY + logoH + 2);
+        ctx.fillText('VizionX', cx, textY);
+
+        // Crisp text on top
+        ctx.globalAlpha = logoTextAlphaRef.current;
+        ctx.shadowBlur = 0;
+        ctx.fillText('VizionX', cx, textY);
+
+        ctx.restore();
       }
 
       ctx.globalAlpha = 1;
