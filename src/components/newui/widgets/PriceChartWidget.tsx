@@ -1028,7 +1028,7 @@ export default function PriceChartWidget() {
         toast.error('Failed to load market data.');
         setLoading(false);
       });
-  }, [timeframe, recalcIndicators, scheduleRender]);
+  }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
 
   // ─── WebSocket ───
   useEffect(() => {
@@ -1711,11 +1711,27 @@ export default function PriceChartWidget() {
       const data = dataRef.current;
       const idx = Math.round(st.offsetX + x / st.candleWidth);
       const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
-      setReplayStartIndex(clampedIdx);
-      setReplayBarIndex(clampedIdx);
+
+      // Clamp replay start to plan limits
+      const cfg = TIMEFRAME_CONFIG[timeframe];
+      const candleTime = data[clampedIdx]?.time ?? 0;
+      const clampedTime = clampReplayTimestamp(candleTime, userPlan, cfg.interval);
+      // Find the index closest to the clamped time
+      let finalIdx = clampedIdx;
+      if (clampedTime > candleTime) {
+        for (let i = clampedIdx; i < data.length; i++) {
+          if (data[i].time >= clampedTime) { finalIdx = i; break; }
+        }
+        if (finalIdx !== clampedIdx) {
+          toast.error('Replay start limited by your plan. Upgrade for deeper history.');
+        }
+      }
+
+      setReplayStartIndex(finalIdx);
+      setReplayBarIndex(finalIdx);
       // Save timestamps for timeframe-change persistence
-      replayStartTimestampRef.current = data[clampedIdx]?.time ?? null;
-      replayBarTimestampRef.current = data[clampedIdx]?.time ?? null;
+      replayStartTimestampRef.current = data[finalIdx]?.time ?? null;
+      replayBarTimestampRef.current = data[finalIdx]?.time ?? null;
       setReplayState('paused');
       scheduleRender();
       return;
