@@ -2076,6 +2076,27 @@ export default function PriceChartWidget() {
           );
         })()}
 
+        {/* Replay mode indicator */}
+        {replayState !== 'off' && replayState !== 'selecting' && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] px-3 py-1 rounded-full pointer-events-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-mono">Replay — Bar {replayBarIndex - replayStartIndex + 1}</span>
+          </div>
+        )}
+
+        {/* Replay controls */}
+        <NewUIReplayControls
+          replayState={replayState}
+          onSetState={setReplayState}
+          speed={replaySpeed}
+          onSetSpeed={setReplaySpeed}
+          barIndex={replayBarIndex}
+          startIndex={replayStartIndex}
+          totalBars={dataRef.current.length}
+          onStepForward={replayStepForward}
+          onStop={replayStop}
+        />
+
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
       </div>
     </div>
