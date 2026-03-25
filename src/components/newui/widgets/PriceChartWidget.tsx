@@ -700,6 +700,9 @@ export default function PriceChartWidget() {
 
   // Load logo image for watermark
   const logoImgRef = useRef<HTMLImageElement | null>(null);
+  const logoHoverRef = useRef(false);
+  const logoTextAlphaRef = useRef(0);
+  const logoBoundsRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
   useEffect(() => {
     const img = new Image();
     img.src = vizionLogo;
