@@ -655,10 +655,14 @@ function renderDrawing(
 
 function renderSelectionAnchors(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], color: string) {
   for (const p of pts) {
+    // Outer glow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.fill();
+    // White fill
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
   }
 }
