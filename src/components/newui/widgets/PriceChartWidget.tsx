@@ -125,14 +125,14 @@ const TF_BINANCE: Record<Timeframe, string> = {
   '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w',
 };
 
-const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number }> = {
-  '1m': { label: '1m', intervalSec: 60, count: 500 },
-  '5m': { label: '5m', intervalSec: 300, count: 500 },
-  '15m': { label: '15m', intervalSec: 900, count: 500 },
-  '1h': { label: '1H', intervalSec: 3600, count: 500 },
-  '4h': { label: '4H', intervalSec: 14400, count: 500 },
-  '1D': { label: '1D', intervalSec: 86400, count: 365 },
-  '1W': { label: '1W', intervalSec: 604800, count: 200 },
+const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; count: number; interval: Interval }> = {
+  '1m': { label: '1m', intervalSec: 60, count: 500, interval: '1m' },
+  '5m': { label: '5m', intervalSec: 300, count: 500, interval: '5m' },
+  '15m': { label: '15m', intervalSec: 900, count: 500, interval: '15m' },
+  '1h': { label: '1H', intervalSec: 3600, count: 500, interval: '1h' },
+  '4h': { label: '4H', intervalSec: 14400, count: 500, interval: '4h' },
+  '1D': { label: '1D', intervalSec: 86400, count: 365, interval: '1d' },
+  '1W': { label: '1W', intervalSec: 604800, count: 200, interval: '1w' },
 };
 
 // ─── Constants ───
@@ -670,6 +670,11 @@ function renderSelectionAnchors(ctx: CanvasRenderingContext2D, pts: { x: number;
 export default function PriceChartWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Plan limits
+  const { data: profile } = useProfile();
+  const userPlan = profile?.plan ?? 'start';
+  const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
 
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [loading, setLoading] = useState(true);
