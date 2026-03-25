@@ -1791,12 +1791,44 @@ export default function PriceChartWidget() {
               const selDrawing = drawingsRef.current.find(d => d.id === selectedDrawingId);
               if (!selDrawing) return null;
               const toolLabel = selDrawing.type.charAt(0).toUpperCase() + selDrawing.type.slice(1).replace(/([A-Z])/g, ' $1');
+              const CTX_COLORS = ['#2962ff', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#e91e63', '#00bcd4', '#ffeb3b', '#ffffff', '#778ba4'];
               return (
                 <>
                   <div className="px-2 py-1.5 text-xs font-semibold text-white/70 flex items-center gap-2">
                     <Pencil size={12} className="text-white/40" />
                     {toolLabel}
                   </div>
+                  {/* Color row */}
+                  <div className="px-2 py-1.5 flex items-center gap-1">
+                    {CTX_COLORS.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => updateDrawing(selectedDrawingId, { color: c })}
+                        className="w-4 h-4 rounded-sm border border-white/20 hover:scale-125 transition-transform"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  {/* Line width */}
+                  <div className="px-2 py-1 flex items-center gap-1 text-[10px]">
+                    <span className="text-white/30 mr-1">Width:</span>
+                    {[1, 1.5, 2, 3, 4].map(w => (
+                      <button
+                        key={w}
+                        onClick={() => updateDrawing(selectedDrawingId, { lineWidth: w })}
+                        className={`w-6 h-6 rounded flex items-center justify-center font-mono transition-colors ${
+                          selDrawing.lineWidth === w ? 'bg-white/10 text-cyan-400' : 'text-white/40 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => cloneDrawing(selectedDrawingId)} className="gap-2 text-xs">
+                    <Copy size={14} className="text-white/40" />
+                    Clone
+                  </ContextMenuItem>
                   <ContextMenuItem onClick={() => {
                     updateDrawing(selectedDrawingId, { locked: !selDrawing.locked });
                   }} className="gap-2 text-xs">
