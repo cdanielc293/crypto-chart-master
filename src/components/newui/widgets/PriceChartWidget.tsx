@@ -943,7 +943,9 @@ export default function PriceChartWidget() {
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    const data = dataRef.current;
+    const allData = dataRef.current;
+    const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
+    const data = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
     const st = stateRef.current;
     const cfg = configRef.current;
     const chartW = w - PRICE_W;
