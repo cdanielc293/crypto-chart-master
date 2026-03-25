@@ -55,6 +55,30 @@ interface Candle {
 
 type DragMode = 'none' | 'pan' | 'price-scale' | 'time-scale';
 type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1D' | '1W';
+type NewUIChartType = 'candles' | 'bars' | 'hollow' | 'volume_candles'
+  | 'line' | 'line_markers' | 'step_line'
+  | 'area' | 'hlc_area' | 'baseline'
+  | 'columns' | 'high_low'
+  | 'heikin_ashi' | 'renko' | 'line_break' | 'kagi';
+
+const CHART_TYPE_OPTIONS: { label: string; value: NewUIChartType }[] = [
+  { label: 'Candles', value: 'candles' },
+  { label: 'Bars', value: 'bars' },
+  { label: 'Hollow', value: 'hollow' },
+  { label: 'Vol Candles', value: 'volume_candles' },
+  { label: 'Line', value: 'line' },
+  { label: 'Line+Markers', value: 'line_markers' },
+  { label: 'Step Line', value: 'step_line' },
+  { label: 'Area', value: 'area' },
+  { label: 'HLC Area', value: 'hlc_area' },
+  { label: 'Baseline', value: 'baseline' },
+  { label: 'Columns', value: 'columns' },
+  { label: 'High-Low', value: 'high_low' },
+  { label: 'Heikin Ashi', value: 'heikin_ashi' },
+  { label: 'Renko', value: 'renko' },
+  { label: 'Line Break', value: 'line_break' },
+  { label: 'Kagi', value: 'kagi' },
+];
 
 interface ChartState {
   offsetX: number;
@@ -208,8 +232,94 @@ async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTime
 
   return allCandles;
 }
+// ─── Data transforms ───
+function toHeikinAshi(candles: Candle[]): Candle[] {
+  const ha: Candle[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const prev = ha[i - 1];
+    const haClose = (c.open + c.high + c.low + c.close) / 4;
+    const haOpen = prev ? (prev.open + prev.close) / 2 : (c.open + c.close) / 2;
+    ha.push({ time: c.time, open: haOpen, high: Math.max(c.high, haOpen, haClose), low: Math.min(c.low, haOpen, haClose), close: haClose, volume: c.volume });
+  }
+  return ha;
+}
 
-// ─── Formatting ───
+function toRenko(candles: Candle[]): Candle[] {
+  if (candles.length === 0) return [];
+  const prices = candles.map(c => c.close);
+  const boxSize = Math.max((Math.max(...prices) - Math.min(...prices)) / 50, 0.01);
+  const bricks: Candle[] = [];
+  let lastClose = Math.round(candles[0].close / boxSize) * boxSize;
+  let tIdx = 0;
+  for (const c of candles) {
+    const diff = c.close - lastClose;
+    const n = Math.floor(Math.abs(diff) / boxSize);
+    const dir = diff > 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      const o = lastClose, cl = lastClose + dir * boxSize;
+      bricks.push({ time: candles[0].time + tIdx * 60, open: o, close: cl, high: Math.max(o, cl), low: Math.min(o, cl), volume: c.volume });
+      lastClose = cl; tIdx++;
+    }
+  }
+  return bricks;
+}
+
+function toLineBreak(candles: Candle[], lineCount = 3): Candle[] {
+  if (candles.length === 0) return [];
+  const lines: Candle[] = [];
+  let tIdx = 0;
+  for (const c of candles) {
+    if (lines.length === 0) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: c.open, close: c.close, high: Math.max(c.open, c.close), low: Math.min(c.open, c.close), volume: c.volume });
+      tIdx++; continue;
+    }
+    const last = lines[lines.length - 1];
+    const isUp = last.close >= last.open;
+    if (isUp && c.close > last.close) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: c.close, low: last.close, volume: c.volume }); tIdx++;
+    } else if (!isUp && c.close < last.close) {
+      lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: last.close, low: c.close, volume: c.volume }); tIdx++;
+    } else {
+      const lb = lines.slice(-lineCount);
+      const maxH = Math.max(...lb.map(l => Math.max(l.open, l.close)));
+      const minL = Math.min(...lb.map(l => Math.min(l.open, l.close)));
+      if (isUp && c.close < minL) {
+        lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: last.close, low: c.close, volume: c.volume }); tIdx++;
+      } else if (!isUp && c.close > maxH) {
+        lines.push({ time: candles[0].time + tIdx * 60, open: last.close, close: c.close, high: c.close, low: last.close, volume: c.volume }); tIdx++;
+      }
+    }
+  }
+  return lines;
+}
+
+function toKagi(candles: Candle[]): Candle[] {
+  if (candles.length === 0) return [];
+  const lines: Candle[] = [];
+  let dir = 0, lastP = candles[0].close, cH = lastP, cL = lastP, tIdx = 0;
+  const base = candles[0].time;
+  const rPct = 0.04;
+  for (const c of candles) {
+    const p = c.close;
+    if (dir === 0) { dir = p >= lastP ? 1 : -1; lastP = p; cH = Math.max(cH, p); cL = Math.min(cL, p); continue; }
+    if (dir === 1) {
+      if (p > cH) cH = p;
+      else if (p <= cH * (1 - rPct)) {
+        lines.push({ time: base + tIdx * 60, open: cL, close: cH, high: cH, low: cL, volume: c.volume }); tIdx++; dir = -1; cL = p; cH = p;
+      }
+    } else {
+      if (p < cL) cL = p;
+      else if (p >= cL * (1 + rPct)) {
+        lines.push({ time: base + tIdx * 60, open: cH, close: cL, high: cH, low: cL, volume: c.volume }); tIdx++; dir = 1; cH = p; cL = p;
+      }
+    }
+  }
+  lines.push({ time: base + tIdx * 60, open: dir === 1 ? cL : cH, close: dir === 1 ? cH : cL, high: cH, low: cL, volume: 0 });
+  return lines;
+}
+
+
 function formatPrice(p: number): string {
   if (p >= 10000) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 100) return p.toFixed(2);
@@ -760,6 +870,10 @@ export default function PriceChartWidget() {
   const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
 
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
+  const [chartType, setChartType] = useState<NewUIChartType>('candles');
+  const [chartTypeOpen, setChartTypeOpen] = useState(false);
+  const chartTypeRef = useRef<NewUIChartType>('candles');
+  useEffect(() => { chartTypeRef.current = chartType; }, [chartType]);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawingTool, setDrawingTool] = useState<NewUIDrawingTool>('none');
@@ -830,6 +944,14 @@ export default function PriceChartWidget() {
   const drawingToolRef = useRef<NewUIDrawingTool>(drawingTool);
 
   useEffect(() => { drawingToolRef.current = drawingTool; }, [drawingTool]);
+
+  // Close chart type dropdown on outside click
+  useEffect(() => {
+    if (!chartTypeOpen) return;
+    const onClick = () => setChartTypeOpen(false);
+    const timer = setTimeout(() => window.addEventListener('click', onClick), 0);
+    return () => { clearTimeout(timer); window.removeEventListener('click', onClick); };
+  }, [chartTypeOpen]);
 
   // Load logo image for watermark
   const logoImgRef = useRef<HTMLImageElement | null>(null);
@@ -1209,7 +1331,13 @@ export default function PriceChartWidget() {
 
     const allData = dataRef.current;
     const isReplay = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
-    const data = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
+    const rawData = isReplay ? allData.slice(0, Math.min(replayBarIndexRef.current + 1, allData.length)) : allData;
+    const ct = chartTypeRef.current;
+    const data = ct === 'heikin_ashi' ? toHeikinAshi(rawData)
+      : ct === 'renko' ? toRenko(rawData)
+      : ct === 'line_break' ? toLineBreak(rawData)
+      : ct === 'kagi' ? toKagi(rawData)
+      : rawData;
     const st = stateRef.current;
     const cfg = configRef.current;
     const chartW = w - PRICE_W;
@@ -1334,28 +1462,171 @@ export default function PriceChartWidget() {
       }
     }
 
-    // Candles
-    for (let i = 0; i < visible.length; i++) {
-      const c = visible[i];
-      const x = (i - (st.offsetX - startIdx)) * st.candleWidth;
-      const cx = x + st.candleWidth / 2;
-      const bull = c.close >= c.open;
-      const bTop = priceToY(Math.max(c.open, c.close));
-      const bBot = priceToY(Math.min(c.open, c.close));
-      const bH = Math.max(1, bBot - bTop);
-      const bW = Math.max(1, st.candleWidth * 0.65);
+    // ─── Chart type rendering ───
+    const cw = st.candleWidth;
+    const offDelta = st.offsetX - startIdx;
 
-      ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
-      ctx.lineWidth = Math.min(1.5, Math.max(0.5, st.candleWidth * 0.12));
-      ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+    if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        const cy = priceToY(visible[i].close);
+        if (ct === 'step_line' && i > 0) {
+          const prevCx = (i - 1 - offDelta) * cw + cw / 2;
+          ctx.lineTo(cx, priceToY(visible[i - 1].close));
+          ctx.lineTo(cx, cy);
+        } else {
+          i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+        }
+      }
+      ctx.stroke();
+      if (ct === 'line_markers') {
+        ctx.fillStyle = cfg.candleUp;
+        for (let i = 0; i < visible.length; i++) {
+          const cx = (i - offDelta) * cw + cw / 2;
+          ctx.beginPath(); ctx.arc(cx, priceToY(visible[i].close), 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    } else if (ct === 'area') {
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        const cy = priceToY(visible[i].close);
+        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+      // Fill area
+      const lastX = (visible.length - 1 - offDelta) * cw + cw / 2;
+      const firstX = (0 - offDelta) * cw + cw / 2;
+      ctx.lineTo(lastX, priceH);
+      ctx.lineTo(firstX, priceH);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, 0, priceH);
+      grad.addColorStop(0, hexToRgba(cfg.candleUp, 0.25));
+      grad.addColorStop(1, hexToRgba(cfg.candleUp, 0.02));
+      ctx.fillStyle = grad;
+      ctx.fill();
+    } else if (ct === 'hlc_area') {
+      // High-Low area fill
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].high)) : ctx.lineTo(cx, priceToY(visible[i].high));
+      }
+      for (let i = visible.length - 1; i >= 0; i--) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        ctx.lineTo(cx, priceToY(visible[i].low));
+      }
+      ctx.closePath();
+      ctx.fillStyle = hexToRgba(cfg.candleUp, 0.12);
+      ctx.fill();
+      // Close line
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke();
+    } else if (ct === 'baseline') {
+      const basePrice = visible.length > 0 ? visible[0].close : 0;
+      const baseY = priceToY(basePrice);
+      // Above baseline
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, chartW, baseY); ctx.clip();
+      ctx.strokeStyle = cfg.candleUp; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke(); ctx.restore();
+      // Below baseline
+      ctx.save(); ctx.beginPath(); ctx.rect(0, baseY, chartW, priceH - baseY); ctx.clip();
+      ctx.strokeStyle = cfg.candleDown; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke(); ctx.restore();
+      // Baseline dashed
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(chartW, baseY); ctx.stroke(); ctx.setLineDash([]);
+    } else if (ct === 'columns') {
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const x = (i - offDelta) * cw;
+        const bW = Math.max(1, cw * 0.65);
+        const bull = c.close >= c.open;
+        const top = priceToY(c.close);
+        const bot = priceH;
+        ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+        ctx.fillRect(x + (cw - bW) / 2, top, bW, bot - top);
+      }
+    } else if (ct === 'high_low') {
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const cx = (i - offDelta) * cw + cw / 2;
+        const bull = c.close >= c.open;
+        ctx.strokeStyle = bull ? cfg.candleUp : cfg.candleDown;
+        ctx.lineWidth = Math.max(1, cw * 0.3);
+        ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+      }
+    } else {
+      // Candles / hollow / bars / volume_candles / heikin_ashi / renko / line_break / kagi
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const x = (i - offDelta) * cw;
+        const cx = x + cw / 2;
+        const bull = c.close >= c.open;
+        const bTop = priceToY(Math.max(c.open, c.close));
+        const bBot = priceToY(Math.min(c.open, c.close));
+        const bH = Math.max(1, bBot - bTop);
+        const bW = Math.max(1, cw * 0.65);
 
-      ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
-      ctx.fillRect(cx - bW / 2, bTop, bW, bH);
-
-      if (cfg.showBorders && st.candleWidth >= 14) {
-        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+        if (ct === 'bars') {
+          // OHLC bars
+          ctx.strokeStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.lineWidth = Math.max(0.5, cw * 0.12);
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx - bW / 2, priceToY(c.open)); ctx.lineTo(cx, priceToY(c.open)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.close)); ctx.lineTo(cx + bW / 2, priceToY(c.close)); ctx.stroke();
+        } else if (ct === 'hollow') {
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          if (bull) {
+            ctx.strokeStyle = cfg.candleUp; ctx.lineWidth = 1;
+            ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+          } else {
+            ctx.fillStyle = cfg.candleDown;
+            ctx.fillRect(cx - bW / 2, bTop, bW, bH);
+          }
+        } else if (ct === 'volume_candles') {
+          const maxVis = visible.reduce((m, v) => Math.max(m, v.volume), 0);
+          const volRatio = maxVis > 0 ? c.volume / maxVis : 0.5;
+          const dynW = Math.max(1, bW * (0.3 + volRatio * 0.7));
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.fillRect(cx - dynW / 2, bTop, dynW, bH);
+        } else {
+          // Standard candles (also used for heikin_ashi, renko, line_break, kagi since data was already transformed)
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.fillRect(cx - bW / 2, bTop, bW, bH);
+          if (cfg.showBorders && cw >= 14) {
+            ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+          }
+        }
       }
     }
 
@@ -2424,6 +2695,34 @@ export default function PriceChartWidget() {
               {TIMEFRAME_CONFIG[tf].label}
             </button>
           ))}
+
+          <div className="w-px h-4 bg-white/[0.06] mx-1" />
+
+          {/* Chart type selector */}
+          <div className="relative">
+            <button
+              onClick={() => setChartTypeOpen(prev => !prev)}
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/25 hover:text-white/50 hover:bg-white/[0.03] transition-colors"
+            >
+              <BarChart3 size={12} />
+              {CHART_TYPE_OPTIONS.find(o => o.value === chartType)?.label ?? 'Candles'}
+            </button>
+            {chartTypeOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-[#0a1628]/95 backdrop-blur-md border border-white/[0.08] rounded-md py-1 min-w-[140px] z-50 max-h-[320px] overflow-y-auto">
+                {CHART_TYPE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setChartType(opt.value); setChartTypeOpen(false); }}
+                    className={`w-full text-left px-3 py-1 text-[11px] font-mono transition-colors ${
+                      chartType === opt.value ? 'text-cyan-400 bg-white/[0.05]' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {opt.label} {chartType === opt.value ? '✓' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="w-px h-4 bg-white/[0.06] mx-1" />
 
