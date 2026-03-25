@@ -825,12 +825,18 @@ export default function PriceChartWidget() {
   const addIndicator = useCallback((defId: string) => {
     const def = getIndicator(defId);
     if (!def) return;
+    // Plan-based indicator limit
+    const currentCount = indicators.filter(i => i.visible).length;
+    if (currentCount >= planLimits.indicatorsPerChart) {
+      toast.error(`Your plan allows up to ${planLimits.indicatorsPerChart} indicators. Upgrade for more.`);
+      return;
+    }
     const id = `${defId}-${Date.now()}`;
     const color = def.lines[0]?.color ?? '#ffffff';
     const params: Record<string, any> = {};
     for (const p of def.params) params[p.key] = p.default;
     setIndicators(prev => [...prev, { id, defId, params, color, visible: true }]);
-  }, []);
+  }, [indicators, planLimits]);
 
   const removeIndicator = useCallback((id: string) => setIndicators(prev => prev.filter(i => i.id !== id)), []);
   const toggleIndicator = useCallback((id: string) => setIndicators(prev => prev.map(i => i.id === id ? { ...i, visible: !i.visible } : i)), []);
