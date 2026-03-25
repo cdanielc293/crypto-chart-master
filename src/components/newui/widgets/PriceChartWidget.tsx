@@ -1526,6 +1526,9 @@ export default function PriceChartWidget() {
       const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
       setReplayStartIndex(clampedIdx);
       setReplayBarIndex(clampedIdx);
+      // Save timestamps for timeframe-change persistence
+      replayStartTimestampRef.current = data[clampedIdx]?.time ?? null;
+      replayBarTimestampRef.current = data[clampedIdx]?.time ?? null;
       setReplayState('paused');
       scheduleRender();
       return;
