@@ -320,6 +320,82 @@ function toKagi(candles: Candle[]): Candle[] {
   return lines;
 }
 
+// ─── Point & Figure ───
+interface PFBox { time: number; price: number; type: 'X' | 'O'; }
+interface PFResult { columns: PFCandle[]; boxes: PFBox[]; boxSize: number; }
+interface PFCandle { time: number; open: number; high: number; low: number; close: number; volume: number; dir: number; }
+
+function calculateATR(candles: Candle[], period = 14): number {
+  if (candles.length < 2) return 1;
+  const trs: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const tr = Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
+function computePointAndFigure(candles: Candle[], reversalBoxes = 3, atrLength = 14): PFResult {
+  if (candles.length < 2) return { columns: [], boxes: [], boxSize: 100 };
+  const atr = calculateATR(candles, atrLength);
+  const prices = candles.map(c => c.close);
+  const range = Math.max(...prices) - Math.min(...prices);
+  const atrBased = Math.max(Math.round(atr), 1);
+  const rangeBased = Math.max(Math.round(range / 40), 1);
+  const boxSize = Math.min(atrBased, rangeBased) || 1;
+  const reversalAmount = reversalBoxes * boxSize;
+
+  interface PFCol { dir: number; top: number; bot: number; }
+  const cols: PFCol[] = [];
+  const firstClose = candles[0].close;
+  let colTop = Math.ceil(firstClose / boxSize) * boxSize;
+  let colBot = Math.floor(firstClose / boxSize) * boxSize;
+  cols.push({ dir: 1, top: colTop, bot: colBot });
+
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i];
+    const high = Math.ceil(c.high / boxSize) * boxSize;
+    const low = Math.floor(c.low / boxSize) * boxSize;
+    const lastCol = cols[cols.length - 1];
+    if (lastCol.dir === 1) {
+      if (high > lastCol.top) { lastCol.top = high; }
+      if (lastCol.top - low >= reversalAmount) {
+        cols.push({ dir: -1, top: lastCol.top - boxSize, bot: low });
+      }
+    } else {
+      if (low < lastCol.bot) { lastCol.bot = low; }
+      if (high - lastCol.bot >= reversalAmount) {
+        cols.push({ dir: 1, top: high, bot: lastCol.bot + boxSize });
+      }
+    }
+  }
+
+  const baseTime = candles[0].time;
+  const totalTime = candles[candles.length - 1].time - baseTime;
+  const colCount = cols.length;
+  const timeStep = colCount > 1 ? Math.max(Math.floor(totalTime / colCount), 60) : 86400;
+
+  const boxes: PFBox[] = [];
+  const pfCandles: PFCandle[] = [];
+  for (let i = 0; i < cols.length; i++) {
+    const col = cols[i];
+    const t = baseTime + i * timeStep;
+    pfCandles.push({ time: t, open: col.bot, high: col.top, low: col.bot, close: col.top, volume: 0, dir: col.dir });
+    for (let p = col.bot; p < col.top; p += boxSize) {
+      boxes.push({ time: t, price: p + boxSize / 2, type: col.dir === 1 ? 'X' : 'O' });
+    }
+  }
+  return { columns: pfCandles, boxes, boxSize };
+}
+
 
 function formatPrice(p: number): string {
   if (p >= 10000) return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
