@@ -945,6 +945,14 @@ export default function PriceChartWidget() {
 
   useEffect(() => { drawingToolRef.current = drawingTool; }, [drawingTool]);
 
+  // Close chart type dropdown on outside click
+  useEffect(() => {
+    if (!chartTypeOpen) return;
+    const onClick = () => setChartTypeOpen(false);
+    const timer = setTimeout(() => window.addEventListener('click', onClick), 0);
+    return () => { clearTimeout(timer); window.removeEventListener('click', onClick); };
+  }, [chartTypeOpen]);
+
   // Load logo image for watermark
   const logoImgRef = useRef<HTMLImageElement | null>(null);
   const logoHoverRef = useRef(false);
