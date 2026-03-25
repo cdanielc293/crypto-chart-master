@@ -1322,19 +1322,19 @@ export default function PriceChartWidget() {
     // ─── Logo watermark (bottom-right of chart area) ───
     const logoImg = logoImgRef.current;
     if (logoImg) {
-      const logoH = Math.min(160, priceH * 0.32);
+      const logoH = Math.min(320, priceH * 0.55);
       const logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
       const padding = 16;
       const logoX = chartW - logoW - padding;
-      const logoY = priceH - logoH - padding - 30;
+      const logoY = priceH - logoH - padding - 20;
       ctx.globalAlpha = 0.18;
       ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
       ctx.globalAlpha = 0.15;
-      ctx.font = `bold ${Math.min(48, priceH * 0.09)}px Inter, sans-serif`;
+      ctx.font = `bold ${Math.min(24, priceH * 0.045)}px Inter, sans-serif`;
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#00d4ff';
-      ctx.fillText('VizionX', chartW - padding, logoY + logoH + 10);
+      ctx.fillText('VizionX', chartW - padding, logoY + logoH + 2);
       ctx.globalAlpha = 1;
     }
   }, [createPointFromScreen, selectedDrawingId]);
