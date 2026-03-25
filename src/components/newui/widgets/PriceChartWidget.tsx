@@ -642,6 +642,9 @@ export default function PriceChartWidget() {
   const replayTimerRef = useRef<number | null>(null);
   const replayStateRef = useRef<NewUIReplayState>('off');
   const replayBarIndexRef = useRef(0);
+  // Store timestamps so we can restore position after timeframe change
+  const replayBarTimestampRef = useRef<number | null>(null);
+  const replayStartTimestampRef = useRef<number | null>(null);
   useEffect(() => { replayStateRef.current = replayState; }, [replayState]);
   useEffect(() => { replayBarIndexRef.current = replayBarIndex; }, [replayBarIndex]);
 
@@ -879,6 +882,7 @@ export default function PriceChartWidget() {
         const total = dataRef.current.length;
         const next = Math.min(replayBarIndexRef.current + 1, total - 1);
         setReplayBarIndex(next);
+        replayBarTimestampRef.current = dataRef.current[next]?.time ?? null;
         setReplayState('paused');
         scheduleRender();
         return;
@@ -901,11 +905,42 @@ export default function PriceChartWidget() {
     fetchBTCKlines(TF_BINANCE[timeframe], cfg.count)
       .then(candles => {
         dataRef.current = candles;
+
+        // Restore replay position from saved timestamps after timeframe change
+        if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting' && replayBarTimestampRef.current != null) {
+          const barTs = replayBarTimestampRef.current;
+          const startTs = replayStartTimestampRef.current ?? barTs;
+          // Find closest index for bar timestamp
+          const findClosest = (ts: number) => {
+            let bestIdx = 0;
+            let bestDiff = Infinity;
+            for (let i = 0; i < candles.length; i++) {
+              const diff = Math.abs(candles[i].time - ts);
+              if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+            }
+            return bestIdx;
+          };
+          const newBarIdx = findClosest(barTs);
+          const newStartIdx = findClosest(startTs);
+          setReplayBarIndex(newBarIdx);
+          replayBarIndexRef.current = newBarIdx;
+          setReplayStartIndex(newStartIdx);
+          // Update timestamps to the actual candle times in new timeframe
+          replayBarTimestampRef.current = candles[newBarIdx]?.time ?? null;
+          replayStartTimestampRef.current = candles[newStartIdx]?.time ?? null;
+        }
+
         const container = containerRef.current;
         if (container) {
-          const chartW = container.clientWidth - PRICE_W - 44; // account for left toolbar
+          const chartW = container.clientWidth - PRICE_W - 44;
           const visibleCandles = Math.floor(chartW / stateRef.current.candleWidth);
-          stateRef.current.offsetX = Math.max(0, candles.length - visibleCandles);
+          // In replay mode, scroll to show the replay position
+          if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+            const rIdx = replayBarIndexRef.current;
+            stateRef.current.offsetX = Math.max(0, rIdx - Math.floor(visibleCandles * 0.7));
+          } else {
+            stateRef.current.offsetX = Math.max(0, candles.length - visibleCandles);
+          }
           stateRef.current.priceScaleZoom = 1;
           stateRef.current.panOffsetY = 0;
         }
@@ -1523,6 +1558,9 @@ export default function PriceChartWidget() {
       const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
       setReplayStartIndex(clampedIdx);
       setReplayBarIndex(clampedIdx);
+      // Save timestamps for timeframe-change persistence
+      replayStartTimestampRef.current = data[clampedIdx]?.time ?? null;
+      replayBarTimestampRef.current = data[clampedIdx]?.time ?? null;
       setReplayState('paused');
       scheduleRender();
       return;
@@ -1804,6 +1842,8 @@ export default function PriceChartWidget() {
       }
       replayBarIndexRef.current = next;
       setReplayBarIndex(next);
+      // Save timestamp for timeframe persistence
+      replayBarTimestampRef.current = dataRef.current[next]?.time ?? null;
       scheduleRender();
     }, delay);
     return () => {
@@ -1817,6 +1857,7 @@ export default function PriceChartWidget() {
     const total = dataRef.current.length;
     const next = Math.min(replayBarIndex + 1, total - 1);
     setReplayBarIndex(next);
+    replayBarTimestampRef.current = dataRef.current[next]?.time ?? null;
     scheduleRender();
   }, [replayState, replayBarIndex, scheduleRender]);
 
