@@ -1454,28 +1454,171 @@ export default function PriceChartWidget() {
       }
     }
 
-    // Candles
-    for (let i = 0; i < visible.length; i++) {
-      const c = visible[i];
-      const x = (i - (st.offsetX - startIdx)) * st.candleWidth;
-      const cx = x + st.candleWidth / 2;
-      const bull = c.close >= c.open;
-      const bTop = priceToY(Math.max(c.open, c.close));
-      const bBot = priceToY(Math.min(c.open, c.close));
-      const bH = Math.max(1, bBot - bTop);
-      const bW = Math.max(1, st.candleWidth * 0.65);
+    // ─── Chart type rendering ───
+    const cw = st.candleWidth;
+    const offDelta = st.offsetX - startIdx;
 
-      ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
-      ctx.lineWidth = Math.min(1.5, Math.max(0.5, st.candleWidth * 0.12));
-      ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+    if (ct === 'line' || ct === 'line_markers' || ct === 'step_line') {
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        const cy = priceToY(visible[i].close);
+        if (ct === 'step_line' && i > 0) {
+          const prevCx = (i - 1 - offDelta) * cw + cw / 2;
+          ctx.lineTo(cx, priceToY(visible[i - 1].close));
+          ctx.lineTo(cx, cy);
+        } else {
+          i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+        }
+      }
+      ctx.stroke();
+      if (ct === 'line_markers') {
+        ctx.fillStyle = cfg.candleUp;
+        for (let i = 0; i < visible.length; i++) {
+          const cx = (i - offDelta) * cw + cw / 2;
+          ctx.beginPath(); ctx.arc(cx, priceToY(visible[i].close), 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    } else if (ct === 'area') {
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        const cy = priceToY(visible[i].close);
+        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+      // Fill area
+      const lastX = (visible.length - 1 - offDelta) * cw + cw / 2;
+      const firstX = (0 - offDelta) * cw + cw / 2;
+      ctx.lineTo(lastX, priceH);
+      ctx.lineTo(firstX, priceH);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, 0, priceH);
+      grad.addColorStop(0, hexToRgba(cfg.candleUp, 0.25));
+      grad.addColorStop(1, hexToRgba(cfg.candleUp, 0.02));
+      ctx.fillStyle = grad;
+      ctx.fill();
+    } else if (ct === 'hlc_area') {
+      // High-Low area fill
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].high)) : ctx.lineTo(cx, priceToY(visible[i].high));
+      }
+      for (let i = visible.length - 1; i >= 0; i--) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        ctx.lineTo(cx, priceToY(visible[i].low));
+      }
+      ctx.closePath();
+      ctx.fillStyle = hexToRgba(cfg.candleUp, 0.12);
+      ctx.fill();
+      // Close line
+      ctx.strokeStyle = cfg.candleUp;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke();
+    } else if (ct === 'baseline') {
+      const basePrice = visible.length > 0 ? visible[0].close : 0;
+      const baseY = priceToY(basePrice);
+      // Above baseline
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, chartW, baseY); ctx.clip();
+      ctx.strokeStyle = cfg.candleUp; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke(); ctx.restore();
+      // Below baseline
+      ctx.save(); ctx.beginPath(); ctx.rect(0, baseY, chartW, priceH - baseY); ctx.clip();
+      ctx.strokeStyle = cfg.candleDown; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 0; i < visible.length; i++) {
+        const cx = (i - offDelta) * cw + cw / 2;
+        i === 0 ? ctx.moveTo(cx, priceToY(visible[i].close)) : ctx.lineTo(cx, priceToY(visible[i].close));
+      }
+      ctx.stroke(); ctx.restore();
+      // Baseline dashed
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, baseY); ctx.lineTo(chartW, baseY); ctx.stroke(); ctx.setLineDash([]);
+    } else if (ct === 'columns') {
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const x = (i - offDelta) * cw;
+        const bW = Math.max(1, cw * 0.65);
+        const bull = c.close >= c.open;
+        const top = priceToY(c.close);
+        const bot = priceH;
+        ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+        ctx.fillRect(x + (cw - bW) / 2, top, bW, bot - top);
+      }
+    } else if (ct === 'high_low') {
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const cx = (i - offDelta) * cw + cw / 2;
+        const bull = c.close >= c.open;
+        ctx.strokeStyle = bull ? cfg.candleUp : cfg.candleDown;
+        ctx.lineWidth = Math.max(1, cw * 0.3);
+        ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+      }
+    } else {
+      // Candles / hollow / bars / volume_candles / heikin_ashi / renko / line_break / kagi
+      for (let i = 0; i < visible.length; i++) {
+        const c = visible[i];
+        const x = (i - offDelta) * cw;
+        const cx = x + cw / 2;
+        const bull = c.close >= c.open;
+        const bTop = priceToY(Math.max(c.open, c.close));
+        const bBot = priceToY(Math.min(c.open, c.close));
+        const bH = Math.max(1, bBot - bTop);
+        const bW = Math.max(1, cw * 0.65);
 
-      ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
-      ctx.fillRect(cx - bW / 2, bTop, bW, bH);
-
-      if (cfg.showBorders && st.candleWidth >= 14) {
-        ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+        if (ct === 'bars') {
+          // OHLC bars
+          ctx.strokeStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.lineWidth = Math.max(0.5, cw * 0.12);
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx - bW / 2, priceToY(c.open)); ctx.lineTo(cx, priceToY(c.open)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.close)); ctx.lineTo(cx + bW / 2, priceToY(c.close)); ctx.stroke();
+        } else if (ct === 'hollow') {
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          if (bull) {
+            ctx.strokeStyle = cfg.candleUp; ctx.lineWidth = 1;
+            ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+          } else {
+            ctx.fillStyle = cfg.candleDown;
+            ctx.fillRect(cx - bW / 2, bTop, bW, bH);
+          }
+        } else if (ct === 'volume_candles') {
+          const maxVis = visible.reduce((m, v) => Math.max(m, v.volume), 0);
+          const volRatio = maxVis > 0 ? c.volume / maxVis : 0.5;
+          const dynW = Math.max(1, bW * (0.3 + volRatio * 0.7));
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.fillRect(cx - dynW / 2, bTop, dynW, bH);
+        } else {
+          // Standard candles (also used for heikin_ashi, renko, line_break, kagi since data was already transformed)
+          ctx.strokeStyle = bull ? cfg.wickUp : cfg.wickDown;
+          ctx.lineWidth = Math.min(1.5, Math.max(0.5, cw * 0.12));
+          ctx.beginPath(); ctx.moveTo(cx, priceToY(c.high)); ctx.lineTo(cx, priceToY(c.low)); ctx.stroke();
+          ctx.fillStyle = bull ? cfg.candleUp : cfg.candleDown;
+          ctx.fillRect(cx - bW / 2, bTop, bW, bH);
+          if (cfg.showBorders && cw >= 14) {
+            ctx.strokeStyle = bull ? hexToRgba(cfg.candleUp, 0.3) : hexToRgba(cfg.candleDown, 0.3);
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(cx - bW / 2, bTop, bW, bH);
+          }
+        }
       }
     }
 
