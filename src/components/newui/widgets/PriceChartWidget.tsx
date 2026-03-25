@@ -1710,12 +1710,14 @@ export default function PriceChartWidget() {
         const dIdx = dxPx / st.candleWidth;
         const data = dataRef.current;
 
-        const newPoints = dd.origPoints.map(p => {
-          const origIdx = data.findIndex(c => c.time === p.time);
-          if (origIdx < 0) return p;
-          const newIdx = Math.max(0, Math.min(data.length - 1, Math.round(origIdx + dIdx)));
-          return { time: data[newIdx].time, price: p.price + dPrice };
-        });
+        // Use interval-based time delta instead of exact candle matching
+        const iSec = intervalSecRef.current || 86400;
+        const dTimeSec = Math.round(dIdx) * iSec;
+
+        const newPoints = dd.origPoints.map(p => ({
+          time: p.time + dTimeSec,
+          price: p.price + dPrice,
+        }));
 
         drawingsRef.current = drawingsRef.current.map(d =>
           d.id === dd.id ? { ...d, points: newPoints } : d
