@@ -384,6 +384,31 @@ function hitTestWidgetDrawing(
     return false;
   }
 
+  // Parallel channel — hit inside the filled area between top and bottom lines
+  if (type === 'parallelchannel' && pts.length >= 3 && d.points.length >= 3) {
+    const offPrice = d.points[2].price - d.points[0].price;
+    const topLeft = pts[0], topRight = pts[1];
+    const botLeftY = priceToY(d.points[0].price + offPrice);
+    const botRightY = priceToY(d.points[1].price + offPrice);
+    // Check near top line
+    if (distToSegment(mx, my, topLeft.x, topLeft.y, topRight.x, topRight.y) <= HIT_RADIUS) return true;
+    // Check near bottom line
+    if (distToSegment(mx, my, topLeft.x, botLeftY, topRight.x, botRightY) <= HIT_RADIUS) return true;
+    // Check inside the channel polygon
+    const minX = Math.min(topLeft.x, topRight.x);
+    const maxX = Math.max(topLeft.x, topRight.x);
+    if (mx >= minX - HIT_RADIUS && mx <= maxX + HIT_RADIUS) {
+      // Interpolate top and bottom Y at mx
+      const t = maxX !== minX ? (mx - topLeft.x) / (topRight.x - topLeft.x) : 0;
+      const topY = topLeft.y + t * (topRight.y - topLeft.y);
+      const botY = botLeftY + t * (botRightY - botLeftY);
+      const yMin = Math.min(topY, botY) - HIT_RADIUS;
+      const yMax = Math.max(topY, botY) + HIT_RADIUS;
+      if (my >= yMin && my <= yMax) return true;
+    }
+    return false;
+  }
+
   // Multi-point
   if (pts.length >= 2) {
     for (let i = 0; i < pts.length - 1; i++) {
@@ -1685,12 +1710,14 @@ export default function PriceChartWidget() {
         const dIdx = dxPx / st.candleWidth;
         const data = dataRef.current;
 
-        const newPoints = dd.origPoints.map(p => {
-          const origIdx = data.findIndex(c => c.time === p.time);
-          if (origIdx < 0) return p;
-          const newIdx = Math.max(0, Math.min(data.length - 1, Math.round(origIdx + dIdx)));
-          return { time: data[newIdx].time, price: p.price + dPrice };
-        });
+        // Use interval-based time delta instead of exact candle matching
+        const iSec = intervalSecRef.current || 86400;
+        const dTimeSec = Math.round(dIdx) * iSec;
+
+        const newPoints = dd.origPoints.map(p => ({
+          time: p.time + dTimeSec,
+          price: p.price + dPrice,
+        }));
 
         drawingsRef.current = drawingsRef.current.map(d =>
           d.id === dd.id ? { ...d, points: newPoints } : d
