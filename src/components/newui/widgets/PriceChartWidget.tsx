@@ -143,19 +143,21 @@ const MIN_CW = 1;
 const MAX_CW = 50;
 const DEFAULT_CW = 8;
 const DRAWINGS_STORAGE_KEY = 'newui-chart-drawings-v2';
+const TIMEFRAME_CACHE_TTL_MS = 60_000;
 
 // ─── Data fetch (paginated to support plan limits beyond 1000) ───
-async function fetchBTCKlines(interval: string, totalLimit: number): Promise<Candle[]> {
+async function fetchBTCKlines(interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
   const BINANCE_MAX = 1000;
   let allCandles: Candle[] = [];
   let endTime: number | undefined = undefined;
   let remaining = totalLimit;
 
   while (remaining > 0) {
+    if (signal?.aborted) break;
     const batchSize = Math.min(remaining, BINANCE_MAX);
     let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
     if (endTime !== undefined) url += `&endTime=${endTime}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
     const data = await res.json();
     if (!data.length) break;
@@ -163,9 +165,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number): Promise<Can
       time: Math.floor(k[0] / 1000),
       open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5],
     }));
-    // Prepend older candles
     if (endTime !== undefined) {
-      // Remove last element if it overlaps with existing first
       if (allCandles.length && batch.length && batch[batch.length - 1].time >= allCandles[0].time) {
         batch.pop();
       }
@@ -174,8 +174,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number): Promise<Can
       allCandles = batch;
     }
     remaining -= batchSize;
-    if (data.length < batchSize) break; // No more historical data
-    // Set endTime to the earliest candle's open time - 1ms for next batch
+    if (data.length < batchSize) break;
     endTime = data[0][0] - 1;
   }
   return allCandles;
@@ -795,6 +794,9 @@ export default function PriceChartWidget() {
   const rafRef = useRef(0);
   const intervalSecRef = useRef(14400);
   const wsRef = useRef<WebSocket | null>(null);
+  const fetchSeqRef = useRef(0);
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const timeframeCacheRef = useRef<Map<Timeframe, { candles: Candle[]; cachedAt: number }>>(new Map());
   const [cursor, setCursor] = useState('crosshair');
   const drawingToolRef = useRef<NewUIDrawingTool>(drawingTool);
 
@@ -1031,58 +1033,80 @@ export default function PriceChartWidget() {
     const cfg = TIMEFRAME_CONFIG[timeframe];
     intervalSecRef.current = cfg.intervalSec;
     const barLimit = planLimits.historicalBars;
-    setLoading(true);
-    fetchBTCKlines(TF_BINANCE[timeframe], barLimit)
-      .then(candles => {
-        dataRef.current = candles;
 
-        // Restore replay position from saved timestamps after timeframe change
-        if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting' && replayBarTimestampRef.current != null) {
-          const barTs = replayBarTimestampRef.current;
-          const startTs = replayStartTimestampRef.current ?? barTs;
-          // Find closest index for bar timestamp
-          const findClosest = (ts: number) => {
-            let bestIdx = 0;
-            let bestDiff = Infinity;
-            for (let i = 0; i < candles.length; i++) {
-              const diff = Math.abs(candles[i].time - ts);
-              if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
-            }
-            return bestIdx;
-          };
-          const newBarIdx = findClosest(barTs);
-          const newStartIdx = findClosest(startTs);
-          setReplayBarIndex(newBarIdx);
-          replayBarIndexRef.current = newBarIdx;
-          setReplayStartIndex(newStartIdx);
-          // Update timestamps to the actual candle times in new timeframe
-          replayBarTimestampRef.current = candles[newBarIdx]?.time ?? null;
-          replayStartTimestampRef.current = candles[newStartIdx]?.time ?? null;
-        }
+    const applyCandles = (candles: Candle[]) => {
+      dataRef.current = candles;
 
-        const container = containerRef.current;
-        if (container) {
-          const chartW = container.clientWidth - PRICE_W - 44;
-          const visibleCandles = Math.floor(chartW / stateRef.current.candleWidth);
-          // In replay mode, scroll to show the replay position
-          if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
-            const rIdx = replayBarIndexRef.current;
-            stateRef.current.offsetX = Math.max(0, rIdx - Math.floor(visibleCandles * 0.7));
-          } else {
-            stateRef.current.offsetX = Math.max(0, candles.length - visibleCandles);
+      if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting' && replayBarTimestampRef.current != null) {
+        const barTs = replayBarTimestampRef.current;
+        const startTs = replayStartTimestampRef.current ?? barTs;
+        const findClosest = (ts: number) => {
+          let bestIdx = 0;
+          let bestDiff = Infinity;
+          for (let i = 0; i < candles.length; i++) {
+            const diff = Math.abs(candles[i].time - ts);
+            if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
           }
-          stateRef.current.priceScaleZoom = 1;
-          stateRef.current.panOffsetY = 0;
+          return bestIdx;
+        };
+        const newBarIdx = findClosest(barTs);
+        const newStartIdx = findClosest(startTs);
+        setReplayBarIndex(newBarIdx);
+        replayBarIndexRef.current = newBarIdx;
+        setReplayStartIndex(newStartIdx);
+        replayBarTimestampRef.current = candles[newBarIdx]?.time ?? null;
+        replayStartTimestampRef.current = candles[newStartIdx]?.time ?? null;
+      }
+
+      const container = containerRef.current;
+      if (container) {
+        const chartW = container.clientWidth - PRICE_W - 44;
+        const visibleCandles = Math.floor(chartW / stateRef.current.candleWidth);
+        if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting') {
+          const rIdx = replayBarIndexRef.current;
+          stateRef.current.offsetX = Math.max(0, rIdx - Math.floor(visibleCandles * 0.7));
+        } else {
+          stateRef.current.offsetX = Math.max(0, candles.length - visibleCandles);
         }
-        recalcIndicators();
+        stateRef.current.priceScaleZoom = 1;
+        stateRef.current.panOffsetY = 0;
+      }
+      recalcIndicators();
+      scheduleRender();
+    };
+
+    const cached = timeframeCacheRef.current.get(timeframe);
+    const hasCached = !!cached && cached.candles.length > 0;
+    const isFreshCache = hasCached && (Date.now() - cached.cachedAt) < TIMEFRAME_CACHE_TTL_MS;
+
+    if (hasCached) {
+      applyCandles(cached!.candles);
+      setLoading(!isFreshCache);
+      if (isFreshCache) return;
+    } else {
+      setLoading(true);
+    }
+
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+    const reqSeq = ++fetchSeqRef.current;
+
+    fetchBTCKlines(TF_BINANCE[timeframe], barLimit, controller.signal)
+      .then(candles => {
+        if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+        timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
+        applyCandles(candles);
         setLoading(false);
-        scheduleRender();
       })
       .catch(err => {
+        if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
         console.error('Failed to fetch Binance data:', err);
         toast.error('Failed to load market data.');
         setLoading(false);
       });
+
+    return () => controller.abort();
   }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
 
   // ─── WebSocket ───
