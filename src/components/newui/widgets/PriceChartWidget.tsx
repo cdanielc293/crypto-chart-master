@@ -42,6 +42,8 @@ import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
+import DrawingSettingsDialog from '@/components/chart/DrawingSettingsDialog';
+import type { Drawing } from '@/types/chart';
 
 // ─── Types ───
 interface Candle {
