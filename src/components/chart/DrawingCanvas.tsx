@@ -403,6 +403,16 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
       if (defaultTmpl) {
         drawingProps = { ...drawingProps, ...defaultTmpl.props };
       }
+      // Auto-set initial stop loss for position tools
+      if (drawingTool === 'longposition' || drawingTool === 'shortposition') {
+        const pts = pendingPointsRef.current;
+        const entry = pts[0].price;
+        const tp = pts[1].price;
+        const tpDist = Math.abs(tp - entry);
+        const isLong = drawingTool === 'longposition';
+        const stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
+        drawingProps = { ...drawingProps, stopPrice, accountSize: 10000, riskPercent: 2, leverage: 1, lotSize: 1, pointValue: 1 };
+      }
       const newDrawing: Drawing = {
         id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         type: drawingTool as Drawing['type'],
