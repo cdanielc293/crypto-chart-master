@@ -786,12 +786,9 @@ function renderDrawing(
     if (props.stopPrice != null && props.stopPrice > 0) stopPrice = props.stopPrice;
     else stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
 
-    const yEntry = pts[0].y;
-    const yTP = pts[1].y;
-    // Map stop price to Y
-    const priceRange = d.points[1].price - d.points[0].price;
-    const yRange = pts[1].y - pts[0].y;
-    const yStop = priceRange !== 0 ? pts[0].y + ((stopPrice - d.points[0].price) / priceRange) * yRange : pts[0].y;
+    const yEntry = priceToY(entry);
+    const yTP = priceToY(profit);
+    const yStop = priceToY(stopPrice);
 
     const boxLeft = Math.min(pts[0].x, pts[1].x);
     const boxRight = Math.max(pts[0].x, pts[1].x, boxLeft + 200);
