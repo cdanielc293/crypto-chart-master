@@ -1353,14 +1353,14 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         let finalCandles = nextCandles.length > 0 ? nextCandles : candles;
 
         // Enforce plan-based historical depth limit (time-based)
-        // Only show the alert when user scrolled back (not on initial/cache load)
-        const timeFiltered = finalCandles.filter(c => Number(c.time) >= earliestAllowed);
-        if (timeFiltered.length < finalCandles.length) {
-          finalCandles = timeFiltered;
-          // Don't show alert on initial load - only silently trim
-        } else if (finalCandles.length > maxBars) {
-          finalCandles = finalCandles.slice(finalCandles.length - maxBars);
-          // Don't show alert on initial load - only silently trim
+        // SKIP during replay — replay has no bar limits (full historical access)
+        if (!isReplayActive) {
+          const timeFiltered = finalCandles.filter(c => Number(c.time) >= earliestAllowed);
+          if (timeFiltered.length < finalCandles.length) {
+            finalCandles = timeFiltered;
+          } else if (finalCandles.length > maxBars) {
+            finalCandles = finalCandles.slice(finalCandles.length - maxBars);
+          }
         }
 
         const finalVolumes = finalCandles.map(c => ({
