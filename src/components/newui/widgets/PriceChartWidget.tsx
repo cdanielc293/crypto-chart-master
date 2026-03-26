@@ -886,7 +886,11 @@ function renderDrawing(
     if (isLong) { ctx.moveTo(boxLeft - 8, yEntry + 4); ctx.lineTo(boxLeft - 4, yEntry - 4); ctx.lineTo(boxLeft, yEntry + 4); }
     else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
     ctx.fill();
-    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    if (d.selected) {
+      // Include SL anchor in selection anchors
+      const slMidX = (boxLeft + boxRight) / 2;
+      renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }], d.color);
+    }
     return;
   }
 
