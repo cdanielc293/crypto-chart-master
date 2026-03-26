@@ -2673,6 +2673,15 @@ export default function PriceChartWidget() {
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
+    // Double-click on a drawing opens settings
+    const hitDrawing = findDrawingAt(x, y);
+    if (hitDrawing) {
+      setSelectedDrawingId(hitDrawing.id);
+      setSettingsDrawingId(hitDrawing.id);
+      scheduleRender();
+      return;
+    }
+
     if (x >= chartW && y < chartH) {
       stateRef.current.priceScaleZoom = 1;
       stateRef.current.panOffsetY = 0;
