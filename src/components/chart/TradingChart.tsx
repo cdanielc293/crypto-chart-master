@@ -1410,6 +1410,9 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
               to: pointCount + 8,
             });
           }
+        } else if (!isSameDataset) {
+          // Symbol or interval changed — always fit to new data
+          chart.timeScale().fitContent();
         } else {
           const safePreviousTimeRange = normalizeVisibleTimeRange(viewportTimeRange, finalCandles);
           if (safePreviousTimeRange) {
