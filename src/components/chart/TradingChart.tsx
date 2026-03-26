@@ -678,10 +678,28 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     };
   }, []);
 
-  const resetChartView = useCallback(() => {
+  const focusLatestRegion = useCallback((barCount: number) => {
     const chart = chartRef.current;
-    if (chart) chart.timeScale().fitContent();
+    if (!chart) return;
+
+    if (barCount <= 0) {
+      chart.timeScale().fitContent();
+      return;
+    }
+
+    const to = Math.max(0, barCount - 1) + 8;
+    const from = Math.max(0, to - 180);
+    chart.timeScale().setVisibleLogicalRange({ from, to });
   }, []);
+
+  const resetChartView = useCallback(() => {
+    if (chartType === 'point_figure') {
+      focusLatestRegion(pfDataRef.current?.lineData.length ?? 0);
+      return;
+    }
+
+    focusLatestRegion(rawCandlesRef.current.length);
+  }, [chartType, focusLatestRegion]);
 
   const removeAllIndicators = useCallback(() => {
     if (indicators.length === 0) return;
@@ -1190,6 +1208,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         const cacheKey = getDataCacheKey();
         const cachedState = intervalDataCacheRef.current.get(cacheKey);
         const cachedRange = intervalRangeCacheRef.current.get(cacheKey);
+        const isSameDataset = activeDataKeyRef.current === cacheKey;
         let viewportTimeRange = chart.timeScale().getVisibleRange();
         let viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
         const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
@@ -1257,9 +1276,13 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
 
             setChartData(series, cachedState.candles, cachedVolumes, volSeries);
 
-            const safeCachedRange = normalizeVisibleRange(cachedRange, cachedState.candles.length);
-            if (safeCachedRange) {
-              chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+            if (isSameDataset) {
+              const safeCachedRange = normalizeVisibleRange(cachedRange, cachedState.candles.length);
+              if (safeCachedRange) {
+                chart.timeScale().setVisibleLogicalRange(safeCachedRange);
+              }
+            } else {
+              focusLatestRegion(cachedState.candles.length);
             }
 
             const lastCached = cachedState.candles[cachedState.candles.length - 1];
@@ -1281,12 +1304,10 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
 
           const lastSync = intervalLastSyncRef.current.get(cacheKey) ?? 0;
-          if (!isReplayActive && Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
+          if (!isReplayActive && isSameDataset && Date.now() - lastSync < LIVE_CACHE_SYNC_COOLDOWN_MS) {
             return;
           }
         }
-
-        const isSameDataset = activeDataKeyRef.current === cacheKey;
         const replayEndTimeSec = isReplayActive && replayAnchorTimeRef.current !== null
           ? Math.floor(replayAnchorTimeRef.current - tzShiftSeconds)
           : null;
@@ -1411,8 +1432,8 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
             });
           }
         } else if (!isSameDataset) {
-          // Symbol or interval changed — always fit to new data
-          chart.timeScale().fitContent();
+          // Symbol or interval changed — always focus latest area of new data
+          focusLatestRegion(renderCandles.length);
         } else {
           const safePreviousTimeRange = normalizeVisibleTimeRange(viewportTimeRange, finalCandles);
           if (safePreviousTimeRange) {
@@ -1439,7 +1460,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
     fetchData();
 
     return () => { cancelled = true; };
-  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache, setReplayBarIndex, setReplayStartIndex]);
+  }, [symbol, interval, chartType, replayState, tzShiftSeconds, getDataCacheKey, persistSeriesCache, focusLatestRegion, setReplayBarIndex, setReplayStartIndex]);
 
   // ─── Lazy-load older cached bars when user scrolls left ───
   useEffect(() => {
