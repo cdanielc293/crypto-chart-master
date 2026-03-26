@@ -1313,10 +1313,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           ? Math.floor(replayAnchorTimeRef.current - tzShiftSeconds)
           : null;
 
+        // Show loading overlay when fetching replay data
+        if (isReplayActive && !renderedFromCache) setReplayLoading(true);
+
         // Use cache-first strategy: Supabase cache → Binance fallback
         const klineData = await getKlines(symbol, interval, {
           replayEndTimeSec,
         });
+
+        if (isReplayActive) setReplayLoading(false);
 
         if (cancelled) return; // chart may have been disposed
 
