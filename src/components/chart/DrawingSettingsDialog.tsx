@@ -61,6 +61,7 @@ const LINE_TOOLS = ['trendline', 'ray', 'extendedline', 'infoline', 'trendangle'
 const SHAPE_TOOLS = ['triangle', 'trianglepattern', 'rectangle', 'rotatedrectangle', 'circle', 'ellipse', 'xabcd', 'cypher', 'abcd', 'headshoulders', 'threedrives'];
 const VERTICAL_TOOLS = ['verticalline'];
 const CHANNEL_TOOLS = ['parallelchannel'];
+const POSITION_TOOLS = ['longposition', 'shortposition'];
 
 const DEFAULT_CHANNEL_LEVELS = [
   { value: -0.25, visible: false, color: '#2962ff', style: 'solid' },
