@@ -2338,6 +2338,9 @@ export default function PriceChartWidget() {
               newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
               newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
             }
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
+            // Virtual anchor for stop loss — update props.stopPrice
+            return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
           }
 
           return { ...d, points: newPoints };
