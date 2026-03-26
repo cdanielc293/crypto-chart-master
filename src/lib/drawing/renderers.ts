@@ -2146,6 +2146,27 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
     }
   }
 
+  // For long/short position, add a virtual anchor for the stop loss line
+  if ((drawing.type === 'longposition' || drawing.type === 'shortposition') && drawing.points.length >= 2) {
+    const isLong = drawing.type === 'longposition';
+    const entry = drawing.points[0].price;
+    const profit = drawing.points[1].price;
+    const props = drawing.props || {};
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0)
+      ? props.stopPrice
+      : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    const boxRight = toXY(coord, drawing.points[1].time, drawing.points[1].price);
+    if (p1 && boxRight) {
+      const yStop = coord.priceToY(stopPrice);
+      if (yStop !== null) {
+        const midX = (p1.x + Math.max(boxRight.x, p1.x + 220)) / 2;
+        baseAnchors.push({ x: midX, y: yStop, pointIndex: 20 });
+      }
+    }
+  }
+
   return baseAnchors;
 }
 
