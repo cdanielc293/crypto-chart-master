@@ -3123,6 +3123,28 @@ export default function PriceChartWidget() {
         />
 
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
+
+        {/* Drawing Settings Dialog */}
+        <DrawingSettingsDialog
+          open={!!settingsDrawingId}
+          drawing={settingsDrawingId ? (() => {
+            const wd = drawingsRef.current.find(d => d.id === settingsDrawingId);
+            if (!wd) return null;
+            return {
+              ...wd,
+              type: wd.type as Drawing['type'],
+              selected: wd.selected ?? false,
+              visible: wd.visible ?? true,
+              locked: wd.locked ?? false,
+            } as Drawing;
+          })() : null}
+          onClose={() => setSettingsDrawingId(null)}
+          onUpdate={(updates) => {
+            if (settingsDrawingId) {
+              updateDrawing(settingsDrawingId, updates);
+            }
+          }}
+        />
       </div>
     </div>
   );
