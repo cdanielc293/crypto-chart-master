@@ -246,13 +246,25 @@ export const ChartProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : DEFAULT_FAVORITE_INTERVALS;
   });
 
-  // Symbol setter that persists and resets drawing selection
+  // Symbol setter that persists and resets drawing selection + clears drawings
   const setSymbol = useCallback((s: string) => {
+    if (s === symbol) return;
     setSymbolRaw(s);
     localStorage.setItem('lastSymbol', s);
     setSelectedDrawingId(null);
     setSelectedDrawingIds(new Set());
-  }, []);
+    // Immediately clear drawings and indicators so old symbol's data doesn't show
+    // useChartPersistence will load the correct state for the new symbol
+    setDrawings([]);
+    setIndicators([]);
+    setIndicatorConfigs(new Map());
+    setHiddenIndicators(new Set());
+    // Reset undo/redo stacks for new symbol
+    drawingUndoStack.current = [];
+    drawingRedoStack.current = [];
+    setCanUndoDrawing(false);
+    setCanRedoDrawing(false);
+  }, [symbol]);
 
   // Persistence state for auto-save
   const persistenceState = useMemo(() => ({
