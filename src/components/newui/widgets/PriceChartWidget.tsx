@@ -2603,7 +2603,7 @@ export default function PriceChartWidget() {
           const tp = pts[1].price;
           const tpDist = Math.abs(tp - entry);
           const stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
-          drawingProps = { stopPrice, accountSize: 10000, riskPercent: 2, leverage: 1, lotSize: 1, pointValue: 1 };
+          drawingProps = { stopPrice, accountSize: 10000, riskPercent: 2, leverage: 1, lotSize: 1, pointValue: 1, boxWidthPx: 280 };
         }
         commitDrawing({
           id: `${tool}-${Date.now()}`,
