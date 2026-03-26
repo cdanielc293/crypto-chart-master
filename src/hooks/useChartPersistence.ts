@@ -94,6 +94,8 @@ export function useChartPersistence(
         isLoadingRef.current = false;
         if (error) {
           console.error('Failed to load chart state:', error);
+          // Still clear old state on error
+          onLoad({ drawings: [], indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set(), chartType: 'candles', interval: '1d' });
           return;
         }
         if (data) {
@@ -104,6 +106,9 @@ export function useChartPersistence(
             hiddenIndicators: deserialized.hiddenIndicators,
           }));
           onLoad(deserialized);
+        } else {
+          // No saved state for this symbol — clear drawings and reset to defaults
+          onLoad({ drawings: [], indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set(), chartType: 'candles', interval: '1d' });
         }
       });
   }, [userId, symbol]); // intentionally excluding onLoad to avoid re-triggers
