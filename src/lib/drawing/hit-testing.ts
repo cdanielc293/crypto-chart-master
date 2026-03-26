@@ -124,9 +124,32 @@ export function hitTestDrawing(
     return distToLine(mx, my, p1.x, p1.y, p2.x, p2.y) <= HIT_RADIUS;
   }
 
+  // Position tools: fixed-width hit area
+  if (['longposition', 'shortposition'].includes(type)) {
+    if (drawing.points.length < 2) return false;
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    if (!p1) return false;
+    const props = drawing.props || {};
+    const fixedW = props.boxWidthPx || 280;
+    const isLong = type === 'longposition';
+    const entry = drawing.points[0].price;
+    const profit = drawing.points[1].price;
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0) ? props.stopPrice : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const yEntry = coord.priceToY(entry);
+    const yTP = coord.priceToY(profit);
+    const yStop = coord.priceToY(stopPrice);
+    if (yEntry === null || yTP === null || yStop === null) return false;
+    const left = p1.x;
+    const right = p1.x + fixedW;
+    const top = Math.min(yEntry, yTP, yStop);
+    const bottom = Math.max(yEntry, yTP, yStop);
+    return mx >= left - HIT_RADIUS && mx <= right + HIT_RADIUS && my >= top - HIT_RADIUS && my <= bottom + HIT_RADIUS;
+  }
+
   // Rectangle-like
   if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
-    'gannbox', 'gannsquare', 'gannsquarefixed', 'longposition', 'shortposition',
+    'gannbox', 'gannsquare', 'gannsquarefixed',
     'fixedrangevolume', 'anchoredvolume'].includes(type)) {
     if (drawing.points.length < 2) return false;
     const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);

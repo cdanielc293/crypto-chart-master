@@ -1292,8 +1292,7 @@ const renderFibTrendTime: Renderer = (ctx, d, coord, _w, h) => {
 const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 2) return;
   const p1 = toXY(coord, d.points[0].time, d.points[0].price);
-  const p2 = toXY(coord, d.points[1].time, d.points[1].price);
-  if (!p1 || !p2) return;
+  if (!p1) return;
   const isLong = d.type === 'longposition';
   const props = d.props || {};
 
@@ -1323,9 +1322,11 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   const yStop = coord.priceToY(stopPrice);
   if (yEntry === null || yTP === null || yStop === null) return;
 
+  // Fixed-width box: use stored pixel width (default 280), NOT time-based p2.x
+  const fixedW = props.boxWidthPx || 280;
   const boxLeft = p1.x;
-  const boxRight = Math.max(p2.x, p1.x + 220);
-  const boxW = boxRight - boxLeft;
+  const boxRight = boxLeft + fixedW;
+  const boxW = fixedW;
 
   // Risk size
   const riskSize = riskAbsolute != null ? riskAbsolute : (riskPercent / 100) * accountSize;
@@ -2157,11 +2158,11 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
       ? props.stopPrice
       : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
     const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
-    const boxRight = toXY(coord, drawing.points[1].time, drawing.points[1].price);
-    if (p1 && boxRight) {
+    if (p1) {
+      const fixedW = props.boxWidthPx || 280;
       const yStop = coord.priceToY(stopPrice);
       if (yStop !== null) {
-        const midX = (p1.x + Math.max(boxRight.x, p1.x + 220)) / 2;
+        const midX = p1.x + fixedW / 2;
         baseAnchors.push({ x: midX, y: yStop, pointIndex: 20 });
       }
     }
