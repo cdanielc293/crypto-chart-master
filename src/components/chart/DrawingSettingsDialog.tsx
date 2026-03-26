@@ -307,7 +307,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
 }
 
 // ─── Style Tab ───
-function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool, isVerticalTool, isChannelTool }: {
+function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth, localProps, updateLocal, isLineTool, isShapeTool, isVerticalTool, isChannelTool, isPositionTool, drawing }: {
   localColor: string; setLocalColor: (c: string) => void;
   localLineWidth: number; setLocalLineWidth: (w: number) => void;
   localProps: Record<string, any>; updateLocal: (k: string, v: any) => void;
@@ -315,6 +315,8 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
   isShapeTool: boolean;
   isVerticalTool: boolean;
   isChannelTool: boolean;
+  isPositionTool: boolean;
+  drawing: Drawing | null;
 }) {
   return (
     <>
