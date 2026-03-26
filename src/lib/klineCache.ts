@@ -484,8 +484,35 @@ async function fetchSourceForwardWindow(
 }
 
 async function loadKlinesForReplay(symbol: string, interval: Interval, replayEndTimeSec: number): Promise<RawKline[]> {
-  const sourceInterval = getBinanceSourceInterval(interval);
   const safeReplayEndTime = Math.floor(replayEndTimeSec);
+
+  // Use Storage-based backtest cache instead of DB to preserve server RAM
+  try {
+    const backtestCandles = await fetchBacktestKlines(
+      symbol,
+      interval,
+      safeReplayEndTime,
+      REPLAY_HISTORY_TARGET_BARS,
+      REPLAY_FUTURE_TARGET_BARS,
+    );
+
+    if (backtestCandles.length > 0) {
+      const result: RawKline[] = backtestCandles.map(c => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      }));
+      return sliceReplayWindow(result, safeReplayEndTime);
+    }
+  } catch (err) {
+    console.warn('Backtest cache failed, falling back to DB:', err);
+  }
+
+  // Fallback: use DB if backtest cache fails (e.g. edge function not deployed yet)
+  const sourceInterval = getBinanceSourceInterval(interval);
   const replayHistorySourceLimit = getReplayHistorySourceLimit(interval);
   const replayFutureSourceLimit = getReplayFutureSourceLimit(interval);
 
@@ -501,14 +528,7 @@ async function loadKlinesForReplay(symbol: string, interval: Interval, replayEnd
       aggregateForInterval(cachedSourceWindow, interval),
       safeReplayEndTime,
     );
-
     if (cachedAggregated.length > 0) {
-      void backfillHistory(symbol, sourceInterval, cachedHistory[0]?.time ?? null);
-      if (cachedFuture.length < Math.min(1500, Math.floor(replayFutureSourceLimit / 2))) {
-        void fetchSourceForwardWindow(symbol, sourceInterval, replayFutureSourceLimit, (safeReplayEndTime + 1) * 1000)
-          .then(rows => { if (rows.length > 0) void upsertKlines(symbol, sourceInterval, rows); })
-          .catch(() => undefined);
-      }
       return cachedAggregated;
     }
   }
@@ -522,7 +542,6 @@ async function loadKlinesForReplay(symbol: string, interval: Interval, replayEnd
     const fetchedSourceWindow = dedupeByTime([...fetchedHistory, ...fetchedFuture]);
     if (fetchedSourceWindow.length > 0) {
       void upsertKlines(symbol, sourceInterval, fetchedSourceWindow);
-      void backfillHistory(symbol, sourceInterval, fetchedHistory[0]?.time ?? fetchedSourceWindow[0].time);
     }
 
     return sliceReplayWindow(aggregateForInterval(fetchedSourceWindow, interval), safeReplayEndTime);
