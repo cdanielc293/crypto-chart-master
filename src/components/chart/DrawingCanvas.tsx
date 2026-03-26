@@ -506,6 +506,12 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             newPoints[1] = { ...origPoints[1], price: newP2Price };
           }
           updateDrawing(selected.id, { ...selected, points: newPoints });
+        } else if ((selected.type === 'longposition' || selected.type === 'shortposition') && idx === 20) {
+          // Virtual anchor for stop loss line - update props.stopPrice
+          updateDrawing(selected.id, {
+            ...selected,
+            props: { ...selected.props, stopPrice: price },
+          });
         } else {
           const newPoints = dragStartRef.current.points.map((p, i) => {
             if (i === idx) return { time, price };
