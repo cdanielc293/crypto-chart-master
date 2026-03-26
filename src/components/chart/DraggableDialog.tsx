@@ -87,22 +87,26 @@ export default function DraggableDialog({
     }
   }, []);
 
+  const positionRef = useRef<Position | null>(null);
+  positionRef.current = position;
+
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       const x = e.clientX - dragOffset.current.x;
       const y = e.clientY - dragOffset.current.y;
-      setPosition({ x, y });
+      const newPos = { x, y };
+      setPosition(newPos);
+      positionRef.current = newPos;
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      // Save position
-      setPosition(prev => {
-        if (prev) savePosition(id, prev);
-        return prev;
-      });
+      // Save position immediately (sync) to ensure persistence
+      if (positionRef.current) {
+        savePosition(id, positionRef.current);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
