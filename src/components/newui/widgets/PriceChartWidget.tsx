@@ -6,6 +6,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { getPlanLimits, clampReplayTimestamp } from '@/lib/planLimits';
 import type { Interval } from '@/types/chart';
+import { getBacktestKlines } from '@/lib/backtestCache';
 import vizionLogo from '@/assets/vizionx-logo.png';
 import {
   ContextMenu,
@@ -1506,6 +1507,46 @@ export default function PriceChartWidget() {
       return () => controller.abort();
     }
 
+    // If replay is active, use backtest cache (Storage-based) instead of direct Binance
+    const isReplayActive = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
+    if (isReplayActive && replayBarTimestampRef.current != null) {
+      setLoading(true);
+      const replayTs = replayBarTimestampRef.current;
+      const tfConfig = TIMEFRAME_CONFIG[timeframe];
+      getBacktestKlines(
+        'BTCUSDT',
+        tfConfig.interval,
+        replayTs,
+        12000,
+        3500,
+      )
+        .then(candles => {
+          if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+          const mapped: Candle[] = candles.map(c => ({
+            time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
+          }));
+          if (mapped.length > 0) {
+            timeframeCacheRef.current.set(timeframe, { candles: mapped, cachedAt: Date.now() });
+            applyCandles(mapped);
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.warn('Backtest cache failed, falling back to Binance:', err);
+          // Fallback to direct Binance fetch
+          const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
+          fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+            .then(candles => {
+              if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+              timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
+              applyCandles(candles);
+              setLoading(false);
+            })
+            .catch(finishWithError);
+        });
+      return () => controller.abort();
+    }
+
     setLoading(true);
     const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
     fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
@@ -1521,8 +1562,11 @@ export default function PriceChartWidget() {
     return () => controller.abort();
   }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
 
-  // ─── WebSocket ───
+  // ─── WebSocket (disabled during replay to avoid interference) ───
   useEffect(() => {
+    // Don't connect WS during replay mode
+    if (replayState !== 'off') return;
+
     const binanceInterval = TF_BINANCE[timeframe];
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
     wsRef.current = ws;
@@ -1530,6 +1574,8 @@ export default function PriceChartWidget() {
       try {
         const msg = JSON.parse(event.data);
         if (msg.e !== 'kline') return;
+        // Skip WS updates during replay
+        if (replayStateRef.current !== 'off') return;
         const k = msg.k;
         const candle: Candle = { time: Math.floor(k.t/1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
         const data = dataRef.current;
@@ -1544,7 +1590,7 @@ export default function PriceChartWidget() {
     };
     ws.onerror = () => console.warn('WS error');
     return () => { ws.close(); wsRef.current = null; };
-  }, [timeframe, recalcIndicators, scheduleRender]);
+  }, [timeframe, replayState, recalcIndicators, scheduleRender]);
 
   // ═══ RENDER ═══
   const render = useCallback(() => {

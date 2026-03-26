@@ -23,3 +23,4 @@ TradingView-style charting app with Binance data, dark theme, Hebrew-speaking us
 - Self-hosted Supabase with fallback: primary http://192.168.1.37:8000, fallback http://213.57.181.98:8000
 - Plans: All free for beta version, user's selected tier stored in profile
 - Keyboard shortcuts system in src/hooks/useKeyboardShortcuts.ts
+- Backtest/Replay: dual-source data (Storage bucket + IndexedDB, NOT DB). See mem://features/backtest-data.md
