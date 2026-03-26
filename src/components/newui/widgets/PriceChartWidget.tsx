@@ -1091,6 +1091,7 @@ export default function PriceChartWidget() {
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawingTool, setDrawingTool] = useState<NewUIDrawingTool>('none');
+  const [settingsDrawingId, setSettingsDrawingId] = useState<string | null>(null);
 
   // Replay state
   const [replayState, setReplayState] = useState<NewUIReplayState>('off');
