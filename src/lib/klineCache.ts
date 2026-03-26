@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { ALL_INTERVALS } from '@/types/chart';
 import type { Interval } from '@/types/chart';
 import { parseSymbol } from '@/lib/symbolUtils';
+import { getBacktestKlines as fetchBacktestKlines } from '@/lib/backtestCache';
 import {
   aggregateCandlesToInterval,
   getBinanceSourceInterval,
