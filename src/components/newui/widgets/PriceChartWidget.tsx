@@ -812,9 +812,11 @@ function renderDrawing(
     const yTP = priceToY(profit);
     const yStop = priceToY(stopPrice);
 
-    const boxLeft = Math.min(pts[0].x, pts[1].x);
-    const boxRight = Math.max(pts[0].x, pts[1].x, boxLeft + 200);
-    const boxW = boxRight - boxLeft;
+    // Fixed-width box: use stored pixel width, NOT time-based
+    const fixedW = props.boxWidthPx || 280;
+    const boxLeft = pts[0].x;
+    const boxRight = boxLeft + fixedW;
+    const boxW = fixedW;
 
     // Risk & qty
     const riskSize = riskAbsolute != null ? riskAbsolute : (riskPercent / 100) * accountSize;
