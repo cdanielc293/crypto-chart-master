@@ -1507,6 +1507,46 @@ export default function PriceChartWidget() {
       return () => controller.abort();
     }
 
+    // If replay is active, use backtest cache (Storage-based) instead of direct Binance
+    const isReplayActive = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
+    if (isReplayActive && replayBarTimestampRef.current != null) {
+      setLoading(true);
+      const replayTs = replayBarTimestampRef.current;
+      const tfConfig = TIMEFRAME_CONFIG[timeframe];
+      getBacktestKlines(
+        'BTCUSDT',
+        tfConfig.interval,
+        replayTs,
+        12000,
+        3500,
+      )
+        .then(candles => {
+          if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+          const mapped: Candle[] = candles.map(c => ({
+            time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
+          }));
+          if (mapped.length > 0) {
+            timeframeCacheRef.current.set(timeframe, { candles: mapped, cachedAt: Date.now() });
+            applyCandles(mapped);
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.warn('Backtest cache failed, falling back to Binance:', err);
+          // Fallback to direct Binance fetch
+          const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
+          fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+            .then(candles => {
+              if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
+              timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
+              applyCandles(candles);
+              setLoading(false);
+            })
+            .catch(finishWithError);
+        });
+      return () => controller.abort();
+    }
+
     setLoading(true);
     const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
     fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
