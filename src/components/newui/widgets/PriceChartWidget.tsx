@@ -1562,8 +1562,11 @@ export default function PriceChartWidget() {
     return () => controller.abort();
   }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
 
-  // ─── WebSocket ───
+  // ─── WebSocket (disabled during replay to avoid interference) ───
   useEffect(() => {
+    // Don't connect WS during replay mode
+    if (replayState !== 'off') return;
+
     const binanceInterval = TF_BINANCE[timeframe];
     const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
     wsRef.current = ws;
@@ -1571,6 +1574,8 @@ export default function PriceChartWidget() {
       try {
         const msg = JSON.parse(event.data);
         if (msg.e !== 'kline') return;
+        // Skip WS updates during replay
+        if (replayStateRef.current !== 'off') return;
         const k = msg.k;
         const candle: Candle = { time: Math.floor(k.t/1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v };
         const data = dataRef.current;
@@ -1585,7 +1590,7 @@ export default function PriceChartWidget() {
     };
     ws.onerror = () => console.warn('WS error');
     return () => { ws.close(); wsRef.current = null; };
-  }, [timeframe, recalcIndicators, scheduleRender]);
+  }, [timeframe, replayState, recalcIndicators, scheduleRender]);
 
   // ═══ RENDER ═══
   const render = useCallback(() => {
