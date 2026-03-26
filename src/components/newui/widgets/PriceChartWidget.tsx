@@ -42,6 +42,8 @@ import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
+import DrawingSettingsDialog from '@/components/chart/DrawingSettingsDialog';
+import type { Drawing } from '@/types/chart';
 
 // ─── Types ───
 interface Candle {
@@ -538,6 +540,26 @@ function hitTestAnchor(
     }
   }
 
+  // For long/short position: virtual anchor for stop loss (index 20)
+  if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
+    const isLong = d.type === 'longposition';
+    const entry = d.points[0].price;
+    const profit = d.points[1].price;
+    const props = d.props || {};
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0)
+      ? props.stopPrice
+      : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const p0x = timeToX(d.points[0].time);
+    const p1x = timeToX(d.points[1].time);
+    if (p0x !== null && p1x !== null) {
+      const boxRight = Math.max(p1x, p0x + 200);
+      const midX = (p0x + boxRight) / 2;
+      const yStop = priceToY(stopPrice);
+      if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
+    }
+  }
+
   return -1;
 }
 
@@ -786,12 +808,9 @@ function renderDrawing(
     if (props.stopPrice != null && props.stopPrice > 0) stopPrice = props.stopPrice;
     else stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
 
-    const yEntry = pts[0].y;
-    const yTP = pts[1].y;
-    // Map stop price to Y
-    const priceRange = d.points[1].price - d.points[0].price;
-    const yRange = pts[1].y - pts[0].y;
-    const yStop = priceRange !== 0 ? pts[0].y + ((stopPrice - d.points[0].price) / priceRange) * yRange : pts[0].y;
+    const yEntry = priceToY(entry);
+    const yTP = priceToY(profit);
+    const yStop = priceToY(stopPrice);
 
     const boxLeft = Math.min(pts[0].x, pts[1].x);
     const boxRight = Math.max(pts[0].x, pts[1].x, boxLeft + 200);
@@ -869,7 +888,11 @@ function renderDrawing(
     if (isLong) { ctx.moveTo(boxLeft - 8, yEntry + 4); ctx.lineTo(boxLeft - 4, yEntry - 4); ctx.lineTo(boxLeft, yEntry + 4); }
     else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
     ctx.fill();
-    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    if (d.selected) {
+      // Include SL anchor in selection anchors
+      const slMidX = (boxLeft + boxRight) / 2;
+      renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }], d.color);
+    }
     return;
   }
 
@@ -1068,6 +1091,7 @@ export default function PriceChartWidget() {
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawingTool, setDrawingTool] = useState<NewUIDrawingTool>('none');
+  const [settingsDrawingId, setSettingsDrawingId] = useState<string | null>(null);
 
   // Replay state
   const [replayState, setReplayState] = useState<NewUIReplayState>('off');
@@ -2321,6 +2345,9 @@ export default function PriceChartWidget() {
               newPoints[0] = { time: newPoints[0].time, price: newPoints[0].price + priceDelta };
               newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
             }
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
+            // Virtual anchor for stop loss — update props.stopPrice
+            return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
           }
 
           return { ...d, points: newPoints };
@@ -2545,12 +2572,26 @@ export default function PriceChartWidget() {
       draftPointsRef.current.push(point);
 
       if (draftPointsRef.current.length >= needed) {
+        const pts = [...draftPointsRef.current];
+        let drawingColor = '#778ba4';
+        let drawingProps: Record<string, any> | undefined;
+        // Auto-set props for position tools
+        if (tool === 'longposition' || tool === 'shortposition') {
+          const isLong = tool === 'longposition';
+          drawingColor = isLong ? '#26a69a' : '#ef5350';
+          const entry = pts[0].price;
+          const tp = pts[1].price;
+          const tpDist = Math.abs(tp - entry);
+          const stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
+          drawingProps = { stopPrice, accountSize: 10000, riskPercent: 2, leverage: 1, lotSize: 1, pointValue: 1 };
+        }
         commitDrawing({
           id: `${tool}-${Date.now()}`,
           type: tool,
-          points: [...draftPointsRef.current],
-          color: '#778ba4',
+          points: pts,
+          color: drawingColor,
           lineWidth: 1.5,
+          props: drawingProps,
         });
         draftPointsRef.current = [];
         setDrawingTool('none');
@@ -2631,6 +2672,15 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Double-click on a drawing opens settings
+    const hitDrawing = findDrawingAtPoint(x, y);
+    if (hitDrawing) {
+      setSelectedDrawingId(hitDrawing.id);
+      setSettingsDrawingId(hitDrawing.id);
+      scheduleRender();
+      return;
+    }
 
     if (x >= chartW && y < chartH) {
       stateRef.current.priceScaleZoom = 1;
@@ -3082,6 +3132,28 @@ export default function PriceChartWidget() {
         />
 
         <NewUIChartSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} onChange={setConfig} />
+
+        {/* Drawing Settings Dialog */}
+        <DrawingSettingsDialog
+          open={!!settingsDrawingId}
+          drawing={settingsDrawingId ? (() => {
+            const wd = drawingsRef.current.find(d => d.id === settingsDrawingId);
+            if (!wd) return null;
+            return {
+              ...wd,
+              type: wd.type as Drawing['type'],
+              selected: wd.selected ?? false,
+              visible: wd.visible ?? true,
+              locked: wd.locked ?? false,
+            } as Drawing;
+          })() : null}
+          onClose={() => setSettingsDrawingId(null)}
+          onUpdate={(updates) => {
+            if (settingsDrawingId) {
+              updateDrawing(settingsDrawingId, updates);
+            }
+          }}
+        />
       </div>
     </div>
   );
