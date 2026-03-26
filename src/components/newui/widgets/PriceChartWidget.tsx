@@ -2674,7 +2674,7 @@ export default function PriceChartWidget() {
     const chartH = container.clientHeight - TIME_H;
 
     // Double-click on a drawing opens settings
-    const hitDrawing = findDrawingAt(x, y);
+    const hitDrawing = findDrawingAtPoint(x, y);
     if (hitDrawing) {
       setSelectedDrawingId(hitDrawing.id);
       setSettingsDrawingId(hitDrawing.id);
