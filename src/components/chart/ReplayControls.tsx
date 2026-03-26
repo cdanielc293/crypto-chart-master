@@ -137,8 +137,9 @@ export default function ReplayControls() {
     if (!canUseInterval(iv)) return;
     setInterval(iv);
     setIntervalOpen(false);
-    // After changing interval during replay, reset to selecting mode
-    setReplayState('selecting');
+    // Keep replay active at the same timestamp — don't reset to 'selecting'
+    // The timestamp refs preserve position across interval changes
+    if (replayState === 'playing') setReplayState('paused');
   };
 
   const intervalLabel = SHORT_LABEL[interval] || interval;
