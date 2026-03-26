@@ -1315,7 +1315,7 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (props.stopPrice != null && props.stopPrice > 0) {
     stopPrice = props.stopPrice;
   } else {
-    stopPrice = isLong ? entry - tpDist : entry + tpDist;
+    stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
   }
 
   const yEntry = coord.priceToY(entry);
