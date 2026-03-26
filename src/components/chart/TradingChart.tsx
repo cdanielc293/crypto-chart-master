@@ -2429,6 +2429,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         </div>
       )}
 
+      {replayLoading && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-chart-bg/60 backdrop-blur-[2px] animate-fade-in pointer-events-none">
+          <div className="flex items-center gap-3 bg-toolbar-bg border border-chart-border rounded-xl px-5 py-3 shadow-lg animate-scale-in">
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-xs text-muted-foreground font-medium">Loading replay data…</span>
+          </div>
+        </div>
+      )}
+
       {hint && (
         <div className="absolute top-2 right-3 z-30 bg-primary/20 text-primary text-xs px-2 py-1 rounded">
           {hint}
