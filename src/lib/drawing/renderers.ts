@@ -1315,7 +1315,7 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (props.stopPrice != null && props.stopPrice > 0) {
     stopPrice = props.stopPrice;
   } else {
-    stopPrice = isLong ? entry - tpDist : entry + tpDist;
+    stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
   }
 
   const yEntry = coord.priceToY(entry);
@@ -2143,6 +2143,27 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
       baseAnchors.push({ x: p2.x, y: p2.y + offsetY, pointIndex: 12 });
       // Also add midpoint anchor on top line
       baseAnchors.push({ x: midX, y: midY, pointIndex: 13 });
+    }
+  }
+
+  // For long/short position, add a virtual anchor for the stop loss line
+  if ((drawing.type === 'longposition' || drawing.type === 'shortposition') && drawing.points.length >= 2) {
+    const isLong = drawing.type === 'longposition';
+    const entry = drawing.points[0].price;
+    const profit = drawing.points[1].price;
+    const props = drawing.props || {};
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0)
+      ? props.stopPrice
+      : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
+    const boxRight = toXY(coord, drawing.points[1].time, drawing.points[1].price);
+    if (p1 && boxRight) {
+      const yStop = coord.priceToY(stopPrice);
+      if (yStop !== null) {
+        const midX = (p1.x + Math.max(boxRight.x, p1.x + 220)) / 2;
+        baseAnchors.push({ x: midX, y: yStop, pointIndex: 20 });
+      }
     }
   }
 

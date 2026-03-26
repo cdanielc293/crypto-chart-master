@@ -784,7 +784,7 @@ function renderDrawing(
     const tpDist = Math.abs(profit - entry);
     let stopPrice: number;
     if (props.stopPrice != null && props.stopPrice > 0) stopPrice = props.stopPrice;
-    else stopPrice = isLong ? entry - tpDist : entry + tpDist;
+    else stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
 
     const yEntry = pts[0].y;
     const yTP = pts[1].y;
