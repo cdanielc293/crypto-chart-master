@@ -538,6 +538,26 @@ function hitTestAnchor(
     }
   }
 
+  // For long/short position: virtual anchor for stop loss (index 20)
+  if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
+    const isLong = d.type === 'longposition';
+    const entry = d.points[0].price;
+    const profit = d.points[1].price;
+    const props = d.props || {};
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0)
+      ? props.stopPrice
+      : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const p0x = timeToX(d.points[0].time);
+    const p1x = timeToX(d.points[1].time);
+    if (p0x !== null && p1x !== null) {
+      const boxRight = Math.max(p1x, p0x + 200);
+      const midX = (p0x + boxRight) / 2;
+      const yStop = priceToY(stopPrice);
+      if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
+    }
+  }
+
   return -1;
 }
 
@@ -2542,12 +2562,26 @@ export default function PriceChartWidget() {
       draftPointsRef.current.push(point);
 
       if (draftPointsRef.current.length >= needed) {
+        const pts = [...draftPointsRef.current];
+        let drawingColor = '#778ba4';
+        let drawingProps: Record<string, any> | undefined;
+        // Auto-set props for position tools
+        if (tool === 'longposition' || tool === 'shortposition') {
+          const isLong = tool === 'longposition';
+          drawingColor = isLong ? '#26a69a' : '#ef5350';
+          const entry = pts[0].price;
+          const tp = pts[1].price;
+          const tpDist = Math.abs(tp - entry);
+          const stopPrice = isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5;
+          drawingProps = { stopPrice, accountSize: 10000, riskPercent: 2, leverage: 1, lotSize: 1, pointValue: 1 };
+        }
         commitDrawing({
           id: `${tool}-${Date.now()}`,
           type: tool,
-          points: [...draftPointsRef.current],
-          color: '#778ba4',
+          points: pts,
+          color: drawingColor,
           lineWidth: 1.5,
+          props: drawingProps,
         });
         draftPointsRef.current = [];
         setDrawingTool('none');
