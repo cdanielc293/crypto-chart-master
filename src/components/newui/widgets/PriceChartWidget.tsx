@@ -3147,10 +3147,20 @@ export default function PriceChartWidget() {
           {loading && <Loader2 size={12} className="animate-spin text-white/20" />}
         </div>
 
-        {!loading && (
+        {!loading && replayState === 'off' && (
           <div className="absolute top-2.5 right-20 z-10 flex items-center gap-1 pointer-events-none">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[9px] font-mono text-emerald-400/60">LIVE</span>
+          </div>
+        )}
+
+        {/* Replay loading overlay */}
+        {loading && replayState !== 'off' && replayState !== 'selecting' && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/60 backdrop-blur-[2px] animate-fade-in pointer-events-none">
+            <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-5 py-3 shadow-lg animate-scale-in">
+              <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-xs text-muted-foreground font-medium">Loading replay data…</span>
+            </div>
           </div>
         )}
 
