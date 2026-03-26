@@ -162,7 +162,7 @@ serve(async (req) => {
   }
 
   try {
-    // Authenticate
+    // Authenticate — verify the caller has a valid session
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -175,22 +175,18 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify user via getClaims (works with Lovable Cloud signing-keys)
+    // Use service role to verify the JWT token
+    const adminClient = createClient(supabaseUrl, serviceKey);
     const token = authHeader.replace("Bearer ", "");
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Service client for storage operations
-    const adminClient = createClient(supabaseUrl, serviceKey);
-
+    // adminClient already created above for auth — reuse for storage
     const { symbol, interval, startTime, endTime } = await req.json();
     if (!symbol || !interval || !startTime || !endTime) {
       return new Response(
