@@ -129,6 +129,8 @@ export function useChartPersistence(
   // Debounced auto-save
   const save = useCallback(() => {
     if (!userId || isLoadingRef.current) return;
+    // Don't save if symbol changed since this callback was created
+    if (currentSymbolRef.current !== symbol) return;
 
     const payload = serializeState(userId, symbol, state);
     const serialized = JSON.stringify(payload);
