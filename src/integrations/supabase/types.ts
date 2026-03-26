@@ -486,6 +486,14 @@ export type Database = {
         Args: { p_plan: string; p_user_id: string }
         Returns: undefined
       }
+      cleanup_klines_retention: {
+        Args: { max_rows?: number }
+        Returns: {
+          deleted_interval: string
+          deleted_symbol: string
+          rows_deleted: number
+        }[]
+      }
       get_user_sessions: {
         Args: { p_user_id: string }
         Returns: {
