@@ -186,9 +186,7 @@ serve(async (req) => {
       });
     }
 
-    // Service client for storage operations
-    const adminClient = createClient(supabaseUrl, serviceKey);
-
+    // adminClient already created above for auth — reuse for storage
     const { symbol, interval, startTime, endTime } = await req.json();
     if (!symbol || !interval || !startTime || !endTime) {
       return new Response(
