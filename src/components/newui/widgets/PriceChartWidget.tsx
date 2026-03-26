@@ -1438,8 +1438,8 @@ export default function PriceChartWidget() {
           }
           return bestIdx;
         };
-        const newBarIdx = findClosest(barTs);
-        const newStartIdx = findClosest(startTs);
+        const newBarIdx = findAtOrBefore(barTs);
+        const newStartIdx = findAtOrBefore(startTs);
         setReplayBarIndex(newBarIdx);
         replayBarIndexRef.current = newBarIdx;
         setReplayStartIndex(newStartIdx);
