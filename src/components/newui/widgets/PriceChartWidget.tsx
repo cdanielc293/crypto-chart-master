@@ -110,6 +110,7 @@ interface WidgetDrawing {
   selected?: boolean;
   locked?: boolean;
   visible?: boolean;
+  props?: Record<string, any>;
 }
 
 interface Projection {
