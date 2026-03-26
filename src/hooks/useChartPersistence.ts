@@ -75,6 +75,10 @@ export function useChartPersistence(
   const lastSavedRef = useRef<string>('');
   const loadedSymbolRef = useRef<string>('');
   const isLoadingRef = useRef(false);
+  const currentSymbolRef = useRef(symbol);
+
+  // Keep currentSymbolRef in sync
+  currentSymbolRef.current = symbol;
 
   // Load state when symbol or user changes
   useEffect(() => {
@@ -84,30 +88,39 @@ export function useChartPersistence(
     isLoadingRef.current = true;
     loadedSymbolRef.current = symbol;
 
+    // Cancel any pending save from the previous symbol
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    const loadSymbol = symbol; // capture for closure
+
     supabase
       .from('user_chart_state')
       .select('*')
       .eq('user_id', userId)
-      .eq('symbol', symbol)
+      .eq('symbol', loadSymbol)
       .maybeSingle()
       .then(({ data, error }) => {
+        // If user switched symbol again while we were loading, discard
+        if (currentSymbolRef.current !== loadSymbol) return;
+
         isLoadingRef.current = false;
         if (error) {
           console.error('Failed to load chart state:', error);
-          // Still clear old state on error
           onLoad({ drawings: [], indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set(), chartType: 'candles', interval: '1d' });
           return;
         }
         if (data) {
           const deserialized = deserializeState(data);
-          lastSavedRef.current = JSON.stringify(serializeState(userId, symbol, {
+          lastSavedRef.current = JSON.stringify(serializeState(userId, loadSymbol, {
             ...deserialized,
             indicatorConfigs: deserialized.indicatorConfigs,
             hiddenIndicators: deserialized.hiddenIndicators,
           }));
           onLoad(deserialized);
         } else {
-          // No saved state for this symbol — clear drawings and reset to defaults
           onLoad({ drawings: [], indicators: [], indicatorConfigs: new Map(), hiddenIndicators: new Set(), chartType: 'candles', interval: '1d' });
         }
       });
