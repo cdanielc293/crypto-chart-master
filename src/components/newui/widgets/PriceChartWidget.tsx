@@ -605,9 +605,28 @@ function hitTestWidgetDrawing(
     return distToSegment(mx, my, pts[0].x, pts[0].y, pts[1].x, pts[1].y) <= HIT_RADIUS;
   }
 
+  // Position tools: fixed-width hit area based on entry point
+  if (['longposition', 'shortposition'].includes(type) && pts.length >= 2) {
+    const props = d.props || {};
+    const fixedW = props.boxWidthPx || 280;
+    const left = pts[0].x;
+    const right = left + fixedW;
+    const entry = d.points[0].price;
+    const profit = d.points[1].price;
+    const isLong = type === 'longposition';
+    const tpDist = Math.abs(profit - entry);
+    const stopPrice = (props.stopPrice != null && props.stopPrice > 0) ? props.stopPrice : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
+    const yEntry = priceToY(entry);
+    const yTP = priceToY(profit);
+    const yStop = priceToY(stopPrice);
+    const top = Math.min(yEntry, yTP, yStop);
+    const bottom = Math.max(yEntry, yTP, yStop);
+    return mx >= left - HIT_RADIUS && mx <= right + HIT_RADIUS && my >= top - HIT_RADIUS && my <= bottom + HIT_RADIUS;
+  }
+
   // Rectangle types
   if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
-    'longposition', 'shortposition', 'gannbox', 'fixedrangevolume'].includes(type) && pts.length >= 2) {
+    'gannbox', 'fixedrangevolume'].includes(type) && pts.length >= 2) {
     const left = Math.min(pts[0].x, pts[1].x), right = Math.max(pts[0].x, pts[1].x);
     const top = Math.min(pts[0].y, pts[1].y), bottom = Math.max(pts[0].y, pts[1].y);
     return mx >= left - HIT_RADIUS && mx <= right + HIT_RADIUS && my >= top - HIT_RADIUS && my <= bottom + HIT_RADIUS;
