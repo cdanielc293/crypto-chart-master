@@ -629,6 +629,7 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
   const userScrollIntentUntilRef = useRef(0);
   const [ohlc, setOhlc] = useState({ o: 0, h: 0, l: 0, c: 0, v: 0, change: 0 });
   const [barsLimitReached, setBarsLimitReached] = useState(false);
+  const [replayLoading, setReplayLoading] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [magnetMode, setMagnetMode] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1312,10 +1313,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
           ? Math.floor(replayAnchorTimeRef.current - tzShiftSeconds)
           : null;
 
+        // Show loading overlay when fetching replay data
+        if (isReplayActive && !renderedFromCache) setReplayLoading(true);
+
         // Use cache-first strategy: Supabase cache → Binance fallback
         const klineData = await getKlines(symbol, interval, {
           replayEndTimeSec,
         });
+
+        if (isReplayActive) setReplayLoading(false);
 
         if (cancelled) return; // chart may have been disposed
 
@@ -2420,6 +2426,15 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-primary/10 border border-primary/30 text-primary text-xs px-3 py-1 rounded-full">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           <span>Replay Mode — Bar {replayBarIndex - replayStartIndex + 1}</span>
+        </div>
+      )}
+
+      {replayLoading && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-chart-bg/60 backdrop-blur-[2px] animate-fade-in pointer-events-none">
+          <div className="flex items-center gap-3 bg-toolbar-bg border border-chart-border rounded-xl px-5 py-3 shadow-lg animate-scale-in">
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-xs text-muted-foreground font-medium">Loading replay data…</span>
+          </div>
         </div>
       )}
 
