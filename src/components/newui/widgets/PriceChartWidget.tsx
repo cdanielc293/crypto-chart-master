@@ -1428,12 +1428,13 @@ export default function PriceChartWidget() {
       if (replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting' && replayBarTimestampRef.current != null) {
         const barTs = replayBarTimestampRef.current;
         const startTs = replayStartTimestampRef.current ?? barTs;
-        const findClosest = (ts: number) => {
+        // Find the candle AT or BEFORE the target timestamp
+        // to prevent jumping forward when switching timeframes
+        const findAtOrBefore = (ts: number) => {
           let bestIdx = 0;
-          let bestDiff = Infinity;
           for (let i = 0; i < candles.length; i++) {
-            const diff = Math.abs(candles[i].time - ts);
-            if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+            if (candles[i].time <= ts) bestIdx = i;
+            else break;
           }
           return bestIdx;
         };
