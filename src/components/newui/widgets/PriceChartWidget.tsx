@@ -551,10 +551,9 @@ function hitTestAnchor(
       ? props.stopPrice
       : (isLong ? entry - tpDist * 0.5 : entry + tpDist * 0.5);
     const p0x = timeToX(d.points[0].time);
-    const p1x = timeToX(d.points[1].time);
-    if (p0x !== null && p1x !== null) {
-      const boxRight = Math.max(p1x, p0x + 200);
-      const midX = (p0x + boxRight) / 2;
+    if (p0x !== null) {
+      const fixedW = (d.props || {}).boxWidthPx || 280;
+      const midX = p0x + fixedW / 2;
       const yStop = priceToY(stopPrice);
       if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
     }
