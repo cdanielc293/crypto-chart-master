@@ -130,6 +130,7 @@ export default function DrawingSettingsDialog({ open, drawing, onClose, onUpdate
   const isShapeTool = SHAPE_TOOLS.includes(drawing.type);
   const isVerticalTool = VERTICAL_TOOLS.includes(drawing.type);
   const isChannelTool = CHANNEL_TOOLS.includes(drawing.type);
+  const isPositionTool = POSITION_TOOLS.includes(drawing.type);
   const updateLocal = (key: string, value: any) => {
     setLocalProps(prev => ({ ...prev, [key]: value }));
   };
