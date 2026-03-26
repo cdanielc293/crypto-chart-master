@@ -1214,8 +1214,16 @@ export default function TradingChart({ panelIndex, overrideSymbol, compact }: Tr
         let viewportLogicalRange = chart.timeScale().getVisibleLogicalRange();
         const isReplayActive = replayState !== 'off' && replayState !== 'selecting';
         let renderedFromCache = false;
+        const replayAnchorTime = replayAnchorTimeRef.current;
+        const cacheCoversReplayTime = Boolean(
+          isReplayActive &&
+          replayAnchorTime !== null &&
+          cachedState?.candles.length &&
+          replayAnchorTime >= Number(cachedState.candles[0].time) &&
+          replayAnchorTime <= Number(cachedState.candles[cachedState.candles.length - 1].time),
+        );
 
-        if (cachedState?.candles.length) {
+        if (cachedState?.candles.length && (!isReplayActive || replayAnchorTime === null || cacheCoversReplayTime)) {
           rawCandlesRef.current = [...cachedState.candles];
           allCandlesRef.current = [...cachedState.candles];
           rawDataRef.current = [...cachedState.candles];

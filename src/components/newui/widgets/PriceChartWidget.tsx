@@ -1468,6 +1468,15 @@ export default function PriceChartWidget() {
 
     const cached = timeframeCacheRef.current.get(timeframe);
     const hasCached = !!cached && cached.candles.length > 0;
+    const isReplayActive = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
+    const replayTs = replayBarTimestampRef.current;
+    const cacheCoversReplayTime = Boolean(
+      isReplayActive &&
+      replayTs != null &&
+      hasCached &&
+      replayTs >= cached!.candles[0].time &&
+      replayTs <= cached!.candles[cached!.candles.length - 1].time,
+    );
 
     fetchAbortRef.current?.abort();
     const controller = new AbortController();
@@ -1498,7 +1507,7 @@ export default function PriceChartWidget() {
         });
     };
 
-    if (hasCached) {
+    if (hasCached && (!isReplayActive || replayTs == null || cacheCoversReplayTime)) {
       applyCandles(cached!.candles);
       setLoading(false);
       if ((Date.now() - cached!.cachedAt) > TIMEFRAME_CACHE_TTL_MS || cached!.candles.length < barLimit) {
@@ -1508,10 +1517,8 @@ export default function PriceChartWidget() {
     }
 
     // If replay is active, use backtest cache (Storage-based) instead of direct Binance
-    const isReplayActive = replayStateRef.current !== 'off' && replayStateRef.current !== 'selecting';
-    if (isReplayActive && replayBarTimestampRef.current != null) {
+    if (isReplayActive && replayTs != null) {
       setLoading(true);
-      const replayTs = replayBarTimestampRef.current;
       const tfConfig = TIMEFRAME_CONFIG[timeframe];
       getBacktestKlines(
         'BTCUSDT',
