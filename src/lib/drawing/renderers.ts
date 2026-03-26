@@ -1287,7 +1287,7 @@ const renderFibTrendTime: Renderer = (ctx, d, coord, _w, h) => {
   }
 };
 
-// ─── Positions ───
+// ─── Positions (TradingView-style) ───
 
 const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (d.points.length < 2) return;
@@ -1296,110 +1296,178 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   if (!p1 || !p2) return;
   const isLong = d.type === 'longposition';
   const props = d.props || {};
+
   const entry = d.points[0].price;
-  const target = d.points[1].price;
-  const qty = props.quantity || 1;
-  const stopPrice = props.stopPrice;
+  const profit = d.points[1].price;
+
+  // Defaults for position calculation
+  const accountSize = props.accountSize || 10000;
+  const riskPercent = props.riskPercent ?? 2;
+  const riskAbsolute = props.riskAbsolute;
+  const leverage = props.leverage || 1;
+  const lotSize = props.lotSize || 1;
+  const pointValue = props.pointValue || 1;
+  const compactStats = props.compactStats || false;
+
+  // Auto stop loss: mirror TP distance on opposite side, or use props
+  const tpDist = Math.abs(profit - entry);
+  let stopPrice: number;
+  if (props.stopPrice != null && props.stopPrice > 0) {
+    stopPrice = props.stopPrice;
+  } else {
+    stopPrice = isLong ? entry - tpDist : entry + tpDist;
+  }
 
   const yEntry = coord.priceToY(entry);
-  const yTarget = coord.priceToY(target);
-  if (yEntry === null || yTarget === null) return;
+  const yTP = coord.priceToY(profit);
+  const yStop = coord.priceToY(stopPrice);
+  if (yEntry === null || yTP === null || yStop === null) return;
 
   const boxLeft = p1.x;
-  const boxRight = Math.max(p2.x, p1.x + 180);
+  const boxRight = Math.max(p2.x, p1.x + 220);
   const boxW = boxRight - boxLeft;
 
-  // Profit zone
-  const inProfit = isLong ? (target > entry) : (target < entry);
-  const profitBg = 'rgba(38,166,154,0.12)';
-  const lossBg = 'rgba(239,83,80,0.12)';
+  // Risk size
+  const riskSize = riskAbsolute != null ? riskAbsolute : (riskPercent / 100) * accountSize;
+  const slDist = Math.abs(entry - stopPrice);
 
-  ctx.fillStyle = inProfit ? profitBg : lossBg;
-  ctx.fillRect(boxLeft, Math.min(yEntry, yTarget), boxW, Math.abs(yTarget - yEntry));
+  // Position sizing: qty = min(qtyRisk, qtyLvg)
+  let qtyRisk = slDist > 0 ? (riskSize / (slDist * pointValue)) / lotSize : 0;
+  let qtyLvg = (accountSize * leverage / entry) * pointValue / lotSize;
+  let qty = Math.min(qtyRisk, qtyLvg);
+  if (qty <= 0) qty = 1;
+  // Override with manual qty
+  if (props.quantity && props.quantity > 0) qty = props.quantity;
 
-  // Stop loss zone
-  let yStop: number | null = null;
-  if (stopPrice != null && stopPrice > 0) {
-    yStop = coord.priceToY(stopPrice);
-    if (yStop !== null) {
-      const stopInLoss = isLong ? (stopPrice < entry) : (stopPrice > entry);
-      ctx.fillStyle = stopInLoss ? lossBg : profitBg;
-      ctx.fillRect(boxLeft, Math.min(yEntry, yStop), boxW, Math.abs(yStop - yEntry));
-    }
-  }
+  // P&L calculations
+  const pnlTP = isLong
+    ? (profit - entry) * qty * pointValue * lotSize
+    : (entry - profit) * qty * pointValue * lotSize;
+  const pnlSL = isLong
+    ? (stopPrice - entry) * qty * pointValue * lotSize
+    : (entry - stopPrice) * qty * pointValue * lotSize;
+  const balTP = accountSize + pnlTP;
+  const balSL = accountSize + pnlSL;
 
-  // Entry line
-  ctx.strokeStyle = '#2196f3';
+  // Price offsets
+  const tpPriceOffset = isLong ? profit - entry : entry - profit;
+  const tpPctOffset = ((tpPriceOffset / entry) * 100);
+  const slPriceOffset = isLong ? entry - stopPrice : stopPrice - entry;
+  const slPctOffset = ((slPriceOffset / entry) * 100);
+
+  // Risk/reward
+  const rr = slPriceOffset > 0 ? tpPriceOffset / slPriceOffset : 0;
+
+  // ── Draw zones ──
+  const greenColor = '#26a69a';
+  const redColor = '#ef5350';
+  const blueColor = '#2196f3';
+
+  // TP zone (green)
+  ctx.fillStyle = 'rgba(38,166,154,0.15)';
+  ctx.fillRect(boxLeft, Math.min(yEntry, yTP), boxW, Math.abs(yTP - yEntry));
+
+  // SL zone (red)
+  ctx.fillStyle = 'rgba(239,83,80,0.15)';
+  ctx.fillRect(boxLeft, Math.min(yEntry, yStop), boxW, Math.abs(yStop - yEntry));
+
+  // ── Lines ──
+  // Entry line (blue, solid)
+  ctx.strokeStyle = blueColor;
   ctx.lineWidth = 1.5;
   ctx.setLineDash([]);
-  ctx.beginPath();
-  ctx.moveTo(boxLeft, yEntry);
-  ctx.lineTo(boxRight, yEntry);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(boxLeft, yEntry); ctx.lineTo(boxRight, yEntry); ctx.stroke();
 
-  // Target line
-  ctx.strokeStyle = inProfit ? '#26a69a' : '#ef5350';
+  // TP line (green, solid)
+  ctx.strokeStyle = greenColor;
   ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(boxLeft, yTarget);
-  ctx.lineTo(boxRight, yTarget);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(boxLeft, yTP); ctx.lineTo(boxRight, yTP); ctx.stroke();
 
-  // Stop line
-  if (yStop !== null) {
-    ctx.strokeStyle = '#ef5350';
-    ctx.setLineDash([4, 3]);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(boxLeft, yStop);
-    ctx.lineTo(boxRight, yStop);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  // SL line (red, dashed)
+  ctx.strokeStyle = redColor;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(boxLeft, yStop); ctx.lineTo(boxRight, yStop); ctx.stroke();
+  ctx.setLineDash([]);
 
-  // Calculate P&L
-  const pnlTarget = isLong ? target - entry : entry - target;
-  const pnlTargetPct = ((pnlTarget / entry) * 100).toFixed(2);
-  const pnlTargetAbs = (pnlTarget * qty).toFixed(2);
+  // ── Labels ──
+  const fmt = (n: number, dec = 2) => {
+    if (Math.abs(n) >= 1) return n.toFixed(dec);
+    // For very small prices (crypto sub-cents)
+    return n.toPrecision(4);
+  };
+  const sign = (n: number) => n >= 0 ? '+' : '';
 
-  // Labels
   ctx.font = '11px monospace';
   ctx.textAlign = 'left';
 
-  // Entry label
-  ctx.fillStyle = '#2196f3';
-  ctx.fillText(`Entry: ${entry.toFixed(2)}`, boxLeft + 5, yEntry - 5);
+  if (compactStats) {
+    // Compact mode: minimal labels
+    ctx.fillStyle = blueColor;
+    ctx.fillText(`${fmt(entry)}`, boxLeft + 6, yEntry - 5);
 
-  // Target label with P&L
-  ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
-  ctx.fillText(`Target: ${target.toFixed(2)}  ${pnlTarget >= 0 ? '+' : ''}${pnlTargetPct}%  (${pnlTarget >= 0 ? '+' : ''}${pnlTargetAbs})`, boxLeft + 5, yTarget + (yTarget < yEntry ? -5 : 14));
+    ctx.fillStyle = greenColor;
+    ctx.fillText(`TP ${fmt(profit)} (${sign(tpPctOffset)}${tpPctOffset.toFixed(2)}%)`, boxLeft + 6, yTP + (yTP < yEntry ? -5 : 14));
 
-  // Stop label
-  if (yStop !== null && stopPrice != null) {
-    const pnlStop = isLong ? stopPrice - entry : entry - stopPrice;
-    const pnlStopPct = ((pnlStop / entry) * 100).toFixed(2);
-    const pnlStopAbs = (pnlStop * qty).toFixed(2);
-    ctx.fillStyle = '#ef5350';
-    ctx.fillText(`Stop: ${stopPrice.toFixed(2)}  ${pnlStop >= 0 ? '+' : ''}${pnlStopPct}%  (${pnlStop >= 0 ? '+' : ''}${pnlStopAbs})`, boxLeft + 5, yStop + (yStop > yEntry ? 14 : -5));
-
-    // Risk/Reward ratio
-    if (Math.abs(pnlStop) > 0) {
-      const rr = Math.abs(pnlTarget / pnlStop);
-      ctx.fillStyle = '#d1d4dc';
-      ctx.fillText(`R/R: ${rr.toFixed(2)}`, boxLeft + 5, (yEntry + yTarget) / 2);
-    }
+    ctx.fillStyle = redColor;
+    ctx.fillText(`SL ${fmt(stopPrice)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, yStop + (yStop > yEntry ? 14 : -5));
   } else {
-    // Just show P&L in center
-    ctx.fillStyle = inProfit ? '#26a69a' : '#ef5350';
-    ctx.fillText(`P&L: ${pnlTarget >= 0 ? '+' : ''}${pnlTarget.toFixed(2)} (${pnlTargetPct}%)`, boxLeft + 5, (yEntry + yTarget) / 2);
+    // Full labels like TradingView
+
+    // Entry label
+    ctx.fillStyle = blueColor;
+    ctx.fillText(`Entry: ${fmt(entry)}`, boxLeft + 6, yEntry - 5);
+
+    // Position size & qty (right side of entry line)
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#d1d4dc';
+    ctx.fillText(`Qty: ${qty.toFixed(4)}  |  Pos: $${(qty * entry * lotSize).toFixed(2)}`, boxRight - 6, yEntry - 5);
+    ctx.textAlign = 'left';
+
+    // TP label (in TP zone)
+    const tpLabelY = yTP + (yTP < yEntry ? -5 : 14);
+    ctx.fillStyle = greenColor;
+    ctx.fillText(`Target: ${fmt(profit)}  ${sign(tpPriceOffset)}${fmt(tpPriceOffset)} (${sign(tpPctOffset)}${tpPctOffset.toFixed(2)}%)`, boxLeft + 6, tpLabelY);
+    // P&L and balance at TP
+    const tpInfoY = yTP + (yTP < yEntry ? -18 : 27);
+    ctx.fillStyle = '#d1d4dc';
+    ctx.font = '10px monospace';
+    ctx.fillText(`P&L: ${sign(pnlTP)}$${Math.abs(pnlTP).toFixed(2)}  |  Bal: $${balTP.toFixed(2)}`, boxLeft + 6, tpInfoY);
+    ctx.font = '11px monospace';
+
+    // SL label (in SL zone)
+    const slLabelY = yStop + (yStop > yEntry ? 14 : -5);
+    ctx.fillStyle = redColor;
+    ctx.fillText(`Stop: ${fmt(stopPrice)}  ${sign(-slPriceOffset)}${fmt(-slPriceOffset)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, slLabelY);
+    // P&L and balance at SL
+    const slInfoY = yStop + (yStop > yEntry ? 27 : -18);
+    ctx.fillStyle = '#d1d4dc';
+    ctx.font = '10px monospace';
+    ctx.fillText(`P&L: ${sign(pnlSL)}$${Math.abs(pnlSL).toFixed(2)}  |  Bal: $${balSL.toFixed(2)}`, boxLeft + 6, slInfoY);
+    ctx.font = '11px monospace';
+
+    // R/R ratio in center of TP zone
+    const rrY = (yEntry + yTP) / 2;
+    ctx.fillStyle = '#d1d4dc';
+    ctx.textAlign = 'right';
+    ctx.fillText(`R/R: ${rr.toFixed(2)}`, boxRight - 6, rrY);
+    ctx.textAlign = 'left';
   }
 
-  // Quantity label
-  if (qty > 1) {
-    ctx.fillStyle = '#787b86';
-    ctx.font = '10px monospace';
-    ctx.fillText(`Qty: ${qty}`, boxRight - 60, yEntry - 5);
+  // Small arrow icon on left
+  const arrowY = yEntry;
+  ctx.fillStyle = isLong ? greenColor : redColor;
+  ctx.beginPath();
+  if (isLong) {
+    ctx.moveTo(boxLeft - 8, arrowY + 4);
+    ctx.lineTo(boxLeft - 4, arrowY - 4);
+    ctx.lineTo(boxLeft, arrowY + 4);
+  } else {
+    ctx.moveTo(boxLeft - 8, arrowY - 4);
+    ctx.lineTo(boxLeft - 4, arrowY + 4);
+    ctx.lineTo(boxLeft, arrowY - 4);
   }
+  ctx.fill();
 };
 
 // ─── Gann Box ───

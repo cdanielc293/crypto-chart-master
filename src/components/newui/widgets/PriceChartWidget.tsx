@@ -110,6 +110,7 @@ interface WidgetDrawing {
   selected?: boolean;
   locked?: boolean;
   visible?: boolean;
+  props?: Record<string, any>;
 }
 
 interface Projection {
@@ -767,20 +768,118 @@ function renderDrawing(
     return;
   }
 
+  // Long/Short position (TradingView-style 3-zone)
+  if (type === 'longposition' || type === 'shortposition') {
+    const isLong = type === 'longposition';
+    const entry = d.points[0].price;
+    const profit = d.points[1].price;
+    const props = d.props || {};
+    const accountSize = props.accountSize || 10000;
+    const riskPercent = props.riskPercent ?? 2;
+    const riskAbsolute = props.riskAbsolute;
+    const leverage = props.leverage || 1;
+    const lotSize = props.lotSize || 1;
+    const pointValue = props.pointValue || 1;
+    const compactStats = props.compactStats || false;
+    const tpDist = Math.abs(profit - entry);
+    let stopPrice: number;
+    if (props.stopPrice != null && props.stopPrice > 0) stopPrice = props.stopPrice;
+    else stopPrice = isLong ? entry - tpDist : entry + tpDist;
+
+    const yEntry = pts[0].y;
+    const yTP = pts[1].y;
+    // Map stop price to Y
+    const priceRange = d.points[1].price - d.points[0].price;
+    const yRange = pts[1].y - pts[0].y;
+    const yStop = priceRange !== 0 ? pts[0].y + ((stopPrice - d.points[0].price) / priceRange) * yRange : pts[0].y;
+
+    const boxLeft = Math.min(pts[0].x, pts[1].x);
+    const boxRight = Math.max(pts[0].x, pts[1].x, boxLeft + 200);
+    const boxW = boxRight - boxLeft;
+
+    // Risk & qty
+    const riskSize = riskAbsolute != null ? riskAbsolute : (riskPercent / 100) * accountSize;
+    const slDist = Math.abs(entry - stopPrice);
+    let qtyRisk = slDist > 0 ? (riskSize / (slDist * pointValue)) / lotSize : 0;
+    let qtyLvg = (accountSize * leverage / entry) * pointValue / lotSize;
+    let qty = Math.min(qtyRisk, qtyLvg);
+    if (qty <= 0) qty = 1;
+    if (props.quantity && props.quantity > 0) qty = props.quantity;
+
+    const pnlTP = isLong ? (profit - entry) * qty * pointValue * lotSize : (entry - profit) * qty * pointValue * lotSize;
+    const pnlSL = isLong ? (stopPrice - entry) * qty * pointValue * lotSize : (entry - stopPrice) * qty * pointValue * lotSize;
+    const balTP = accountSize + pnlTP;
+    const balSL = accountSize + pnlSL;
+    const tpPriceOffset = isLong ? profit - entry : entry - profit;
+    const tpPctOffset = (tpPriceOffset / entry) * 100;
+    const slPriceOffset = isLong ? entry - stopPrice : stopPrice - entry;
+    const slPctOffset = (slPriceOffset / entry) * 100;
+    const rr = slPriceOffset > 0 ? tpPriceOffset / slPriceOffset : 0;
+
+    const greenC = '#26a69a', redC = '#ef5350', blueC = '#2196f3';
+    const sign = (n: number) => n >= 0 ? '+' : '';
+    const fmt = (n: number) => Math.abs(n) >= 1 ? n.toFixed(2) : n.toPrecision(4);
+
+    // TP zone
+    ctx.fillStyle = 'rgba(38,166,154,0.15)';
+    ctx.fillRect(boxLeft, Math.min(yEntry, yTP), boxW, Math.abs(yTP - yEntry));
+    // SL zone
+    ctx.fillStyle = 'rgba(239,83,80,0.15)';
+    ctx.fillRect(boxLeft, Math.min(yEntry, yStop), boxW, Math.abs(yStop - yEntry));
+
+    // Entry line
+    ctx.strokeStyle = blueC; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(boxLeft, yEntry); ctx.lineTo(boxRight, yEntry); ctx.stroke();
+    // TP line
+    ctx.strokeStyle = greenC;
+    ctx.beginPath(); ctx.moveTo(boxLeft, yTP); ctx.lineTo(boxRight, yTP); ctx.stroke();
+    // SL line (dashed)
+    ctx.strokeStyle = redC; ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(boxLeft, yStop); ctx.lineTo(boxRight, yStop); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.font = '11px monospace'; ctx.textAlign = 'left';
+    if (compactStats) {
+      ctx.fillStyle = blueC; ctx.fillText(`${fmt(entry)}`, boxLeft + 6, yEntry - 5);
+      ctx.fillStyle = greenC; ctx.fillText(`TP ${fmt(profit)} (${sign(tpPctOffset)}${tpPctOffset.toFixed(2)}%)`, boxLeft + 6, yTP + (yTP < yEntry ? -5 : 14));
+      ctx.fillStyle = redC; ctx.fillText(`SL ${fmt(stopPrice)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, yStop + (yStop > yEntry ? 14 : -5));
+    } else {
+      ctx.fillStyle = blueC; ctx.fillText(`Entry: ${fmt(entry)}`, boxLeft + 6, yEntry - 5);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#d1d4dc';
+      ctx.fillText(`Qty: ${qty.toFixed(4)}  |  Pos: $${(qty * entry * lotSize).toFixed(2)}`, boxRight - 6, yEntry - 5);
+      ctx.textAlign = 'left';
+      const tpLY = yTP + (yTP < yEntry ? -5 : 14);
+      ctx.fillStyle = greenC; ctx.fillText(`Target: ${fmt(profit)}  ${sign(tpPriceOffset)}${fmt(tpPriceOffset)} (${sign(tpPctOffset)}${tpPctOffset.toFixed(2)}%)`, boxLeft + 6, tpLY);
+      ctx.fillStyle = '#d1d4dc'; ctx.font = '10px monospace';
+      ctx.fillText(`P&L: ${sign(pnlTP)}$${Math.abs(pnlTP).toFixed(2)}  |  Bal: $${balTP.toFixed(2)}`, boxLeft + 6, yTP + (yTP < yEntry ? -18 : 27));
+      ctx.font = '11px monospace';
+      const slLY = yStop + (yStop > yEntry ? 14 : -5);
+      ctx.fillStyle = redC; ctx.fillText(`Stop: ${fmt(stopPrice)}  ${sign(-slPriceOffset)}${fmt(-slPriceOffset)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, slLY);
+      ctx.fillStyle = '#d1d4dc'; ctx.font = '10px monospace';
+      ctx.fillText(`P&L: ${sign(pnlSL)}$${Math.abs(pnlSL).toFixed(2)}  |  Bal: $${balSL.toFixed(2)}`, boxLeft + 6, yStop + (yStop > yEntry ? 27 : -18));
+      ctx.font = '11px monospace';
+      ctx.fillStyle = '#d1d4dc'; ctx.textAlign = 'right';
+      ctx.fillText(`R/R: ${rr.toFixed(2)}`, boxRight - 6, (yEntry + yTP) / 2);
+      ctx.textAlign = 'left';
+    }
+    // Arrow icon
+    ctx.fillStyle = isLong ? greenC : redC;
+    ctx.beginPath();
+    if (isLong) { ctx.moveTo(boxLeft - 8, yEntry + 4); ctx.lineTo(boxLeft - 4, yEntry - 4); ctx.lineTo(boxLeft, yEntry + 4); }
+    else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
+    ctx.fill();
+    if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
+    return;
+  }
+
   if (['rectangle', 'rotatedrectangle', 'pricerange', 'daterange', 'datepricerange',
-    'longposition', 'shortposition', 'gannbox', 'fixedrangevolume'].includes(type)) {
+    'gannbox', 'fixedrangevolume'].includes(type)) {
     const x1 = Math.min(pts[0].x, pts[1].x), y1 = Math.min(pts[0].y, pts[1].y);
     const w = Math.abs(pts[1].x - pts[0].x), h = Math.abs(pts[1].y - pts[0].y);
     ctx.fillStyle = hexToRgba(d.color, 0.08);
     ctx.fillRect(x1, y1, w, h);
     ctx.strokeRect(x1, y1, w, h);
-    if (type === 'longposition' || type === 'shortposition') {
-      const isLong = type === 'longposition';
-      ctx.fillStyle = isLong ? hexToRgba('#26a69a', 0.15) : hexToRgba('#ef5350', 0.15);
-      ctx.fillRect(x1, y1, w, h);
-      ctx.strokeStyle = isLong ? '#26a69a' : '#ef5350';
-      ctx.strokeRect(x1, y1, w, h);
-    }
     if (d.selected) renderSelectionAnchors(ctx, pts, d.color);
     return;
   }
