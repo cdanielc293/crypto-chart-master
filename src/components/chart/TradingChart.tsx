@@ -186,11 +186,10 @@ function findNearestCandleIndexByTime(candles: RawCandle[], targetTimeSec: numbe
     else high = mid - 1;
   }
 
-  const left = Math.max(0, Math.min(candles.length - 1, high));
-  const right = Math.max(0, Math.min(candles.length - 1, low));
-  const leftDiff = Math.abs(Number(candles[left].time) - targetTimeSec);
-  const rightDiff = Math.abs(Number(candles[right].time) - targetTimeSec);
-  return rightDiff < leftDiff ? right : left;
+  // Always snap to the candle AT or BEFORE the target time
+  // to prevent jumping forward when switching timeframes
+  const atOrBefore = Math.max(0, Math.min(candles.length - 1, high));
+  return atOrBefore;
 }
 
 function toHeikinAshi(candles: RawCandle[]): RawCandle[] {
