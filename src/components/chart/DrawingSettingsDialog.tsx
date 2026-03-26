@@ -563,6 +563,89 @@ function StyleTab({ localColor, setLocalColor, localLineWidth, setLocalLineWidth
           </div>
         </div>
       )}
+
+      {/* Position tool settings */}
+      {isPositionTool && drawing && (
+        <div className="pt-2 border-t border-border space-y-3">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider">Position Settings</span>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Account size ($)</span>
+            <input
+              type="number"
+              value={localProps.accountSize ?? 10000}
+              onChange={e => updateLocal('accountSize', Number(e.target.value))}
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={0}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Risk (%)</span>
+            <input
+              type="number"
+              value={localProps.riskPercent ?? 2}
+              onChange={e => updateLocal('riskPercent', Number(e.target.value))}
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={0}
+              max={100}
+              step={0.5}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Leverage</span>
+            <input
+              type="number"
+              value={localProps.leverage ?? 1}
+              onChange={e => updateLocal('leverage', Number(e.target.value))}
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={1}
+              max={200}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Lot size</span>
+            <input
+              type="number"
+              value={localProps.lotSize ?? 1}
+              onChange={e => updateLocal('lotSize', Number(e.target.value))}
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={0.001}
+              step={0.001}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Stop price</span>
+            <input
+              type="number"
+              value={localProps.stopPrice ?? ''}
+              onChange={e => updateLocal('stopPrice', e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="Auto (mirror TP)"
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={0}
+              step={0.01}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Qty (override)</span>
+            <input
+              type="number"
+              value={localProps.quantity ?? ''}
+              onChange={e => updateLocal('quantity', e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="Auto"
+              className="bg-muted border border-border rounded px-2 py-1 text-sm text-foreground w-28 text-right"
+              min={0}
+              step={0.0001}
+            />
+          </div>
+
+          <CheckField label="Compact stats" checked={!!localProps.compactStats} onChange={v => updateLocal('compactStats', v)} />
+        </div>
+      )}
     </>
   );
 }
