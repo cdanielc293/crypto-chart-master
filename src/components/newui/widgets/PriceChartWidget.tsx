@@ -3723,20 +3723,48 @@ export default function PriceChartWidget() {
           </div>
         )}
 
+        {/* Wyckoff selecting banner */}
+        {wyckoffMode === 'selecting' && (
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] px-4 py-1.5 rounded-full pointer-events-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="font-mono">
+              {wyckoffDraftStartRef.current !== null ? 'לחץ לסמן סוף האיזור' : 'לחץ לסמן תחילת האיזור'}
+            </span>
+            <button onClick={() => setWyckoffMode('off')} className="ml-2 text-amber-400/60 hover:text-amber-400 text-[10px] underline">ביטול</button>
+          </div>
+        )}
+
         {/* Wyckoff info panel */}
-        {wyckoffEnabled && wyckoffRef.current && (wyckoffRef.current.events.length > 0 || wyckoffRef.current.currentPhase !== 'none') && (
-          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[260px] pointer-events-auto select-none">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Wyckoff Accumulation</span>
+        {wyckoffMode === 'active' && wyckoffRef.current && (
+          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[280px] pointer-events-auto select-none">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Wyckoff Accumulation</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => { setWyckoffMode('selecting'); wyckoffDraftStartRef.current = null; toast.info('סמן איזור חדש'); }}
+                  className="text-[9px] font-mono text-white/30 hover:text-white/60 px-1.5 py-0.5 rounded hover:bg-white/[0.05]"
+                  title="בחר איזור חדש"
+                >↻</button>
+                <button
+                  onClick={() => setWyckoffMode('off')}
+                  className="text-[9px] font-mono text-red-400/50 hover:text-red-400 px-1.5 py-0.5 rounded hover:bg-red-500/10"
+                  title="סגור"
+                >✕</button>
+              </div>
             </div>
             {wyckoffRef.current.currentPhase !== 'none' && (
               <div className="text-[10px] text-white/50 font-mono mb-1">
                 Phase: <span className="text-white/80 font-bold">{wyckoffRef.current.currentPhase}</span>
               </div>
             )}
-            <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
-              {wyckoffRef.current.events.slice(-6).map((ev, i) => (
+            {wyckoffRef.current.events.length === 0 && (
+              <div className="text-[9px] text-white/30 font-mono py-1">לא נמצאו אירועי Wyckoff באיזור שנבחר</div>
+            )}
+            <div className="space-y-0.5 max-h-[140px] overflow-y-auto">
+              {wyckoffRef.current.events.map((ev, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
                   <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${
                     ev.type === 'Spring' ? 'bg-green-500/20 text-green-400' :
@@ -3744,7 +3772,7 @@ export default function PriceChartWidget() {
                     ev.type === 'SOS' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-white/10 text-white/50'
                   }`}>{ev.label}</span>
-                  <span className="text-white/30 truncate">{ev.description.substring(0, 35)}…</span>
+                  <span className="text-white/30 truncate">{ev.description.substring(0, 45)}</span>
                 </div>
               ))}
             </div>
@@ -3752,7 +3780,7 @@ export default function PriceChartWidget() {
               <div className="mt-1.5 pt-1.5 border-t border-white/[0.06]">
                 {wyckoffRef.current.poes.map((poe, i) => (
                   <div key={i} className="text-[9px] font-mono text-emerald-400/80">
-                    ▸ {poe.label}: {poe.description.substring(0, 40)}…
+                    ▸ {poe.label}: {poe.description.substring(0, 45)}
                   </div>
                 ))}
               </div>
@@ -3761,7 +3789,7 @@ export default function PriceChartWidget() {
               <div className="mt-1 pt-1 border-t border-red-500/20">
                 {wyckoffRef.current.invalidations.map((inv, i) => (
                   <div key={i} className="text-[9px] font-mono text-red-400/80">
-                    ⚠ {inv.description.substring(0, 50)}…
+                    ⚠ {inv.description.substring(0, 55)}
                   </div>
                 ))}
               </div>
