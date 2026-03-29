@@ -200,9 +200,19 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
   const invalidations: WyckoffInvalidation[] = [];
   const phaseRanges: WyckoffResult['phaseRanges'] = [];
 
-  // Find potential accumulation structures
-  // Look for Selling Climax: sharp price drop + volume peak
-  const volumePeakWindow = 30;
+  // Track detected structures to avoid overlapping detections
+  const detectedRanges: { lowPrice: number; highPrice: number; startIdx: number; endIdx: number }[] = [];
+
+  function isInsideExistingStructure(idx: number, price: number): boolean {
+    for (const r of detectedRanges) {
+      // Check if this index or price overlaps with an existing structure
+      if (idx >= r.startIdx - 10 && idx <= r.endIdx + 30) return true;
+      // Check price overlap — if the price is within the range, it's the same consolidation
+      const rangePadding = (r.highPrice - r.lowPrice) * 0.3;
+      if (price >= r.lowPrice - rangePadding && price <= r.highPrice + rangePadding && idx <= r.endIdx + 60) return true;
+    }
+    return false;
+  }
 
   for (let scan = volPeriod + swingLookback; scan < data.length - 20; scan++) {
     // ─── Find SC: swing low + climax volume + bearish candle ───
@@ -211,6 +221,9 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     if (!isSwingLow) continue;
     if (!vsa.isClimaxVolume[scan] && !vsa.isHighVolume[scan]) continue;
     if (c.close > c.open) continue; // must be bearish or neutral
+
+    // Skip if inside an already-detected structure
+    if (isInsideExistingStructure(scan, c.low)) continue;
 
     // Check for preceding downtrend (at least 5 lower closes in last 10)
     let lowerCloses = 0;
