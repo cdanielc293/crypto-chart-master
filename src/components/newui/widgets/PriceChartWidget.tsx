@@ -2233,19 +2233,20 @@ export default function PriceChartWidget() {
         ctx.fillRect(Math.max(0, x1), 0, Math.min(chartW, x2) - Math.max(0, x1), priceH);
         // Phase label at top
         const mx = Math.max(12, (x1 + x2) / 2);
-        if (mx > 0 && mx < chartW) {
+        const regionW = Math.min(chartW, x2) - Math.max(0, x1);
+        if (mx > 0 && mx < chartW && regionW > 30) {
           ctx.font = 'bold 10px Inter, sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
           ctx.fillText(`Phase ${pr.phase}`, mx, 6);
-          ctx.font = '9px Inter, sans-serif';
-          ctx.fillStyle = 'rgba(255,255,255,0.15)';
-          // Wrap description
-          const desc = pr.description;
-          if (desc.length > 40) {
-            ctx.fillText(desc.substring(0, 40) + '…', mx, 20);
-          } else {
-            ctx.fillText(desc, mx, 20);
+          // Strength indicator
+          if (pr.strength) {
+            const strengthLabel = pr.strength.dominant === 'buyers' ? '🟢' :
+              pr.strength.dominant === 'sellers' ? '🔴' : '⚪';
+            ctx.font = '9px Inter, sans-serif';
+            ctx.fillStyle = pr.strength.dominant === 'buyers' ? 'rgba(76,175,80,0.5)' :
+              pr.strength.dominant === 'sellers' ? 'rgba(239,83,80,0.5)' : 'rgba(255,255,255,0.2)';
+            ctx.fillText(`${strengthLabel} ${pr.strength.buyers}% קונים`, mx, 20);
           }
         }
       }
