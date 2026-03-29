@@ -2935,8 +2935,12 @@ export default function PriceChartWidget() {
       const tool = drawingToolRef.current;
       const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
+      // Wyckoff selection mode: always show crosshair
+      if (wyckoffModeRef.current === 'selecting' && x < chartW && y < chartH) {
+        setCursor('crosshair');
+      }
       // Hover cursor for drawings
-      if (isCursorTool && x < chartW && y < chartH) {
+      else if (isCursorTool && x < chartW && y < chartH) {
         // Check anchor hover first for selected drawing
         if (selectedDrawingId) {
           const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
