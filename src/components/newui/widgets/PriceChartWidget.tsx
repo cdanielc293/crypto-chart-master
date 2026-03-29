@@ -34,6 +34,7 @@ import {
   Unlock,
   Pencil,
   Rewind,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
