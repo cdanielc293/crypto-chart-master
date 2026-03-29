@@ -522,6 +522,11 @@ export default function DrawingCanvas({ chart, series, candles, containerRef, ma
             ...selected,
             props: { ...selected.props, stopPrice: price },
           });
+        } else if ((selected.type === 'longposition' || selected.type === 'shortposition') && idx === 21) {
+          // Virtual anchor for take profit line - update point[1].price
+          const newPoints = [...selected.points];
+          newPoints[1] = { ...newPoints[1], price };
+          updateDrawing(selected.id, { ...selected, points: newPoints });
         } else {
           const newPoints = dragStartRef.current.points.map((p, i) => {
             if (i === idx) return { time, price };
