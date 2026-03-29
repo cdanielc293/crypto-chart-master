@@ -40,7 +40,7 @@ import {
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
 import type { Point } from '@/types/indicators';
-import { analyzeWyckoff, type WyckoffResult } from '@/lib/indicators/wyckoff';
+import { analyzeWyckoff, analyzeWyckoffZone, type WyckoffResult } from '@/lib/indicators/wyckoff';
 import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './NewUIChartSettings';
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
@@ -1253,20 +1253,27 @@ export default function PriceChartWidget() {
   const [ohlcMenuOpen, setOhlcMenuOpen] = useState(false);
   const ohlcSettingsRef = useRef(ohlcSettings);
 
-  // Wyckoff indicator state
-  const [wyckoffEnabled, setWyckoffEnabled] = useState(() => localStorage.getItem('newui-wyckoff') === 'true');
+  // Wyckoff indicator state — manual zone selection
+  type WyckoffMode = 'off' | 'selecting' | 'active';
+  const [wyckoffMode, setWyckoffMode] = useState<WyckoffMode>('off');
+  const wyckoffModeRef = useRef<WyckoffMode>('off');
+  const [wyckoffEnabled, setWyckoffEnabled] = useState(false); // kept for rendering compat
   const wyckoffRef = useRef<WyckoffResult | null>(null);
-  const wyckoffEnabledRef = useRef(wyckoffEnabled);
+  const wyckoffEnabledRef = useRef(false);
+  const wyckoffZoneRef = useRef<{ startIdx: number; endIdx: number } | null>(null);
+  const wyckoffDraftStartRef = useRef<number | null>(null); // first click index during selection
+
   useEffect(() => {
-    wyckoffEnabledRef.current = wyckoffEnabled;
-    localStorage.setItem('newui-wyckoff', String(wyckoffEnabled));
-    if (wyckoffEnabled && dataRef.current.length > 50) {
-      wyckoffRef.current = analyzeWyckoff(dataRef.current);
-    } else if (!wyckoffEnabled) {
+    wyckoffModeRef.current = wyckoffMode;
+    wyckoffEnabledRef.current = wyckoffMode === 'active';
+    setWyckoffEnabled(wyckoffMode === 'active');
+    if (wyckoffMode === 'off') {
       wyckoffRef.current = null;
+      wyckoffZoneRef.current = null;
+      wyckoffDraftStartRef.current = null;
     }
     scheduleRender();
-  }, [wyckoffEnabled]);
+  }, [wyckoffMode]);
   useEffect(() => { ohlcSettingsRef.current = ohlcSettings; saveOhlcSettings(ohlcSettings); }, [ohlcSettings]);
 
   const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
@@ -1402,9 +1409,10 @@ export default function PriceChartWidget() {
     }
     indResultsRef.current = results;
 
-    // Recalc Wyckoff if enabled
-    if (wyckoffEnabledRef.current && data.length > 50) {
-      wyckoffRef.current = analyzeWyckoff(data);
+    // Recalc Wyckoff if zone is active
+    if (wyckoffModeRef.current === 'active' && wyckoffZoneRef.current && data.length > 10) {
+      const z = wyckoffZoneRef.current;
+      wyckoffRef.current = analyzeWyckoffZone(data, z.startIdx, z.endIdx);
     }
 
     scheduleRender();
@@ -2165,6 +2173,47 @@ export default function PriceChartWidget() {
       }
     }
 
+    // ─── Wyckoff Zone Selection Preview ───
+    if (wyckoffModeRef.current === 'selecting' && wyckoffDraftStartRef.current !== null) {
+      const draftStart = wyckoffDraftStartRef.current;
+      const draftX1 = (draftStart - st.offsetX) * st.candleWidth;
+      // If crosshair is active, show preview to cursor position
+      const draftX2 = st.crosshair ? st.crosshair.x : draftX1 + st.candleWidth;
+      const left = Math.max(0, Math.min(draftX1, draftX2));
+      const right = Math.min(chartW, Math.max(draftX1, draftX2));
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.08)';
+      ctx.fillRect(left, 0, right - left, priceH);
+      ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(left, 0); ctx.lineTo(left, priceH);
+      ctx.moveTo(right, 0); ctx.lineTo(right, priceH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Label
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('סמן סוף איזור ←', (left + right) / 2, 30);
+    }
+
+    // ─── Wyckoff Zone Highlight (active) ───
+    if (wyckoffModeRef.current === 'active' && wyckoffZoneRef.current) {
+      const z = wyckoffZoneRef.current;
+      const zx1 = (z.startIdx - st.offsetX) * st.candleWidth;
+      const zx2 = (z.endIdx - st.offsetX + 1) * st.candleWidth;
+      const left = Math.max(0, zx1);
+      const right = Math.min(chartW, zx2);
+      if (right > 0 && left < chartW) {
+        ctx.strokeStyle = 'rgba(76, 175, 80, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(left, 0, right - left, priceH);
+        ctx.setLineDash([]);
+      }
+    }
+
     // ─── Wyckoff Overlay ───
     if (wyckoffEnabledRef.current && wyckoffRef.current) {
       const wk = wyckoffRef.current;
@@ -2886,8 +2935,12 @@ export default function PriceChartWidget() {
       const tool = drawingToolRef.current;
       const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
+      // Wyckoff selection mode: always show crosshair
+      if (wyckoffModeRef.current === 'selecting' && x < chartW && y < chartH) {
+        setCursor('crosshair');
+      }
       // Hover cursor for drawings
-      if (isCursorTool && x < chartW && y < chartH) {
+      else if (isCursorTool && x < chartW && y < chartH) {
         // Check anchor hover first for selected drawing
         if (selectedDrawingId) {
           const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
@@ -2966,6 +3019,37 @@ export default function PriceChartWidget() {
       replayBarTimestampRef.current = data[finalIdx]?.time ?? null;
       setReplayState('paused');
       scheduleRender();
+      return;
+    }
+
+    // Wyckoff: click to select zone (2 clicks = start & end of range)
+    if (wyckoffModeRef.current === 'selecting' && x < chartW && y < chartH) {
+      const st = stateRef.current;
+      const data = dataRef.current;
+      const idx = Math.round(st.offsetX + x / st.candleWidth);
+      const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+
+      if (wyckoffDraftStartRef.current === null) {
+        // First click — mark start
+        wyckoffDraftStartRef.current = clampedIdx;
+        toast.info('סמן את סוף האיזור (קליק שני)');
+        scheduleRender();
+      } else {
+        // Second click — mark end, run analysis
+        const s = Math.min(wyckoffDraftStartRef.current, clampedIdx);
+        const e = Math.max(wyckoffDraftStartRef.current, clampedIdx);
+        if (e - s < 5) {
+          toast.error('האיזור קטן מדי, סמן טווח רחב יותר');
+          wyckoffDraftStartRef.current = null;
+        } else {
+          wyckoffZoneRef.current = { startIdx: s, endIdx: e };
+          wyckoffRef.current = analyzeWyckoffZone(data, s, e);
+          wyckoffDraftStartRef.current = null;
+          setWyckoffMode('active');
+          toast.success(`ניתוח Wyckoff הופעל על ${e - s} נרות`);
+        }
+        scheduleRender();
+      }
       return;
     }
 
@@ -3535,11 +3619,20 @@ export default function PriceChartWidget() {
           </NewUIIndicatorPanel>
 
           <button
-            onClick={() => setWyckoffEnabled(v => !v)}
+            onClick={() => {
+              if (wyckoffMode === 'off') {
+                setWyckoffMode('selecting');
+                toast.info('לחץ על הגרף לסמן תחילת איזור לניתוח Wyckoff');
+              } else {
+                setWyckoffMode('off');
+              }
+            }}
             className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
-              wyckoffEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+              wyckoffMode === 'active' ? 'bg-emerald-500/15 text-emerald-400' :
+              wyckoffMode === 'selecting' ? 'bg-amber-500/15 text-amber-400 animate-pulse' :
+              'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
             }`}
-            title="Wyckoff Accumulation Indicator"
+            title="Wyckoff Accumulation — לחץ לסמן איזור לניתוח"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M2 12 L5 8 L8 10 L11 4 L14 6" />
@@ -3547,7 +3640,7 @@ export default function PriceChartWidget() {
               <circle cx="8" cy="10" r="1.2" fill="currentColor" />
               <circle cx="11" cy="4" r="1.2" fill="currentColor" />
             </svg>
-            Wyckoff
+            {wyckoffMode === 'selecting' ? 'סמן איזור…' : 'Wyckoff'}
           </button>
 
           <button
@@ -3634,20 +3727,48 @@ export default function PriceChartWidget() {
           </div>
         )}
 
+        {/* Wyckoff selecting banner */}
+        {wyckoffMode === 'selecting' && (
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] px-4 py-1.5 rounded-full pointer-events-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="font-mono">
+              {wyckoffDraftStartRef.current !== null ? 'לחץ לסמן סוף האיזור' : 'לחץ לסמן תחילת האיזור'}
+            </span>
+            <button onClick={() => setWyckoffMode('off')} className="ml-2 text-amber-400/60 hover:text-amber-400 text-[10px] underline">ביטול</button>
+          </div>
+        )}
+
         {/* Wyckoff info panel */}
-        {wyckoffEnabled && wyckoffRef.current && (wyckoffRef.current.events.length > 0 || wyckoffRef.current.currentPhase !== 'none') && (
-          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[260px] pointer-events-auto select-none">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Wyckoff Accumulation</span>
+        {wyckoffMode === 'active' && wyckoffRef.current && (
+          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[280px] pointer-events-auto select-none">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Wyckoff Accumulation</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => { setWyckoffMode('selecting'); wyckoffDraftStartRef.current = null; toast.info('סמן איזור חדש'); }}
+                  className="text-[9px] font-mono text-white/30 hover:text-white/60 px-1.5 py-0.5 rounded hover:bg-white/[0.05]"
+                  title="בחר איזור חדש"
+                >↻</button>
+                <button
+                  onClick={() => setWyckoffMode('off')}
+                  className="text-[9px] font-mono text-red-400/50 hover:text-red-400 px-1.5 py-0.5 rounded hover:bg-red-500/10"
+                  title="סגור"
+                >✕</button>
+              </div>
             </div>
             {wyckoffRef.current.currentPhase !== 'none' && (
               <div className="text-[10px] text-white/50 font-mono mb-1">
                 Phase: <span className="text-white/80 font-bold">{wyckoffRef.current.currentPhase}</span>
               </div>
             )}
-            <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
-              {wyckoffRef.current.events.slice(-6).map((ev, i) => (
+            {wyckoffRef.current.events.length === 0 && (
+              <div className="text-[9px] text-white/30 font-mono py-1">לא נמצאו אירועי Wyckoff באיזור שנבחר</div>
+            )}
+            <div className="space-y-0.5 max-h-[140px] overflow-y-auto">
+              {wyckoffRef.current.events.map((ev, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
                   <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${
                     ev.type === 'Spring' ? 'bg-green-500/20 text-green-400' :
@@ -3655,7 +3776,7 @@ export default function PriceChartWidget() {
                     ev.type === 'SOS' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-white/10 text-white/50'
                   }`}>{ev.label}</span>
-                  <span className="text-white/30 truncate">{ev.description.substring(0, 35)}…</span>
+                  <span className="text-white/30 truncate">{ev.description.substring(0, 45)}</span>
                 </div>
               ))}
             </div>
@@ -3663,7 +3784,7 @@ export default function PriceChartWidget() {
               <div className="mt-1.5 pt-1.5 border-t border-white/[0.06]">
                 {wyckoffRef.current.poes.map((poe, i) => (
                   <div key={i} className="text-[9px] font-mono text-emerald-400/80">
-                    ▸ {poe.label}: {poe.description.substring(0, 40)}…
+                    ▸ {poe.label}: {poe.description.substring(0, 45)}
                   </div>
                 ))}
               </div>
@@ -3672,7 +3793,7 @@ export default function PriceChartWidget() {
               <div className="mt-1 pt-1 border-t border-red-500/20">
                 {wyckoffRef.current.invalidations.map((inv, i) => (
                   <div key={i} className="text-[9px] font-mono text-red-400/80">
-                    ⚠ {inv.description.substring(0, 50)}…
+                    ⚠ {inv.description.substring(0, 55)}
                   </div>
                 ))}
               </div>
