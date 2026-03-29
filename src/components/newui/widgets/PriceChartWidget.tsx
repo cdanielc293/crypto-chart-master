@@ -1253,20 +1253,27 @@ export default function PriceChartWidget() {
   const [ohlcMenuOpen, setOhlcMenuOpen] = useState(false);
   const ohlcSettingsRef = useRef(ohlcSettings);
 
-  // Wyckoff indicator state
-  const [wyckoffEnabled, setWyckoffEnabled] = useState(() => localStorage.getItem('newui-wyckoff') === 'true');
+  // Wyckoff indicator state — manual zone selection
+  type WyckoffMode = 'off' | 'selecting' | 'active';
+  const [wyckoffMode, setWyckoffMode] = useState<WyckoffMode>('off');
+  const wyckoffModeRef = useRef<WyckoffMode>('off');
+  const [wyckoffEnabled, setWyckoffEnabled] = useState(false); // kept for rendering compat
   const wyckoffRef = useRef<WyckoffResult | null>(null);
-  const wyckoffEnabledRef = useRef(wyckoffEnabled);
+  const wyckoffEnabledRef = useRef(false);
+  const wyckoffZoneRef = useRef<{ startIdx: number; endIdx: number } | null>(null);
+  const wyckoffDraftStartRef = useRef<number | null>(null); // first click index during selection
+
   useEffect(() => {
-    wyckoffEnabledRef.current = wyckoffEnabled;
-    localStorage.setItem('newui-wyckoff', String(wyckoffEnabled));
-    if (wyckoffEnabled && dataRef.current.length > 50) {
-      wyckoffRef.current = analyzeWyckoff(dataRef.current);
-    } else if (!wyckoffEnabled) {
+    wyckoffModeRef.current = wyckoffMode;
+    wyckoffEnabledRef.current = wyckoffMode === 'active';
+    setWyckoffEnabled(wyckoffMode === 'active');
+    if (wyckoffMode === 'off') {
       wyckoffRef.current = null;
+      wyckoffZoneRef.current = null;
+      wyckoffDraftStartRef.current = null;
     }
     scheduleRender();
-  }, [wyckoffEnabled]);
+  }, [wyckoffMode]);
   useEffect(() => { ohlcSettingsRef.current = ohlcSettings; saveOhlcSettings(ohlcSettings); }, [ohlcSettings]);
 
   const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
