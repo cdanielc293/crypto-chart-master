@@ -2977,6 +2977,37 @@ export default function PriceChartWidget() {
       return;
     }
 
+    // Wyckoff: click to select zone (2 clicks = start & end of range)
+    if (wyckoffModeRef.current === 'selecting' && x < chartW && y < chartH) {
+      const st = stateRef.current;
+      const data = dataRef.current;
+      const idx = Math.round(st.offsetX + x / st.candleWidth);
+      const clampedIdx = Math.max(0, Math.min(data.length - 1, idx));
+
+      if (wyckoffDraftStartRef.current === null) {
+        // First click — mark start
+        wyckoffDraftStartRef.current = clampedIdx;
+        toast.info('סמן את סוף האיזור (קליק שני)');
+        scheduleRender();
+      } else {
+        // Second click — mark end, run analysis
+        const s = Math.min(wyckoffDraftStartRef.current, clampedIdx);
+        const e = Math.max(wyckoffDraftStartRef.current, clampedIdx);
+        if (e - s < 5) {
+          toast.error('האיזור קטן מדי, סמן טווח רחב יותר');
+          wyckoffDraftStartRef.current = null;
+        } else {
+          wyckoffZoneRef.current = { startIdx: s, endIdx: e };
+          wyckoffRef.current = analyzeWyckoffZone(data, s, e);
+          wyckoffDraftStartRef.current = null;
+          setWyckoffMode('active');
+          toast.success(`ניתוח Wyckoff הופעל על ${e - s} נרות`);
+        }
+        scheduleRender();
+      }
+      return;
+    }
+
     const tool = drawingToolRef.current;
     const isCursorTool = tool === 'none' || tool === 'cursor' || tool === 'dot' || tool === 'arrow_cursor';
 
