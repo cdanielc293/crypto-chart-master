@@ -501,8 +501,19 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
       }
     }
 
-    // Skip ahead past this structure
-    scan = Math.max(scan, (springIndex !== -1 ? springIndex : phaseBEnd) + 20);
+    // Register this structure to prevent overlapping detections
+    const structureEnd = springIndex !== -1 ? 
+      Math.max(springIndex + 20, phaseBEnd + 10) : 
+      phaseBEnd + 10;
+    detectedRanges.push({
+      lowPrice: supportLine,
+      highPrice: resistanceLine,
+      startIdx: scIndex,
+      endIdx: structureEnd,
+    });
+
+    // Skip ahead past this structure — much larger gap to avoid splitting consolidation
+    scan = Math.max(scan, structureEnd + 40);
   }
 
   // Determine current phase
