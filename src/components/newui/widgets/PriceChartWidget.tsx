@@ -2511,9 +2511,15 @@ export default function PriceChartWidget() {
           price: p.price + dPrice,
         }));
 
-        drawingsRef.current = drawingsRef.current.map(d =>
-          d.id === dd.id ? { ...d, points: newPoints } : d
-        );
+        drawingsRef.current = drawingsRef.current.map(d => {
+          if (d.id !== dd.id) return d;
+          const updated: any = { ...d, points: newPoints };
+          // Move stopPrice for position tools
+          if ((d.type === 'longposition' || d.type === 'shortposition') && dd.origProps?.stopPrice != null) {
+            updated.props = { ...d.props, stopPrice: dd.origProps.stopPrice + dPrice };
+          }
+          return updated;
+        });
         st.crosshair = { x, y };
         setCursor('grabbing');
       }
