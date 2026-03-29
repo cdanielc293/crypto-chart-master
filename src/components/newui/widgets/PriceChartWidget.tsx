@@ -543,8 +543,7 @@ function hitTestAnchor(
     }
   }
 
-  // For long/short position: virtual anchors for stop loss (index 20) and take profit (index 21)
-  // Hit-test against the visible TP/SL drag handle rectangles
+  // For long/short position: virtual anchors for stop loss (20), take profit (21), left-resize (22), right-resize (23)
   if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
     const isLong = d.type === 'longposition';
     const entry = d.points[0].price;
@@ -558,18 +557,26 @@ function hitTestAnchor(
     if (p0x !== null) {
       const fixedW = (d.props || {}).boxWidthPx || 280;
       const boxRight = p0x + fixedW;
-      const handleW = 50, handleH = 24; // slightly bigger hit zone than visual
+      const handleW = 50, handleH = 24;
       const yStop = priceToY(stopPrice);
       const yTP = priceToY(profit);
+      const yEntry = priceToY(entry);
+      const topY = Math.min(yEntry, yTP, yStop);
+      const bottomY = Math.max(yEntry, yTP, yStop);
+      const midY = (topY + bottomY) / 2;
       // TP handle rect
       const tpHX = boxRight - handleW - 6;
       if (mx >= tpHX && mx <= tpHX + handleW && Math.abs(my - yTP) <= handleH / 2) return 21;
       // SL handle rect
       const slHX = boxRight - handleW - 6;
       if (mx >= slHX && mx <= slHX + handleW && Math.abs(my - yStop) <= handleH / 2) return 20;
-      // Also allow dragging from the TP/SL lines themselves
+      // TP/SL line drag
       if (Math.abs(my - yTP) <= 6 && mx >= p0x && mx <= boxRight) return 21;
       if (Math.abs(my - yStop) <= 6 && mx >= p0x && mx <= boxRight) return 20;
+      // Left edge resize (vertical strip)
+      if (Math.abs(mx - p0x) <= 8 && my >= topY - 5 && my <= bottomY + 5) return 22;
+      // Right edge resize (vertical strip)
+      if (Math.abs(mx - boxRight) <= 8 && my >= topY - 5 && my <= bottomY + 5) return 23;
     }
   }
 
@@ -957,8 +964,36 @@ function renderDrawing(
     else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
     ctx.fill();
     if (d.selected) {
-      // Include SL and TP anchors in selection anchors
       renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }, { x: slMidX, y: yTP }], d.color);
+      // Resize handles on left and right edges
+      const topY = Math.min(yEntry, yTP, yStop);
+      const bottomY = Math.max(yEntry, yTP, yStop);
+      const edgeMidY = (topY + bottomY) / 2;
+      const handleH = 24, handleW2 = 6;
+      // Left edge handle
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(boxLeft - handleW2 / 2, edgeMidY - handleH / 2, handleW2, handleH, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([]);
+      ctx.stroke();
+      // Right edge handle
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(boxRight - handleW2 / 2, edgeMidY - handleH / 2, handleW2, handleH, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.stroke();
+      // Grip lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.5;
+      for (const ex of [boxLeft, boxRight]) {
+        for (let gy = -4; gy <= 4; gy += 4) {
+          ctx.beginPath();
+          ctx.moveTo(ex - 1.5, edgeMidY + gy);
+          ctx.lineTo(ex + 1.5, edgeMidY + gy);
+          ctx.stroke();
+        }
+      }
     }
     return;
   }
@@ -2472,12 +2507,37 @@ export default function PriceChartWidget() {
               newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
             }
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
-            // Virtual anchor for stop loss — update props.stopPrice
             return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 21) {
-            // Virtual anchor for take profit — update point[1].price
             newPoints[1] = { ...newPoints[1], price: point.price };
             return { ...d, points: newPoints };
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 22) {
+            // Left edge resize: move point[0].time, keep right edge fixed
+            const oldLeft = ad.origPoint.time;
+            const oldW = (d.props?.boxWidthPx || 280);
+            const h = getCoordHelpers();
+            if (h) {
+              const oldLeftX = h.timeToX(oldLeft);
+              if (oldLeftX !== null) {
+                const oldRight = oldLeftX + oldW;
+                const newLeftX = x;
+                const newW = Math.max(100, oldRight - newLeftX);
+                newPoints[0] = { ...newPoints[0], time: point.time };
+                return { ...d, points: newPoints, props: { ...d.props, boxWidthPx: newW } };
+              }
+            }
+            return d;
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 23) {
+            // Right edge resize: change boxWidthPx
+            const h = getCoordHelpers();
+            if (h) {
+              const leftX = h.timeToX(d.points[0].time);
+              if (leftX !== null) {
+                const newW = Math.max(100, x - leftX);
+                return { ...d, props: { ...d.props, boxWidthPx: newW } };
+              }
+            }
+            return d;
           }
 
           return { ...d, points: newPoints };
@@ -2557,7 +2617,7 @@ export default function PriceChartWidget() {
         if (selectedDrawingId) {
           const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
           if (anchorIdx >= 0) {
-            setCursor(anchorIdx === 20 || anchorIdx === 21 ? 'ns-resize' : 'grab');
+            setCursor(anchorIdx === 20 || anchorIdx === 21 ? 'ns-resize' : anchorIdx === 22 || anchorIdx === 23 ? 'ew-resize' : 'grab');
           } else {
             const hit = findDrawingAtPoint(x, y);
             setCursor(hit ? 'pointer' : 'crosshair');
