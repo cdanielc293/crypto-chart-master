@@ -230,7 +230,7 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     for (let j = 1; j <= Math.min(10, scan); j++) {
       if (data[scan - j].close > data[scan - j + 1].close) lowerCloses++;
     }
-    if (lowerCloses < 3) continue;
+    if (lowerCloses < 4) continue;
 
     const scIndex = scan;
     const scPrice = data[scIndex].low;
