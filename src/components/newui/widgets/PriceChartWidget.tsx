@@ -543,7 +543,7 @@ function hitTestAnchor(
     }
   }
 
-  // For long/short position: virtual anchor for stop loss (index 20)
+  // For long/short position: virtual anchors for stop loss (index 20) and take profit (index 21)
   if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
     const isLong = d.type === 'longposition';
     const entry = d.points[0].price;
@@ -558,7 +558,11 @@ function hitTestAnchor(
       const fixedW = (d.props || {}).boxWidthPx || 280;
       const midX = p0x + fixedW / 2;
       const yStop = priceToY(stopPrice);
+      const yTP = priceToY(profit);
+      // SL anchor
       if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
+      // TP anchor
+      if (Math.hypot(mx - midX, my - yTP) <= ANCHOR_RADIUS) return 21;
     }
   }
 
@@ -880,6 +884,40 @@ function renderDrawing(
     ctx.beginPath(); ctx.moveTo(boxLeft, yStop); ctx.lineTo(boxRight, yStop); ctx.stroke();
     ctx.setLineDash([]);
 
+    // ═══ Drag handles on TP and SL lines ═══
+    const handleW = 50, handleH = 18, handleR = 4;
+    const slMidX = (boxLeft + boxRight) / 2;
+
+    // TP drag handle
+    const tpHandleX = boxRight - handleW - 6;
+    const tpHandleY = yTP - handleH / 2;
+    ctx.fillStyle = 'rgba(38,166,154,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(tpHandleX, tpHandleY, handleW, handleH, handleR);
+    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('▲ TP', tpHandleX + handleW / 2, tpHandleY + 12);
+    // Grip dots
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    for (let gy = -3; gy <= 3; gy += 3) {
+      ctx.fillRect(tpHandleX + 4, tpHandleY + handleH / 2 + gy - 1, 2, 2);
+    }
+
+    // SL drag handle
+    const slHandleX = boxRight - handleW - 6;
+    const slHandleY = yStop - handleH / 2;
+    ctx.fillStyle = 'rgba(239,83,80,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(slHandleX, slHandleY, handleW, handleH, handleR);
+    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('▼ SL', slHandleX + handleW / 2, slHandleY + 12);
+    // Grip dots
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    for (let gy = -3; gy <= 3; gy += 3) {
+      ctx.fillRect(slHandleX + 4, slHandleY + handleH / 2 + gy - 1, 2, 2);
+    }
+
     // Labels
     ctx.font = '11px monospace'; ctx.textAlign = 'left';
     if (compactStats) {
@@ -912,9 +950,8 @@ function renderDrawing(
     else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
     ctx.fill();
     if (d.selected) {
-      // Include SL anchor in selection anchors
-      const slMidX = (boxLeft + boxRight) / 2;
-      renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }], d.color);
+      // Include SL and TP anchors in selection anchors
+      renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }, { x: slMidX, y: yTP }], d.color);
     }
     return;
   }
@@ -2430,6 +2467,10 @@ export default function PriceChartWidget() {
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
             // Virtual anchor for stop loss — update props.stopPrice
             return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 21) {
+            // Virtual anchor for take profit — update point[1].price
+            newPoints[1] = { ...newPoints[1], price: point.price };
+            return { ...d, points: newPoints };
           }
 
           return { ...d, points: newPoints };
