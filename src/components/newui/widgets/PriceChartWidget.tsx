@@ -3472,6 +3472,42 @@ export default function PriceChartWidget() {
             setWatchlistOpen(false);
           }}
         />
+
+        {/* OHLC Bar Settings Menu */}
+        {ohlcMenuOpen && (
+          <div
+            className="absolute bottom-12 left-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl p-3 z-[200] min-w-[180px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2 uppercase tracking-wider">Info Bar Settings</div>
+            {([
+              { key: 'showSymbol', label: 'Symbol' },
+              { key: 'showOpen', label: 'Open (O)' },
+              { key: 'showHigh', label: 'High (H)' },
+              { key: 'showLow', label: 'Low (L)' },
+              { key: 'showClose', label: 'Close (C)' },
+              { key: 'showChange', label: 'Change %' },
+              { key: 'showVolume', label: 'Volume (V)' },
+              { key: 'showCountdown', label: 'Candle Countdown' },
+            ] as { key: keyof OhlcBarSettings; label: string }[]).map(item => (
+              <label key={item.key} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-[hsl(var(--accent))] px-1 rounded text-sm text-[hsl(var(--foreground))]">
+                <input
+                  type="checkbox"
+                  checked={ohlcSettings[item.key]}
+                  onChange={() => setOhlcSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                  className="accent-[hsl(var(--primary))] w-3.5 h-3.5"
+                />
+                {item.label}
+              </label>
+            ))}
+            <button
+              onClick={() => setOhlcMenuOpen(false)}
+              className="mt-2 w-full text-xs text-center py-1 rounded bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] hover:opacity-80"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
