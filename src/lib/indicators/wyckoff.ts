@@ -183,7 +183,7 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     swingLookback = 5,
     stThreshold = 3,
     springThreshold = 1.5,
-    minPhaseBBars = 10,
+    minPhaseBBars = 15,   // increased: consolidation needs meaningful time
   } = params;
 
   if (data.length < volPeriod + swingLookback * 2 + 20) {
