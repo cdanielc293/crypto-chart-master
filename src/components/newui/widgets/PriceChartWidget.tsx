@@ -2434,7 +2434,10 @@ export default function PriceChartWidget() {
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
             // Virtual anchor for stop loss — update props.stopPrice
             return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
-          }
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 21) {
+            // Virtual anchor for take profit — update point[1].price
+            newPoints[1] = { ...newPoints[1], price: point.price };
+            return { ...d, points: newPoints };
 
           return { ...d, points: newPoints };
         });
