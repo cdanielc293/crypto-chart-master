@@ -543,8 +543,7 @@ function hitTestAnchor(
     }
   }
 
-  // For long/short position: virtual anchors for stop loss (index 20) and take profit (index 21)
-  // Hit-test against the visible TP/SL drag handle rectangles
+  // For long/short position: virtual anchors for stop loss (20), take profit (21), left-resize (22), right-resize (23)
   if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
     const isLong = d.type === 'longposition';
     const entry = d.points[0].price;
@@ -558,18 +557,26 @@ function hitTestAnchor(
     if (p0x !== null) {
       const fixedW = (d.props || {}).boxWidthPx || 280;
       const boxRight = p0x + fixedW;
-      const handleW = 50, handleH = 24; // slightly bigger hit zone than visual
+      const handleW = 50, handleH = 24;
       const yStop = priceToY(stopPrice);
       const yTP = priceToY(profit);
+      const yEntry = priceToY(entry);
+      const topY = Math.min(yEntry, yTP, yStop);
+      const bottomY = Math.max(yEntry, yTP, yStop);
+      const midY = (topY + bottomY) / 2;
       // TP handle rect
       const tpHX = boxRight - handleW - 6;
       if (mx >= tpHX && mx <= tpHX + handleW && Math.abs(my - yTP) <= handleH / 2) return 21;
       // SL handle rect
       const slHX = boxRight - handleW - 6;
       if (mx >= slHX && mx <= slHX + handleW && Math.abs(my - yStop) <= handleH / 2) return 20;
-      // Also allow dragging from the TP/SL lines themselves
+      // TP/SL line drag
       if (Math.abs(my - yTP) <= 6 && mx >= p0x && mx <= boxRight) return 21;
       if (Math.abs(my - yStop) <= 6 && mx >= p0x && mx <= boxRight) return 20;
+      // Left edge resize (vertical strip)
+      if (Math.abs(mx - p0x) <= 8 && my >= topY - 5 && my <= bottomY + 5) return 22;
+      // Right edge resize (vertical strip)
+      if (Math.abs(mx - boxRight) <= 8 && my >= topY - 5 && my <= bottomY + 5) return 23;
     }
   }
 
