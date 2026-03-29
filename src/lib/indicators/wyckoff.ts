@@ -266,6 +266,8 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     const resistanceLine = arPrice;
     const range = resistanceLine - supportLine;
     if (range <= 0) continue;
+    // Minimum range: at least 0.5% of price to filter noise
+    if (range / supportLine < 0.005) continue;
 
     // ─── Phase A: SC + AR ───
     events.push({
