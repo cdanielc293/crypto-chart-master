@@ -1501,7 +1501,7 @@ export default function PriceChartWidget() {
       const remaining = Math.max(0, barLimit - baseCandles.length);
       if (remaining === 0 || baseCandles.length === 0) return;
       const endTimeMs = baseCandles[0].time * 1000 - 1;
-      fetchOlderBTCKlines(TF_BINANCE[timeframe], remaining, endTimeMs, controller.signal)
+      fetchOlderKlines(symbol, TF_BINANCE[timeframe], remaining, endTimeMs, controller.signal)
         .then(older => {
           if (controller.signal.aborted || reqSeq !== fetchSeqRef.current || older.length === 0) return;
           const merged = [...older, ...baseCandles];
@@ -1528,7 +1528,7 @@ export default function PriceChartWidget() {
       setLoading(true);
       const tfConfig = TIMEFRAME_CONFIG[timeframe];
       getBacktestKlines(
-        'BTCUSDT',
+        symbol,
         tfConfig.interval,
         replayTs,
         12000,
@@ -1549,7 +1549,7 @@ export default function PriceChartWidget() {
           console.warn('Backtest cache failed, falling back to Binance:', err);
           // Fallback to direct Binance fetch
           const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
-          fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+          fetchKlines(symbol, TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
             .then(candles => {
               if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
               timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
@@ -1563,7 +1563,7 @@ export default function PriceChartWidget() {
 
     setLoading(true);
     const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
-    fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+    fetchKlines(symbol, TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
       .then(candles => {
         if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
         timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
@@ -1574,7 +1574,7 @@ export default function PriceChartWidget() {
       .catch(finishWithError);
 
     return () => controller.abort();
-  }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
+  }, [timeframe, symbol, planLimits, recalcIndicators, scheduleRender]);
 
   // ─── WebSocket (disabled during replay to avoid interference) ───
   useEffect(() => {
@@ -1582,7 +1582,7 @@ export default function PriceChartWidget() {
     if (replayState !== 'off') return;
 
     const binanceInterval = TF_BINANCE[timeframe];
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${binanceInterval}`);
     wsRef.current = ws;
     ws.onmessage = event => {
       try {
@@ -1604,7 +1604,7 @@ export default function PriceChartWidget() {
     };
     ws.onerror = () => console.warn('WS error');
     return () => { ws.close(); wsRef.current = null; };
-  }, [timeframe, replayState, recalcIndicators, scheduleRender]);
+  }, [timeframe, symbol, replayState, recalcIndicators, scheduleRender]);
 
   // ═══ RENDER ═══
   const render = useCallback(() => {
