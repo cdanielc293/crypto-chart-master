@@ -2589,7 +2589,7 @@ export default function PriceChartWidget() {
         if (selectedDrawingId) {
           const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
           if (anchorIdx >= 0) {
-            setCursor(anchorIdx === 20 || anchorIdx === 21 ? 'ns-resize' : 'grab');
+            setCursor(anchorIdx === 20 || anchorIdx === 21 ? 'ns-resize' : anchorIdx === 22 || anchorIdx === 23 ? 'ew-resize' : 'grab');
           } else {
             const hit = findDrawingAtPoint(x, y);
             setCursor(hit ? 'pointer' : 'crosshair');
