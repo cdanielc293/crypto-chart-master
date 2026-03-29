@@ -2551,7 +2551,7 @@ export default function PriceChartWidget() {
         if (selectedDrawingId) {
           const anchorIdx = findAnchorAtPoint(selectedDrawingId, x, y);
           if (anchorIdx >= 0) {
-            setCursor('grab');
+            setCursor(anchorIdx === 20 || anchorIdx === 21 ? 'ns-resize' : 'grab');
           } else {
             const hit = findDrawingAtPoint(x, y);
             setCursor(hit ? 'pointer' : 'crosshair');
