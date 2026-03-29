@@ -2736,6 +2736,13 @@ export default function PriceChartWidget() {
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
 
+    // Check if clicking on the OHLC gear icon
+    const gear = (window as any).__ohlcGearBounds;
+    if (gear && x >= gear.x && x <= gear.x + gear.w && y >= gear.y && y <= gear.y + gear.h) {
+      setOhlcMenuOpen(prev => !prev);
+      return;
+    }
+
     // Replay: click to select start point
     if (replayStateRef.current === 'selecting' && x < chartW && y < chartH) {
       const st = stateRef.current;
