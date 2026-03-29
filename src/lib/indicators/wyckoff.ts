@@ -183,7 +183,7 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     swingLookback = 5,
     stThreshold = 3,
     springThreshold = 1.5,
-    minPhaseBBars = 10,
+    minPhaseBBars = 15,   // increased: consolidation needs meaningful time
   } = params;
 
   if (data.length < volPeriod + swingLookback * 2 + 20) {
@@ -200,9 +200,19 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
   const invalidations: WyckoffInvalidation[] = [];
   const phaseRanges: WyckoffResult['phaseRanges'] = [];
 
-  // Find potential accumulation structures
-  // Look for Selling Climax: sharp price drop + volume peak
-  const volumePeakWindow = 30;
+  // Track detected structures to avoid overlapping detections
+  const detectedRanges: { lowPrice: number; highPrice: number; startIdx: number; endIdx: number }[] = [];
+
+  function isInsideExistingStructure(idx: number, price: number): boolean {
+    for (const r of detectedRanges) {
+      // Check if this index or price overlaps with an existing structure
+      if (idx >= r.startIdx - 10 && idx <= r.endIdx + 30) return true;
+      // Check price overlap — if the price is within the range, it's the same consolidation
+      const rangePadding = (r.highPrice - r.lowPrice) * 0.3;
+      if (price >= r.lowPrice - rangePadding && price <= r.highPrice + rangePadding && idx <= r.endIdx + 60) return true;
+    }
+    return false;
+  }
 
   for (let scan = volPeriod + swingLookback; scan < data.length - 20; scan++) {
     // ─── Find SC: swing low + climax volume + bearish candle ───
@@ -212,12 +222,15 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     if (!vsa.isClimaxVolume[scan] && !vsa.isHighVolume[scan]) continue;
     if (c.close > c.open) continue; // must be bearish or neutral
 
+    // Skip if inside an already-detected structure
+    if (isInsideExistingStructure(scan, c.low)) continue;
+
     // Check for preceding downtrend (at least 5 lower closes in last 10)
     let lowerCloses = 0;
     for (let j = 1; j <= Math.min(10, scan); j++) {
       if (data[scan - j].close > data[scan - j + 1].close) lowerCloses++;
     }
-    if (lowerCloses < 3) continue;
+    if (lowerCloses < 4) continue;
 
     const scIndex = scan;
     const scPrice = data[scIndex].low;
@@ -253,6 +266,8 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
     const resistanceLine = arPrice;
     const range = resistanceLine - supportLine;
     if (range <= 0) continue;
+    // Minimum range: at least 0.5% of price to filter noise
+    if (range / supportLine < 0.005) continue;
 
     // ─── Phase A: SC + AR ───
     events.push({
@@ -488,8 +503,19 @@ export function analyzeWyckoff(data: WyckoffCandle[], params: {
       }
     }
 
-    // Skip ahead past this structure
-    scan = Math.max(scan, (springIndex !== -1 ? springIndex : phaseBEnd) + 20);
+    // Register this structure to prevent overlapping detections
+    const structureEnd = springIndex !== -1 ? 
+      Math.max(springIndex + 20, phaseBEnd + 10) : 
+      phaseBEnd + 10;
+    detectedRanges.push({
+      lowPrice: supportLine,
+      highPrice: resistanceLine,
+      startIdx: scIndex,
+      endIdx: structureEnd,
+    });
+
+    // Skip ahead past this structure — much larger gap to avoid splitting consolidation
+    scan = Math.max(scan, structureEnd + 40);
   }
 
   // Determine current phase
