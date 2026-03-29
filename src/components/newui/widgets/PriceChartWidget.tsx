@@ -40,7 +40,7 @@ import {
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
 import type { Point } from '@/types/indicators';
-import { analyzeWyckoff, type WyckoffResult } from '@/lib/indicators/wyckoff';
+import { analyzeWyckoff, analyzeWyckoffZone, type WyckoffResult } from '@/lib/indicators/wyckoff';
 import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './NewUIChartSettings';
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
