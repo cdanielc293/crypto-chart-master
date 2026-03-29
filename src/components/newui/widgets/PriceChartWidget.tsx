@@ -2269,29 +2269,39 @@ export default function PriceChartWidget() {
       hoverIdxRef.current = data.length > 0 ? data.length - 1 : -1;
     }
 
-    // OHLCV info bar
+    // OHLCV info bar — positioned at bottom-left of chart area
+    const ohlcCfg = ohlcSettingsRef.current;
     const infoIdx = hoverIdxRef.current >= 0 && hoverIdxRef.current < data.length ? hoverIdxRef.current : data.length - 1;
     if (data[infoIdx]) {
       const c = data[infoIdx];
       const col = c.close >= c.open ? cfg.candleUp : cfg.candleDown;
       const changePct = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
-      const infoY = 4;
+      const infoY = priceH - 20;
       let lx = 8;
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText('BTC / TetherUS', lx, infoY);
-      lx += ctx.measureText('BTC / TetherUS').width + 16;
+
+      if (ohlcCfg.showSymbol) {
+        const displayName = getDisplayPair(symbolRef.current);
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(displayName, lx, infoY);
+        lx += ctx.measureText(displayName).width + 16;
+      }
 
       ctx.font = '12px Inter, sans-serif';
-      const items = [
-        { label: 'O', value: formatPrice(c.open), color: col },
-        { label: 'H', value: formatPrice(c.high), color: col },
-        { label: 'L', value: formatPrice(c.low), color: col },
-        { label: 'C', value: formatPrice(c.close), color: col },
-        { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col },
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      const items: { label: string; value: string; color: string; show: boolean }[] = [
+        { label: 'O', value: formatPrice(c.open), color: col, show: ohlcCfg.showOpen },
+        { label: 'H', value: formatPrice(c.high), color: col, show: ohlcCfg.showHigh },
+        { label: 'L', value: formatPrice(c.low), color: col, show: ohlcCfg.showLow },
+        { label: 'C', value: formatPrice(c.close), color: col, show: ohlcCfg.showClose },
+        { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col, show: ohlcCfg.showChange },
       ];
+      if (ohlcCfg.showVolume) {
+        items.push({ label: 'V', value: c.volume >= 1e6 ? `${(c.volume / 1e6).toFixed(2)}M` : c.volume >= 1e3 ? `${(c.volume / 1e3).toFixed(1)}K` : c.volume.toFixed(0), color: 'rgba(255,255,255,0.5)', show: true });
+      }
       for (const item of items) {
+        if (!item.show) continue;
         if (item.label) {
           ctx.fillStyle = 'rgba(255,255,255,0.35)';
           ctx.fillText(item.label, lx, infoY); lx += ctx.measureText(item.label).width + 4;
@@ -2299,12 +2309,48 @@ export default function PriceChartWidget() {
         ctx.fillStyle = item.color;
         ctx.fillText(item.value, lx, infoY); lx += ctx.measureText(item.value).width + 12;
       }
+
+      // Candle countdown timer
+      if (ohlcCfg.showCountdown && data.length > 0) {
+        const lastCandle = data[data.length - 1];
+        const intSec2 = intervalSecRef.current;
+        const candleEndTime = lastCandle.time + intSec2;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, candleEndTime - nowSec);
+        let countdownStr = '';
+        if (remaining >= 3600) {
+          const hrs = Math.floor(remaining / 3600);
+          const mins = Math.floor((remaining % 3600) / 60);
+          const secs = remaining % 60;
+          countdownStr = `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        } else if (remaining >= 60) {
+          const mins = Math.floor(remaining / 60);
+          const secs = remaining % 60;
+          countdownStr = `${mins}:${String(secs).padStart(2, '0')}`;
+        } else {
+          countdownStr = `0:${String(remaining).padStart(2, '0')}`;
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillText('⏱', lx, infoY); lx += ctx.measureText('⏱').width + 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(countdownStr, lx, infoY); lx += ctx.measureText(countdownStr).width + 12;
+        // Schedule re-render every second for countdown
+        if (remaining > 0) {
+          setTimeout(() => scheduleRender(), 1000);
+        }
+      }
+
+      // Gear icon for settings (⚙ at the end)
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillText('⚙', lx, infoY);
+      // Store gear position for click detection
+      (window as any).__ohlcGearBounds = { x: lx - 4, y: infoY - 4, w: ctx.measureText('⚙').width + 8, h: 20 };
     }
 
     // Indicator labels
     if (indResultsRef.current.length > 0) {
       ctx.font = '10px Inter, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      let iy = 22;
+      let iy = 4;
       for (const ind of indicatorsRef.current) {
         if (!ind.visible) continue;
         const def = getIndicator(ind.defId);
