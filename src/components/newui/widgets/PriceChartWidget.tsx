@@ -176,7 +176,7 @@ const TIMEFRAME_CACHE_TTL_MS = 60_000;
 const FAST_INITIAL_BARS = 1200;
 
 // ─── Data fetch (paginated to support plan limits beyond 1000) ───
-async function fetchBTCKlines(interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
+async function fetchKlines(symbol: string, interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
   const BINANCE_MAX = 1000;
   let allCandles: Candle[] = [];
   let endTime: number | undefined = undefined;
@@ -185,7 +185,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number, signal?: Abo
   while (remaining > 0) {
     if (signal?.aborted) break;
     const batchSize = Math.min(remaining, BINANCE_MAX);
-    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${batchSize}`;
     if (endTime !== undefined) url += `&endTime=${endTime}`;
     const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
@@ -210,7 +210,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number, signal?: Abo
   return allCandles;
 }
 
-async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTimeMs: number, signal?: AbortSignal): Promise<Candle[]> {
+async function fetchOlderKlines(symbol: string, interval: string, totalLimit: number, endTimeMs: number, signal?: AbortSignal): Promise<Candle[]> {
   const BINANCE_MAX = 1000;
   let allCandles: Candle[] = [];
   let endTime: number | undefined = endTimeMs;
@@ -219,7 +219,7 @@ async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTime
   while (remaining > 0) {
     if (signal?.aborted) break;
     const batchSize = Math.min(remaining, BINANCE_MAX);
-    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${batchSize}`;
     if (endTime !== undefined) url += `&endTime=${endTime}`;
     const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
