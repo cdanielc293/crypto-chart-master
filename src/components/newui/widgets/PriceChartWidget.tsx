@@ -3615,11 +3615,20 @@ export default function PriceChartWidget() {
           </NewUIIndicatorPanel>
 
           <button
-            onClick={() => setWyckoffEnabled(v => !v)}
+            onClick={() => {
+              if (wyckoffMode === 'off') {
+                setWyckoffMode('selecting');
+                toast.info('לחץ על הגרף לסמן תחילת איזור לניתוח Wyckoff');
+              } else {
+                setWyckoffMode('off');
+              }
+            }}
             className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
-              wyckoffEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+              wyckoffMode === 'active' ? 'bg-emerald-500/15 text-emerald-400' :
+              wyckoffMode === 'selecting' ? 'bg-amber-500/15 text-amber-400 animate-pulse' :
+              'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
             }`}
-            title="Wyckoff Accumulation Indicator"
+            title="Wyckoff Accumulation — לחץ לסמן איזור לניתוח"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M2 12 L5 8 L8 10 L11 4 L14 6" />
@@ -3627,7 +3636,7 @@ export default function PriceChartWidget() {
               <circle cx="8" cy="10" r="1.2" fill="currentColor" />
               <circle cx="11" cy="4" r="1.2" fill="currentColor" />
             </svg>
-            Wyckoff
+            {wyckoffMode === 'selecting' ? 'סמן איזור…' : 'Wyckoff'}
           </button>
 
           <button
