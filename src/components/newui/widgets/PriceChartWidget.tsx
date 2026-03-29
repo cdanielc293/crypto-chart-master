@@ -2438,6 +2438,7 @@ export default function PriceChartWidget() {
             // Virtual anchor for take profit — update point[1].price
             newPoints[1] = { ...newPoints[1], price: point.price };
             return { ...d, points: newPoints };
+          }
 
           return { ...d, points: newPoints };
         });
