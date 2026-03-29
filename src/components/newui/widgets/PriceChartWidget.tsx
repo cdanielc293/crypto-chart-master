@@ -1409,9 +1409,10 @@ export default function PriceChartWidget() {
     }
     indResultsRef.current = results;
 
-    // Recalc Wyckoff if enabled
-    if (wyckoffEnabledRef.current && data.length > 50) {
-      wyckoffRef.current = analyzeWyckoff(data);
+    // Recalc Wyckoff if zone is active
+    if (wyckoffModeRef.current === 'active' && wyckoffZoneRef.current && data.length > 10) {
+      const z = wyckoffZoneRef.current;
+      wyckoffRef.current = analyzeWyckoffZone(data, z.startIdx, z.endIdx);
     }
 
     scheduleRender();
