@@ -1188,7 +1188,7 @@ export default function PriceChartWidget() {
   const draftPointsRef = useRef<DrawingPoint[]>([]);
   const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
-  const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
+  const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[]; origProps?: Record<string, any> } | null>(null);
   const anchorDragRef = useRef<{ id: string; anchorIndex: number; startMx: number; startMy: number; origPoint: DrawingPoint } | null>(null);
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -2511,9 +2511,15 @@ export default function PriceChartWidget() {
           price: p.price + dPrice,
         }));
 
-        drawingsRef.current = drawingsRef.current.map(d =>
-          d.id === dd.id ? { ...d, points: newPoints } : d
-        );
+        drawingsRef.current = drawingsRef.current.map(d => {
+          if (d.id !== dd.id) return d;
+          const updated: any = { ...d, points: newPoints };
+          // Move stopPrice for position tools
+          if ((d.type === 'longposition' || d.type === 'shortposition') && dd.origProps?.stopPrice != null) {
+            updated.props = { ...d.props, stopPrice: dd.origProps.stopPrice + dPrice };
+          }
+          return updated;
+        });
         st.crosshair = { x, y };
         setCursor('grabbing');
       }
@@ -2660,6 +2666,7 @@ export default function PriceChartWidget() {
             startMx: x,
             startMy: y,
             origPoints: hit.points.map(p => ({ ...p })),
+            origProps: hit.props ? { ...hit.props } : undefined,
           };
           setCursor('grabbing');
         }
