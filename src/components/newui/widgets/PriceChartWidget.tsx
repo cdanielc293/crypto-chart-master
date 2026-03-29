@@ -40,6 +40,7 @@ import {
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
 import type { Point } from '@/types/indicators';
+import { analyzeWyckoff, type WyckoffResult } from '@/lib/indicators/wyckoff';
 import NewUIChartSettings, { type ChartConfig, DEFAULT_CHART_CONFIG } from './NewUIChartSettings';
 import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel';
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
@@ -1251,6 +1252,21 @@ export default function PriceChartWidget() {
   const [ohlcSettings, setOhlcSettings] = useState<OhlcBarSettings>(loadOhlcSettings);
   const [ohlcMenuOpen, setOhlcMenuOpen] = useState(false);
   const ohlcSettingsRef = useRef(ohlcSettings);
+
+  // Wyckoff indicator state
+  const [wyckoffEnabled, setWyckoffEnabled] = useState(() => localStorage.getItem('newui-wyckoff') === 'true');
+  const wyckoffRef = useRef<WyckoffResult | null>(null);
+  const wyckoffEnabledRef = useRef(wyckoffEnabled);
+  useEffect(() => {
+    wyckoffEnabledRef.current = wyckoffEnabled;
+    localStorage.setItem('newui-wyckoff', String(wyckoffEnabled));
+    if (wyckoffEnabled && dataRef.current.length > 50) {
+      wyckoffRef.current = analyzeWyckoff(dataRef.current);
+    } else if (!wyckoffEnabled) {
+      wyckoffRef.current = null;
+    }
+    scheduleRender();
+  }, [wyckoffEnabled]);
   useEffect(() => { ohlcSettingsRef.current = ohlcSettings; saveOhlcSettings(ohlcSettings); }, [ohlcSettings]);
 
   const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
