@@ -3742,7 +3742,7 @@ export default function PriceChartWidget() {
 
         {/* Wyckoff info panel */}
         {wyckoffMode === 'active' && wyckoffRef.current && (
-          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[280px] pointer-events-auto select-none">
+          <div className="absolute bottom-12 right-2 z-20 bg-[#0a1628]/90 backdrop-blur-md border border-white/[0.08] rounded-lg p-2.5 max-w-[300px] pointer-events-auto select-none max-h-[60vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -3761,41 +3761,90 @@ export default function PriceChartWidget() {
                 >✕</button>
               </div>
             </div>
-            {wyckoffRef.current.currentPhase !== 'none' && (
-              <div className="text-[10px] text-white/50 font-mono mb-1">
-                Phase: <span className="text-white/80 font-bold">{wyckoffRef.current.currentPhase}</span>
-              </div>
-            )}
-            {wyckoffRef.current.events.length === 0 && (
-              <div className="text-[9px] text-white/30 font-mono py-1">לא נמצאו אירועי Wyckoff באיזור שנבחר</div>
-            )}
-            <div className="space-y-0.5 max-h-[140px] overflow-y-auto">
-              {wyckoffRef.current.events.map((ev, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[9px] font-mono">
-                  <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${
-                    ev.type === 'Spring' ? 'bg-green-500/20 text-green-400' :
-                    ev.type === 'SC' ? 'bg-red-500/20 text-red-400' :
-                    ev.type === 'SOS' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-white/10 text-white/50'
-                  }`}>{ev.label}</span>
-                  <span className="text-white/30 truncate">{ev.description.substring(0, 45)}</span>
-                </div>
-              ))}
-            </div>
-            {wyckoffRef.current.poes.length > 0 && (
-              <div className="mt-1.5 pt-1.5 border-t border-white/[0.06]">
-                {wyckoffRef.current.poes.map((poe, i) => (
-                  <div key={i} className="text-[9px] font-mono text-emerald-400/80">
-                    ▸ {poe.label}: {poe.description.substring(0, 45)}
+
+            {/* Phase progress with strength bars */}
+            {wyckoffRef.current.phaseRanges.length > 0 && (
+              <div className="mb-2 space-y-1">
+                {wyckoffRef.current.phaseRanges.map((pr, i) => (
+                  <div key={i} className="bg-white/[0.03] rounded px-2 py-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[9px] font-mono font-bold ${
+                        pr.phase === 'A' ? 'text-red-400' :
+                        pr.phase === 'B' ? 'text-amber-400' :
+                        pr.phase === 'C' ? 'text-green-400' :
+                        'text-blue-400'
+                      }`}>Phase {pr.phase}</span>
+                      {pr.strength && (
+                        <span className={`text-[8px] font-mono px-1 rounded ${
+                          pr.strength.dominant === 'buyers' ? 'bg-green-500/15 text-green-400' :
+                          pr.strength.dominant === 'sellers' ? 'bg-red-500/15 text-red-400' :
+                          'bg-white/5 text-white/40'
+                        }`}>
+                          {pr.strength.dominant === 'buyers' ? '🟢 קונים' :
+                           pr.strength.dominant === 'sellers' ? '🔴 מוכרים' : '⚪ שוויון'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[8px] text-white/30 font-mono mt-0.5">{pr.description}</div>
+                    {pr.strength && (
+                      <div className="mt-1">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500/60 rounded-full" style={{ width: `${pr.strength.buyers}%` }} />
+                          </div>
+                          <span className="text-[7px] font-mono text-white/20 w-6 text-right">{pr.strength.buyers}%</span>
+                        </div>
+                        <div className="text-[7px] text-white/20 font-mono mt-0.5">{pr.strength.detail}</div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+
+            {wyckoffRef.current.events.length === 0 && wyckoffRef.current.phaseRanges.length === 0 && (
+              <div className="text-[9px] text-white/30 font-mono py-1">לא נמצאו אירועי Wyckoff באיזור שנבחר. נסה לסמן איזור דשדוש ברור יותר.</div>
+            )}
+
+            {/* Events list */}
+            {wyckoffRef.current.events.length > 0 && (
+              <div className="space-y-0.5 mb-1">
+                <div className="text-[8px] text-white/20 font-mono uppercase tracking-wider mb-0.5">אירועים</div>
+                {wyckoffRef.current.events.map((ev, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[9px] font-mono">
+                    <span className={`px-1 py-0.5 rounded text-[8px] font-bold shrink-0 ${
+                      ev.type === 'Spring' ? 'bg-green-500/20 text-green-400' :
+                      ev.type === 'SC' ? 'bg-red-500/20 text-red-400' :
+                      ev.type === 'SOS' ? 'bg-blue-500/20 text-blue-400' :
+                      ev.type === 'AR' ? 'bg-teal-500/20 text-teal-400' :
+                      ev.type === 'UA' ? 'bg-purple-500/20 text-purple-400' :
+                      ev.type === 'LPS' || ev.type === 'BU' ? 'bg-blue-500/15 text-blue-400' :
+                      'bg-white/10 text-white/50'
+                    }`}>{ev.label}</span>
+                    <span className="text-white/35 leading-tight">{ev.description}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* POE signals */}
+            {wyckoffRef.current.poes.length > 0 && (
+              <div className="pt-1.5 border-t border-white/[0.06]">
+                <div className="text-[8px] text-emerald-400/50 font-mono uppercase tracking-wider mb-0.5">נקודות כניסה</div>
+                {wyckoffRef.current.poes.map((poe, i) => (
+                  <div key={i} className="text-[9px] font-mono text-emerald-400/80 mb-0.5">
+                    ▸ {poe.label}: {poe.description}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Invalidations */}
             {wyckoffRef.current.invalidations.length > 0 && (
               <div className="mt-1 pt-1 border-t border-red-500/20">
                 {wyckoffRef.current.invalidations.map((inv, i) => (
                   <div key={i} className="text-[9px] font-mono text-red-400/80">
-                    ⚠ {inv.description.substring(0, 55)}
+                    ⚠ {inv.description}
                   </div>
                 ))}
               </div>
