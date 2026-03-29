@@ -964,8 +964,36 @@ function renderDrawing(
     else { ctx.moveTo(boxLeft - 8, yEntry - 4); ctx.lineTo(boxLeft - 4, yEntry + 4); ctx.lineTo(boxLeft, yEntry - 4); }
     ctx.fill();
     if (d.selected) {
-      // Include SL and TP anchors in selection anchors
       renderSelectionAnchors(ctx, [...pts, { x: slMidX, y: yStop }, { x: slMidX, y: yTP }], d.color);
+      // Resize handles on left and right edges
+      const topY = Math.min(yEntry, yTP, yStop);
+      const bottomY = Math.max(yEntry, yTP, yStop);
+      const edgeMidY = (topY + bottomY) / 2;
+      const handleH = 24, handleW2 = 6;
+      // Left edge handle
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(boxLeft - handleW2 / 2, edgeMidY - handleH / 2, handleW2, handleH, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([]);
+      ctx.stroke();
+      // Right edge handle
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.roundRect(boxRight - handleW2 / 2, edgeMidY - handleH / 2, handleW2, handleH, 3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.stroke();
+      // Grip lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.5;
+      for (const ex of [boxLeft, boxRight]) {
+        for (let gy = -4; gy <= 4; gy += 4) {
+          ctx.beginPath();
+          ctx.moveTo(ex - 1.5, edgeMidY + gy);
+          ctx.lineTo(ex + 1.5, edgeMidY + gy);
+          ctx.stroke();
+        }
+      }
     }
     return;
   }
