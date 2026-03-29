@@ -3,6 +3,7 @@
 // Fully isolated from Classic view.
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { getDisplayPair } from '@/lib/symbolUtils';
 import { useProfile } from '@/hooks/useProfile';
 import { getPlanLimits, clampReplayTimestamp } from '@/lib/planLimits';
 import type { Interval } from '@/types/chart';
@@ -165,6 +166,36 @@ const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; 
   '1D': { label: '1D', intervalSec: 86400, interval: '1d' },
   '1W': { label: '1W', intervalSec: 604800, interval: '1w' },
 };
+
+// ─── OHLC Bar Settings ───
+interface OhlcBarSettings {
+  showSymbol: boolean;
+  showOpen: boolean;
+  showHigh: boolean;
+  showLow: boolean;
+  showClose: boolean;
+  showChange: boolean;
+  showCountdown: boolean;
+  showVolume: boolean;
+}
+
+const DEFAULT_OHLC_SETTINGS: OhlcBarSettings = {
+  showSymbol: true, showOpen: true, showHigh: true,
+  showLow: true, showClose: true, showChange: true,
+  showCountdown: true, showVolume: false,
+};
+
+function loadOhlcSettings(): OhlcBarSettings {
+  try {
+    const raw = localStorage.getItem('newui-ohlc-settings');
+    if (raw) return { ...DEFAULT_OHLC_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_OHLC_SETTINGS };
+}
+
+function saveOhlcSettings(s: OhlcBarSettings) {
+  localStorage.setItem('newui-ohlc-settings', JSON.stringify(s));
+}
 
 // ─── Constants ───
 const PRICE_W = 90;
@@ -1217,6 +1248,10 @@ export default function PriceChartWidget() {
 
   const [config, setConfig] = useState<ChartConfig>(loadConfig);
   const [indicators, setIndicators] = useState<ActiveIndicator[]>(loadIndicators);
+  const [ohlcSettings, setOhlcSettings] = useState<OhlcBarSettings>(loadOhlcSettings);
+  const [ohlcMenuOpen, setOhlcMenuOpen] = useState(false);
+  const ohlcSettingsRef = useRef(ohlcSettings);
+  useEffect(() => { ohlcSettingsRef.current = ohlcSettings; saveOhlcSettings(ohlcSettings); }, [ohlcSettings]);
 
   const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
   const drawingsRef = useRef<WidgetDrawing[]>(initialDrawingsRef.current);
@@ -2234,29 +2269,39 @@ export default function PriceChartWidget() {
       hoverIdxRef.current = data.length > 0 ? data.length - 1 : -1;
     }
 
-    // OHLCV info bar
+    // OHLCV info bar — positioned at bottom-left of chart area
+    const ohlcCfg = ohlcSettingsRef.current;
     const infoIdx = hoverIdxRef.current >= 0 && hoverIdxRef.current < data.length ? hoverIdxRef.current : data.length - 1;
     if (data[infoIdx]) {
       const c = data[infoIdx];
       const col = c.close >= c.open ? cfg.candleUp : cfg.candleDown;
       const changePct = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
-      const infoY = 4;
+      const infoY = priceH - 20;
       let lx = 8;
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText('BTC / TetherUS', lx, infoY);
-      lx += ctx.measureText('BTC / TetherUS').width + 16;
+
+      if (ohlcCfg.showSymbol) {
+        const displayName = getDisplayPair(symbolRef.current);
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(displayName, lx, infoY);
+        lx += ctx.measureText(displayName).width + 16;
+      }
 
       ctx.font = '12px Inter, sans-serif';
-      const items = [
-        { label: 'O', value: formatPrice(c.open), color: col },
-        { label: 'H', value: formatPrice(c.high), color: col },
-        { label: 'L', value: formatPrice(c.low), color: col },
-        { label: 'C', value: formatPrice(c.close), color: col },
-        { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col },
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      const items: { label: string; value: string; color: string; show: boolean }[] = [
+        { label: 'O', value: formatPrice(c.open), color: col, show: ohlcCfg.showOpen },
+        { label: 'H', value: formatPrice(c.high), color: col, show: ohlcCfg.showHigh },
+        { label: 'L', value: formatPrice(c.low), color: col, show: ohlcCfg.showLow },
+        { label: 'C', value: formatPrice(c.close), color: col, show: ohlcCfg.showClose },
+        { label: '', value: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`, color: col, show: ohlcCfg.showChange },
       ];
+      if (ohlcCfg.showVolume) {
+        items.push({ label: 'V', value: c.volume >= 1e6 ? `${(c.volume / 1e6).toFixed(2)}M` : c.volume >= 1e3 ? `${(c.volume / 1e3).toFixed(1)}K` : c.volume.toFixed(0), color: 'rgba(255,255,255,0.5)', show: true });
+      }
       for (const item of items) {
+        if (!item.show) continue;
         if (item.label) {
           ctx.fillStyle = 'rgba(255,255,255,0.35)';
           ctx.fillText(item.label, lx, infoY); lx += ctx.measureText(item.label).width + 4;
@@ -2264,12 +2309,48 @@ export default function PriceChartWidget() {
         ctx.fillStyle = item.color;
         ctx.fillText(item.value, lx, infoY); lx += ctx.measureText(item.value).width + 12;
       }
+
+      // Candle countdown timer
+      if (ohlcCfg.showCountdown && data.length > 0) {
+        const lastCandle = data[data.length - 1];
+        const intSec2 = intervalSecRef.current;
+        const candleEndTime = lastCandle.time + intSec2;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, candleEndTime - nowSec);
+        let countdownStr = '';
+        if (remaining >= 3600) {
+          const hrs = Math.floor(remaining / 3600);
+          const mins = Math.floor((remaining % 3600) / 60);
+          const secs = remaining % 60;
+          countdownStr = `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        } else if (remaining >= 60) {
+          const mins = Math.floor(remaining / 60);
+          const secs = remaining % 60;
+          countdownStr = `${mins}:${String(secs).padStart(2, '0')}`;
+        } else {
+          countdownStr = `0:${String(remaining).padStart(2, '0')}`;
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillText('⏱', lx, infoY); lx += ctx.measureText('⏱').width + 4;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(countdownStr, lx, infoY); lx += ctx.measureText(countdownStr).width + 12;
+        // Schedule re-render every second for countdown
+        if (remaining > 0) {
+          setTimeout(() => scheduleRender(), 1000);
+        }
+      }
+
+      // Gear icon for settings (⚙ at the end)
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillText('⚙', lx, infoY);
+      // Store gear position for click detection
+      (window as any).__ohlcGearBounds = { x: lx - 4, y: infoY - 4, w: ctx.measureText('⚙').width + 8, h: 20 };
     }
 
     // Indicator labels
     if (indResultsRef.current.length > 0) {
       ctx.font = '10px Inter, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      let iy = 22;
+      let iy = 4;
       for (const ind of indicatorsRef.current) {
         if (!ind.visible) continue;
         const def = getIndicator(ind.defId);
@@ -2654,6 +2735,13 @@ export default function PriceChartWidget() {
     if (!container) return;
     const chartW = container.clientWidth - PRICE_W;
     const chartH = container.clientHeight - TIME_H;
+
+    // Check if clicking on the OHLC gear icon
+    const gear = (window as any).__ohlcGearBounds;
+    if (gear && x >= gear.x && x <= gear.x + gear.w && y >= gear.y && y <= gear.y + gear.h) {
+      setOhlcMenuOpen(prev => !prev);
+      return;
+    }
 
     // Replay: click to select start point
     if (replayStateRef.current === 'selecting' && x < chartW && y < chartH) {
@@ -3384,6 +3472,42 @@ export default function PriceChartWidget() {
             setWatchlistOpen(false);
           }}
         />
+
+        {/* OHLC Bar Settings Menu */}
+        {ohlcMenuOpen && (
+          <div
+            className="absolute bottom-12 left-2 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-xl p-3 z-[200] min-w-[180px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2 uppercase tracking-wider">Info Bar Settings</div>
+            {([
+              { key: 'showSymbol', label: 'Symbol' },
+              { key: 'showOpen', label: 'Open (O)' },
+              { key: 'showHigh', label: 'High (H)' },
+              { key: 'showLow', label: 'Low (L)' },
+              { key: 'showClose', label: 'Close (C)' },
+              { key: 'showChange', label: 'Change %' },
+              { key: 'showVolume', label: 'Volume (V)' },
+              { key: 'showCountdown', label: 'Candle Countdown' },
+            ] as { key: keyof OhlcBarSettings; label: string }[]).map(item => (
+              <label key={item.key} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-[hsl(var(--accent))] px-1 rounded text-sm text-[hsl(var(--foreground))]">
+                <input
+                  type="checkbox"
+                  checked={ohlcSettings[item.key]}
+                  onChange={() => setOhlcSettings(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                  className="accent-[hsl(var(--primary))] w-3.5 h-3.5"
+                />
+                {item.label}
+              </label>
+            ))}
+            <button
+              onClick={() => setOhlcMenuOpen(false)}
+              className="mt-2 w-full text-xs text-center py-1 rounded bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] hover:opacity-80"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
