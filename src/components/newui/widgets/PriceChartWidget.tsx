@@ -2660,6 +2660,7 @@ export default function PriceChartWidget() {
             startMx: x,
             startMy: y,
             origPoints: hit.points.map(p => ({ ...p })),
+            origProps: hit.props ? { ...hit.props } : undefined,
           };
           setCursor('grabbing');
         }
