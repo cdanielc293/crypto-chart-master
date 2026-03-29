@@ -1104,6 +1104,12 @@ export default function PriceChartWidget() {
   const userPlan = profile?.plan ?? 'start';
   const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
 
+  // Dynamic symbol support
+  const [symbol, setSymbol] = useState('BTCUSDT');
+  const symbolRef = useRef('BTCUSDT');
+  useEffect(() => { symbolRef.current = symbol; }, [symbol]);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [chartType, setChartType] = useState<NewUIChartType>('candles');
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
