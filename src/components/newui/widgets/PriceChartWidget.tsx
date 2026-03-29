@@ -2250,19 +2250,21 @@ export default function PriceChartWidget() {
         }
       }
 
-      // Support & Resistance zones
+      // Support & Resistance zones (dynamic / sloped)
       for (const zone of wk.zones) {
-        const y = priceToY(zone.price);
-        if (y < -20 || y > priceH + 20) continue;
+        const y1 = priceToY(zone.price);
+        const y2 = priceToY(zone.priceEnd ?? zone.price);
         const x1 = timeToX(zone.startTime);
         const x2 = timeToX(zone.endTime);
         if (x1 === null || x2 === null) continue;
+        if (y1 < -50 && y2 < -50) continue;
+        if (y1 > priceH + 50 && y2 > priceH + 50) continue;
         ctx.setLineDash([6, 4]);
         ctx.strokeStyle = zone.type === 'support' ? 'rgba(76,175,80,0.5)' : 'rgba(239,83,80,0.5)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(Math.max(0, x1), y);
-        ctx.lineTo(Math.min(chartW, x2), y);
+        ctx.moveTo(Math.max(0, x1), y1);
+        ctx.lineTo(Math.min(chartW, x2), y2);
         ctx.stroke();
         ctx.setLineDash([]);
         // Zone label
@@ -2270,7 +2272,7 @@ export default function PriceChartWidget() {
         ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
         ctx.fillStyle = zone.type === 'support' ? 'rgba(76,175,80,0.6)' : 'rgba(239,83,80,0.6)';
         const zx = Math.max(4, x1);
-        if (zx < chartW - 40) ctx.fillText(zone.label, zx, y - 3);
+        if (zx < chartW - 40) ctx.fillText(zone.label, zx, y1 - 3);
       }
 
       // Events: labels on chart
