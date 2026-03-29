@@ -1188,7 +1188,7 @@ export default function PriceChartWidget() {
   const draftPointsRef = useRef<DrawingPoint[]>([]);
   const [drawingsCount, setDrawingsCount] = useState(initialDrawingsRef.current.length);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
-  const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[] } | null>(null);
+  const dragDrawingRef = useRef<{ id: string; startMx: number; startMy: number; origPoints: DrawingPoint[]; origProps?: Record<string, any> } | null>(null);
   const anchorDragRef = useRef<{ id: string; anchorIndex: number; startMx: number; startMy: number; origPoint: DrawingPoint } | null>(null);
   const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(null);
 
