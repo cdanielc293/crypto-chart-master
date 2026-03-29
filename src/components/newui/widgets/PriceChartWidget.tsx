@@ -43,6 +43,7 @@ import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
+import NewUIWatchlist from './NewUIWatchlist';
 import DrawingSettingsDialog from '@/components/chart/DrawingSettingsDialog';
 import type { Drawing } from '@/types/chart';
 
@@ -3155,9 +3156,20 @@ export default function PriceChartWidget() {
           </button>
         </div>
 
+        {/* Watchlist toggle button — top-left */}
+        <button
+          onClick={() => setWatchlistOpen(v => !v)}
+          className={`absolute top-1.5 left-2 z-20 flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors pointer-events-auto ${
+            watchlistOpen ? 'bg-cyan-500/10 text-cyan-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+          }`}
+          title="Watchlist"
+        >
+          <List size={12} />
+        </button>
+
         {/* Status badges */}
         <div className="absolute top-1.5 right-[94px] flex items-center gap-2 pointer-events-none z-10">
-          <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}</span>
+          <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">{symbol.replace('USDT', '')}/USDT • {TIMEFRAME_CONFIG[timeframe].label}</span>
           {loading && <Loader2 size={12} className="animate-spin text-white/20" />}
         </div>
 
@@ -3242,6 +3254,18 @@ export default function PriceChartWidget() {
             if (settingsDrawingId) {
               updateDrawing(settingsDrawingId, updates);
             }
+          }}
+        />
+
+        {/* Watchlist panel */}
+        <NewUIWatchlist
+          open={watchlistOpen}
+          onClose={() => setWatchlistOpen(false)}
+          activeSymbol={symbol}
+          onSelectSymbol={(sym) => {
+            setSymbol(sym);
+            timeframeCacheRef.current.clear();
+            setWatchlistOpen(false);
           }}
         />
       </div>
