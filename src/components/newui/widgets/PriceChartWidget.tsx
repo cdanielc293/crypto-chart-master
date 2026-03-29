@@ -2239,7 +2239,7 @@ export default function PriceChartWidget() {
         if (py < -30 || py > priceH + 30) continue;
 
         const col = eventColors[ev.type] ?? '#ffffff';
-        const isBottom = ['SC', 'ST', 'Spring', 'Test', 'StoppingAction'].includes(ev.type);
+        const isBottom = ['SC', 'ST', 'Spring', 'Test', 'LPS', 'PS', 'BU'].includes(ev.type);
         const labelY = isBottom ? py + 14 : py - 14;
 
         // Draw marker
