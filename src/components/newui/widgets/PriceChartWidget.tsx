@@ -543,7 +543,7 @@ function hitTestAnchor(
     }
   }
 
-  // For long/short position: virtual anchor for stop loss (index 20)
+  // For long/short position: virtual anchors for stop loss (index 20) and take profit (index 21)
   if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
     const isLong = d.type === 'longposition';
     const entry = d.points[0].price;
@@ -558,7 +558,11 @@ function hitTestAnchor(
       const fixedW = (d.props || {}).boxWidthPx || 280;
       const midX = p0x + fixedW / 2;
       const yStop = priceToY(stopPrice);
+      const yTP = priceToY(profit);
+      // SL anchor
       if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
+      // TP anchor
+      if (Math.hypot(mx - midX, my - yTP) <= ANCHOR_RADIUS) return 21;
     }
   }
 
