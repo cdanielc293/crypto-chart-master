@@ -1391,10 +1391,40 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   ctx.beginPath(); ctx.moveTo(boxLeft, yStop); ctx.lineTo(boxRight, yStop); ctx.stroke();
   ctx.setLineDash([]);
 
+  // ═══ Drag handles on TP and SL lines ═══
+  const handleW = 50, handleH = 18, handleR = 4;
+
+  // TP drag handle
+  const tpHandleX = boxRight - handleW - 6;
+  const tpHandleY = yTP - handleH / 2;
+  ctx.fillStyle = 'rgba(38,166,154,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(tpHandleX, tpHandleY, handleW, handleH, handleR);
+  ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('▲ TP', tpHandleX + handleW / 2, tpHandleY + 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  for (let gy = -3; gy <= 3; gy += 3) {
+    ctx.fillRect(tpHandleX + 4, tpHandleY + handleH / 2 + gy - 1, 2, 2);
+  }
+
+  // SL drag handle
+  const slHandleX = boxRight - handleW - 6;
+  const slHandleY = yStop - handleH / 2;
+  ctx.fillStyle = 'rgba(239,83,80,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(slHandleX, slHandleY, handleW, handleH, handleR);
+  ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('▼ SL', slHandleX + handleW / 2, slHandleY + 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  for (let gy = -3; gy <= 3; gy += 3) {
+    ctx.fillRect(slHandleX + 4, slHandleY + handleH / 2 + gy - 1, 2, 2);
+  }
+
   // ── Labels ──
   const fmt = (n: number, dec = 2) => {
     if (Math.abs(n) >= 1) return n.toFixed(dec);
-    // For very small prices (crypto sub-cents)
     return n.toPrecision(4);
   };
   const sign = (n: number) => n >= 0 ? '+' : '';
@@ -1403,7 +1433,6 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
   ctx.textAlign = 'left';
 
   if (compactStats) {
-    // Compact mode: minimal labels
     ctx.fillStyle = blueColor;
     ctx.fillText(`${fmt(entry)}`, boxLeft + 6, yEntry - 5);
 
@@ -1413,41 +1442,32 @@ const renderPosition: Renderer = (ctx, d, coord, w) => {
     ctx.fillStyle = redColor;
     ctx.fillText(`SL ${fmt(stopPrice)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, yStop + (yStop > yEntry ? 14 : -5));
   } else {
-    // Full labels like TradingView
-
-    // Entry label
     ctx.fillStyle = blueColor;
     ctx.fillText(`Entry: ${fmt(entry)}`, boxLeft + 6, yEntry - 5);
 
-    // Position size & qty (right side of entry line)
     ctx.textAlign = 'right';
     ctx.fillStyle = '#d1d4dc';
     ctx.fillText(`Qty: ${qty.toFixed(4)}  |  Pos: $${(qty * entry * lotSize).toFixed(2)}`, boxRight - 6, yEntry - 5);
     ctx.textAlign = 'left';
 
-    // TP label (in TP zone)
     const tpLabelY = yTP + (yTP < yEntry ? -5 : 14);
     ctx.fillStyle = greenColor;
     ctx.fillText(`Target: ${fmt(profit)}  ${sign(tpPriceOffset)}${fmt(tpPriceOffset)} (${sign(tpPctOffset)}${tpPctOffset.toFixed(2)}%)`, boxLeft + 6, tpLabelY);
-    // P&L and balance at TP
     const tpInfoY = yTP + (yTP < yEntry ? -18 : 27);
     ctx.fillStyle = '#d1d4dc';
     ctx.font = '10px monospace';
     ctx.fillText(`P&L: ${sign(pnlTP)}$${Math.abs(pnlTP).toFixed(2)}  |  Bal: $${balTP.toFixed(2)}`, boxLeft + 6, tpInfoY);
     ctx.font = '11px monospace';
 
-    // SL label (in SL zone)
     const slLabelY = yStop + (yStop > yEntry ? 14 : -5);
     ctx.fillStyle = redColor;
     ctx.fillText(`Stop: ${fmt(stopPrice)}  ${sign(-slPriceOffset)}${fmt(-slPriceOffset)} (${sign(-slPctOffset)}${(-slPctOffset).toFixed(2)}%)`, boxLeft + 6, slLabelY);
-    // P&L and balance at SL
     const slInfoY = yStop + (yStop > yEntry ? 27 : -18);
     ctx.fillStyle = '#d1d4dc';
     ctx.font = '10px monospace';
     ctx.fillText(`P&L: ${sign(pnlSL)}$${Math.abs(pnlSL).toFixed(2)}  |  Bal: $${balSL.toFixed(2)}`, boxLeft + 6, slInfoY);
     ctx.font = '11px monospace';
 
-    // R/R ratio in center of TP zone
     const rrY = (yEntry + yTP) / 2;
     ctx.fillStyle = '#d1d4dc';
     ctx.textAlign = 'right';
@@ -2147,7 +2167,7 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
     }
   }
 
-  // For long/short position, add a virtual anchor for the stop loss line
+  // For long/short position, add virtual anchors for stop loss and take profit
   if ((drawing.type === 'longposition' || drawing.type === 'shortposition') && drawing.points.length >= 2) {
     const isLong = drawing.type === 'longposition';
     const entry = drawing.points[0].price;
@@ -2160,10 +2180,14 @@ export function getAnchors(drawing: ChartDrawing, coord: CoordHelper): AnchorPoi
     const p1 = toXY(coord, drawing.points[0].time, drawing.points[0].price);
     if (p1) {
       const fixedW = props.boxWidthPx || 280;
+      const midX = p1.x + fixedW / 2;
       const yStop = coord.priceToY(stopPrice);
+      const yTP = coord.priceToY(profit);
       if (yStop !== null) {
-        const midX = p1.x + fixedW / 2;
         baseAnchors.push({ x: midX, y: yStop, pointIndex: 20 });
+      }
+      if (yTP !== null) {
+        baseAnchors.push({ x: midX, y: yTP, pointIndex: 21 });
       }
     }
   }
