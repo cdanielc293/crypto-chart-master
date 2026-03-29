@@ -2228,7 +2228,7 @@ export default function PriceChartWidget() {
       const eventColors: Record<string, string> = {
         SC: '#ef5350', AR: '#26a69a', ST: '#ff9800', UA: '#e040fb',
         Spring: '#4caf50', Test: '#66bb6a', SOS: '#2196f3', BU: '#42a5f5',
-        StoppingAction: '#ff5722', EaseOfMovement: '#00bcd4',
+        LPS: '#42a5f5', PS: '#ff9800',
       };
       for (const ev of wk.events) {
         const dataIdx = data.findIndex(c => c.time === ev.time);
