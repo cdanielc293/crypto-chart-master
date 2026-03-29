@@ -317,17 +317,15 @@ export default function TopToolbar() {
 
         <div className="w-px h-5 bg-chart-border mx-1" />
 
-        {/* Bar Replay */}
+        {/* Bar Replay — disabled / coming soon */}
         <button
-          onClick={() => setReplayState(replayState === 'off' ? 'selecting' : 'off')}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[13px] transition-colors ${
-            replayState !== 'off'
-              ? 'bg-primary/20 text-primary'
-              : 'text-muted-foreground hover:bg-toolbar-hover hover:text-foreground'
-          }`}
+          disabled
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[13px] text-muted-foreground/40 cursor-not-allowed"
+          title="Bar Replay — coming soon"
         >
           <Rewind size={16} />
           <span>Replay</span>
+          <span className="ml-0.5 text-[9px] uppercase tracking-wider font-semibold text-primary/60 bg-primary/10 px-1.5 py-0.5 rounded">Soon</span>
         </button>
 
         <div className="w-px h-5 bg-chart-border mx-1" />

@@ -3139,13 +3139,13 @@ export default function PriceChartWidget() {
           <div className="w-px h-4 bg-white/[0.06] mx-1" />
 
           <button
-            onClick={replayState === 'off' ? replayStartSelecting : replayStop}
-            className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
-              replayState !== 'off' ? 'bg-cyan-500/10 text-cyan-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
-            }`}
+            disabled
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded text-white/20 cursor-not-allowed"
+            title="Bar Replay — coming soon"
           >
             <Rewind size={12} />
             Replay
+            <span className="ml-0.5 text-[8px] uppercase tracking-wider font-semibold text-cyan-400/60 bg-cyan-500/10 px-1 py-0.5 rounded">Soon</span>
           </button>
         </div>
 
