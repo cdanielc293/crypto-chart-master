@@ -314,7 +314,7 @@ function analyzeRange(
   zones: WyckoffZone[],
   poes: WyckoffPOE[],
   invalidations: WyckoffInvalidation[],
-  phaseRanges: WyckoffResult['phaseRanges'][],
+  phaseRanges: WyckoffResult['phaseRanges'],
 ): void {
   const rangeSize = rangeHigh - rangeLow;
   if (rangeSize <= 0) return;
