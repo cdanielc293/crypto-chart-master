@@ -3,6 +3,7 @@
 // Fully isolated from Classic view.
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { getDisplayPair } from '@/lib/symbolUtils';
 import { useProfile } from '@/hooks/useProfile';
 import { getPlanLimits, clampReplayTimestamp } from '@/lib/planLimits';
 import type { Interval } from '@/types/chart';
@@ -165,6 +166,36 @@ const TIMEFRAME_CONFIG: Record<Timeframe, { label: string; intervalSec: number; 
   '1D': { label: '1D', intervalSec: 86400, interval: '1d' },
   '1W': { label: '1W', intervalSec: 604800, interval: '1w' },
 };
+
+// ─── OHLC Bar Settings ───
+interface OhlcBarSettings {
+  showSymbol: boolean;
+  showOpen: boolean;
+  showHigh: boolean;
+  showLow: boolean;
+  showClose: boolean;
+  showChange: boolean;
+  showCountdown: boolean;
+  showVolume: boolean;
+}
+
+const DEFAULT_OHLC_SETTINGS: OhlcBarSettings = {
+  showSymbol: true, showOpen: true, showHigh: true,
+  showLow: true, showClose: true, showChange: true,
+  showCountdown: true, showVolume: false,
+};
+
+function loadOhlcSettings(): OhlcBarSettings {
+  try {
+    const raw = localStorage.getItem('newui-ohlc-settings');
+    if (raw) return { ...DEFAULT_OHLC_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_OHLC_SETTINGS };
+}
+
+function saveOhlcSettings(s: OhlcBarSettings) {
+  localStorage.setItem('newui-ohlc-settings', JSON.stringify(s));
+}
 
 // ─── Constants ───
 const PRICE_W = 90;
