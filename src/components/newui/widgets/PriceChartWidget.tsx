@@ -2165,7 +2165,179 @@ export default function PriceChartWidget() {
       }
     }
 
-    // ─── Drawings ───
+    // ─── Wyckoff Overlay ───
+    if (wyckoffEnabledRef.current && wyckoffRef.current) {
+      const wk = wyckoffRef.current;
+
+      // Phase background shading
+      const phaseColors: Record<string, string> = {
+        'A': 'rgba(239,83,80,0.04)',
+        'B': 'rgba(255,193,7,0.04)',
+        'C': 'rgba(76,175,80,0.06)',
+        'D': 'rgba(33,150,243,0.05)',
+      };
+      for (const pr of wk.phaseRanges) {
+        const x1 = (pr.startIdx - st.offsetX) * st.candleWidth;
+        const x2 = (pr.endIdx - st.offsetX + 1) * st.candleWidth;
+        if (x2 < 0 || x1 > chartW) continue;
+        ctx.fillStyle = phaseColors[pr.phase] ?? 'rgba(255,255,255,0.02)';
+        ctx.fillRect(Math.max(0, x1), 0, Math.min(chartW, x2) - Math.max(0, x1), priceH);
+        // Phase label at top
+        const mx = Math.max(12, (x1 + x2) / 2);
+        if (mx > 0 && mx < chartW) {
+          ctx.font = 'bold 10px Inter, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillText(`Phase ${pr.phase}`, mx, 6);
+          ctx.font = '9px Inter, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          // Wrap description
+          const desc = pr.description;
+          if (desc.length > 40) {
+            ctx.fillText(desc.substring(0, 40) + '…', mx, 20);
+          } else {
+            ctx.fillText(desc, mx, 20);
+          }
+        }
+      }
+
+      // Support & Resistance zones
+      for (const zone of wk.zones) {
+        const y = priceToY(zone.price);
+        if (y < -20 || y > priceH + 20) continue;
+        const x1 = timeToX(zone.startTime);
+        const x2 = timeToX(zone.endTime);
+        if (x1 === null || x2 === null) continue;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = zone.type === 'support' ? 'rgba(76,175,80,0.5)' : 'rgba(239,83,80,0.5)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(Math.max(0, x1), y);
+        ctx.lineTo(Math.min(chartW, x2), y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Zone label
+        ctx.font = '9px Inter, sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+        ctx.fillStyle = zone.type === 'support' ? 'rgba(76,175,80,0.6)' : 'rgba(239,83,80,0.6)';
+        const zx = Math.max(4, x1);
+        if (zx < chartW - 40) ctx.fillText(zone.label, zx, y - 3);
+      }
+
+      // Events: labels on chart
+      const eventColors: Record<string, string> = {
+        SC: '#ef5350', AR: '#26a69a', ST: '#ff9800', UA: '#e040fb',
+        Spring: '#4caf50', Test: '#66bb6a', SOS: '#2196f3', BU: '#42a5f5',
+        StoppingAction: '#ff5722', EaseOfMovement: '#00bcd4',
+      };
+      for (const ev of wk.events) {
+        const dataIdx = data.findIndex(c => c.time === ev.time);
+        if (dataIdx < 0) continue;
+        const px = (dataIdx - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        if (px < -20 || px > chartW + 20) continue;
+        const py = priceToY(ev.price);
+        if (py < -30 || py > priceH + 30) continue;
+
+        const col = eventColors[ev.type] ?? '#ffffff';
+        const isBottom = ['SC', 'ST', 'Spring', 'Test', 'StoppingAction'].includes(ev.type);
+        const labelY = isBottom ? py + 14 : py - 14;
+
+        // Draw marker
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        if (isBottom) {
+          // Arrow up
+          ctx.moveTo(px, py + 3); ctx.lineTo(px - 4, py + 9); ctx.lineTo(px + 4, py + 9);
+        } else {
+          // Arrow down
+          ctx.moveTo(px, py - 3); ctx.lineTo(px - 4, py - 9); ctx.lineTo(px + 4, py - 9);
+        }
+        ctx.fill();
+
+        // Label badge
+        ctx.font = 'bold 9px Inter, sans-serif';
+        const tw = ctx.measureText(ev.label).width + 8;
+        const badgeH = 14;
+        const bx = px - tw / 2;
+        const by = isBottom ? labelY : labelY - badgeH;
+        ctx.fillStyle = col + '30'; // semi-transparent bg
+        ctx.beginPath();
+        ctx.roundRect(bx, by, tw, badgeH, 3);
+        ctx.fill();
+        ctx.fillStyle = col;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(ev.label, px, by + badgeH / 2);
+      }
+
+      // POE signals
+      for (const poe of wk.poes) {
+        const dataIdx = data.findIndex(c => c.time === poe.time);
+        if (dataIdx < 0) continue;
+        const px = (dataIdx - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        if (px < -20 || px > chartW + 20) continue;
+        const py = priceToY(poe.entryPrice);
+        const slY = priceToY(poe.stopLoss);
+
+        const poeColor = poe.type === 'aggressive' ? '#4caf50' : '#2196f3';
+
+        // Entry line
+        ctx.setLineDash([3, 2]);
+        ctx.strokeStyle = poeColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(px, py); ctx.lineTo(Math.min(px + 60, chartW), py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // SL line
+        ctx.setLineDash([2, 2]);
+        ctx.strokeStyle = '#ef535080';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px, slY); ctx.lineTo(Math.min(px + 60, chartW), slY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // POE label
+        ctx.font = 'bold 10px Inter, sans-serif';
+        const label = poe.label;
+        const tw = ctx.measureText(label).width + 10;
+        ctx.fillStyle = poeColor + '30';
+        ctx.beginPath();
+        ctx.roundRect(px + 4, py - 16, tw, 14, 3);
+        ctx.fill();
+        ctx.fillStyle = poeColor;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(label, px + 8, py - 9);
+
+        // SL label
+        ctx.font = '9px Inter, sans-serif';
+        ctx.fillStyle = '#ef5350';
+        ctx.fillText('SL', px + 4, slY + 10);
+      }
+
+      // Invalidations
+      for (const inv of wk.invalidations) {
+        const dataIdx = data.findIndex(c => c.time === inv.time);
+        if (dataIdx < 0) continue;
+        const px = (dataIdx - st.offsetX) * st.candleWidth + st.candleWidth / 2;
+        if (px < -20 || px > chartW + 20) continue;
+        const py = priceToY(inv.price);
+
+        // Red X mark
+        ctx.strokeStyle = '#ef5350';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px - 6, py - 6); ctx.lineTo(px + 6, py + 6);
+        ctx.moveTo(px + 6, py - 6); ctx.lineTo(px - 6, py + 6);
+        ctx.stroke();
+
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.fillStyle = '#ef5350';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('INVALID', px, py + 10);
+      }
+    }
     for (const drawing of drawingsRef.current) {
       const drawingWithSel = { ...drawing, selected: drawing.id === selectedDrawingId };
       renderDrawing(ctx, drawingWithSel, timeToX, priceToY, chartW, priceH);
@@ -3361,6 +3533,22 @@ export default function PriceChartWidget() {
               {indicators.length > 0 && <span className="ml-0.5 text-[9px] text-cyan-400/80">{indicators.length}</span>}
             </button>
           </NewUIIndicatorPanel>
+
+          <button
+            onClick={() => setWyckoffEnabled(v => !v)}
+            className={`flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
+              wyckoffEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+            }`}
+            title="Wyckoff Accumulation Indicator"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M2 12 L5 8 L8 10 L11 4 L14 6" />
+              <circle cx="5" cy="8" r="1.2" fill="currentColor" />
+              <circle cx="8" cy="10" r="1.2" fill="currentColor" />
+              <circle cx="11" cy="4" r="1.2" fill="currentColor" />
+            </svg>
+            Wyckoff
+          </button>
 
           <button
             onClick={() => setSettingsOpen(true)}
