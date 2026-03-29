@@ -2479,12 +2479,37 @@ export default function PriceChartWidget() {
               newPoints[1] = { time: newPoints[1].time, price: newPoints[1].price + priceDelta };
             }
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 20) {
-            // Virtual anchor for stop loss — update props.stopPrice
             return { ...d, points: newPoints, props: { ...d.props, stopPrice: point.price } };
           } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 21) {
-            // Virtual anchor for take profit — update point[1].price
             newPoints[1] = { ...newPoints[1], price: point.price };
             return { ...d, points: newPoints };
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 22) {
+            // Left edge resize: move point[0].time, keep right edge fixed
+            const oldLeft = ad.origPoint.time;
+            const oldW = (d.props?.boxWidthPx || 280);
+            const h = getCoordHelpers();
+            if (h) {
+              const oldLeftX = h.timeToX(oldLeft);
+              if (oldLeftX !== null) {
+                const oldRight = oldLeftX + oldW;
+                const newLeftX = x;
+                const newW = Math.max(100, oldRight - newLeftX);
+                newPoints[0] = { ...newPoints[0], time: point.time };
+                return { ...d, points: newPoints, props: { ...d.props, boxWidthPx: newW } };
+              }
+            }
+            return d;
+          } else if ((d.type === 'longposition' || d.type === 'shortposition') && ai === 23) {
+            // Right edge resize: change boxWidthPx
+            const h = getCoordHelpers();
+            if (h) {
+              const leftX = h.timeToX(d.points[0].time);
+              if (leftX !== null) {
+                const newW = Math.max(100, x - leftX);
+                return { ...d, props: { ...d.props, boxWidthPx: newW } };
+              }
+            }
+            return d;
           }
 
           return { ...d, points: newPoints };
