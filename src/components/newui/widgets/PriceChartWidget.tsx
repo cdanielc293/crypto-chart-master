@@ -544,6 +544,7 @@ function hitTestAnchor(
   }
 
   // For long/short position: virtual anchors for stop loss (index 20) and take profit (index 21)
+  // Hit-test against the visible TP/SL drag handle rectangles
   if ((d.type === 'longposition' || d.type === 'shortposition') && d.points.length >= 2) {
     const isLong = d.type === 'longposition';
     const entry = d.points[0].price;
@@ -556,13 +557,19 @@ function hitTestAnchor(
     const p0x = timeToX(d.points[0].time);
     if (p0x !== null) {
       const fixedW = (d.props || {}).boxWidthPx || 280;
-      const midX = p0x + fixedW / 2;
+      const boxRight = p0x + fixedW;
+      const handleW = 50, handleH = 24; // slightly bigger hit zone than visual
       const yStop = priceToY(stopPrice);
       const yTP = priceToY(profit);
-      // SL anchor
-      if (Math.hypot(mx - midX, my - yStop) <= ANCHOR_RADIUS) return 20;
-      // TP anchor
-      if (Math.hypot(mx - midX, my - yTP) <= ANCHOR_RADIUS) return 21;
+      // TP handle rect
+      const tpHX = boxRight - handleW - 6;
+      if (mx >= tpHX && mx <= tpHX + handleW && Math.abs(my - yTP) <= handleH / 2) return 21;
+      // SL handle rect
+      const slHX = boxRight - handleW - 6;
+      if (mx >= slHX && mx <= slHX + handleW && Math.abs(my - yStop) <= handleH / 2) return 20;
+      // Also allow dragging from the TP/SL lines themselves
+      if (Math.abs(my - yTP) <= 6 && mx >= p0x && mx <= boxRight) return 21;
+      if (Math.abs(my - yStop) <= 6 && mx >= p0x && mx <= boxRight) return 20;
     }
   }
 
