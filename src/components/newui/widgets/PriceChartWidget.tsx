@@ -2173,6 +2173,47 @@ export default function PriceChartWidget() {
       }
     }
 
+    // ─── Wyckoff Zone Selection Preview ───
+    if (wyckoffModeRef.current === 'selecting' && wyckoffDraftStartRef.current !== null) {
+      const draftStart = wyckoffDraftStartRef.current;
+      const draftX1 = (draftStart - st.offsetX) * st.candleWidth;
+      // If crosshair is active, show preview to cursor position
+      const draftX2 = st.crosshair ? st.crosshair.x : draftX1 + st.candleWidth;
+      const left = Math.max(0, Math.min(draftX1, draftX2));
+      const right = Math.min(chartW, Math.max(draftX1, draftX2));
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.08)';
+      ctx.fillRect(left, 0, right - left, priceH);
+      ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(left, 0); ctx.lineTo(left, priceH);
+      ctx.moveTo(right, 0); ctx.lineTo(right, priceH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Label
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('סמן סוף איזור ←', (left + right) / 2, 30);
+    }
+
+    // ─── Wyckoff Zone Highlight (active) ───
+    if (wyckoffModeRef.current === 'active' && wyckoffZoneRef.current) {
+      const z = wyckoffZoneRef.current;
+      const zx1 = (z.startIdx - st.offsetX) * st.candleWidth;
+      const zx2 = (z.endIdx - st.offsetX + 1) * st.candleWidth;
+      const left = Math.max(0, zx1);
+      const right = Math.min(chartW, zx2);
+      if (right > 0 && left < chartW) {
+        ctx.strokeStyle = 'rgba(76, 175, 80, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(left, 0, right - left, priceH);
+        ctx.setLineDash([]);
+      }
+    }
+
     // ─── Wyckoff Overlay ───
     if (wyckoffEnabledRef.current && wyckoffRef.current) {
       const wk = wyckoffRef.current;
