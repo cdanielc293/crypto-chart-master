@@ -34,6 +34,7 @@ import {
   Unlock,
   Pencil,
   Rewind,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getIndicator } from '@/lib/indicators/registry';
@@ -43,6 +44,7 @@ import NewUIIndicatorPanel, { type ActiveIndicator } from './NewUIIndicatorPanel
 import NewUILeftToolbar, { type NewUIDrawingTool } from './NewUILeftToolbar';
 import NewUIDrawingToolbar from './NewUIDrawingToolbar';
 import NewUIReplayControls, { type NewUIReplayState } from './NewUIReplayControls';
+import NewUIWatchlist from './NewUIWatchlist';
 import DrawingSettingsDialog from '@/components/chart/DrawingSettingsDialog';
 import type { Drawing } from '@/types/chart';
 
@@ -176,7 +178,7 @@ const TIMEFRAME_CACHE_TTL_MS = 60_000;
 const FAST_INITIAL_BARS = 1200;
 
 // ─── Data fetch (paginated to support plan limits beyond 1000) ───
-async function fetchBTCKlines(interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
+async function fetchKlines(symbol: string, interval: string, totalLimit: number, signal?: AbortSignal): Promise<Candle[]> {
   const BINANCE_MAX = 1000;
   let allCandles: Candle[] = [];
   let endTime: number | undefined = undefined;
@@ -185,7 +187,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number, signal?: Abo
   while (remaining > 0) {
     if (signal?.aborted) break;
     const batchSize = Math.min(remaining, BINANCE_MAX);
-    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${batchSize}`;
     if (endTime !== undefined) url += `&endTime=${endTime}`;
     const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
@@ -210,7 +212,7 @@ async function fetchBTCKlines(interval: string, totalLimit: number, signal?: Abo
   return allCandles;
 }
 
-async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTimeMs: number, signal?: AbortSignal): Promise<Candle[]> {
+async function fetchOlderKlines(symbol: string, interval: string, totalLimit: number, endTimeMs: number, signal?: AbortSignal): Promise<Candle[]> {
   const BINANCE_MAX = 1000;
   let allCandles: Candle[] = [];
   let endTime: number | undefined = endTimeMs;
@@ -219,7 +221,7 @@ async function fetchOlderBTCKlines(interval: string, totalLimit: number, endTime
   while (remaining > 0) {
     if (signal?.aborted) break;
     const batchSize = Math.min(remaining, BINANCE_MAX);
-    let url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${batchSize}`;
+    let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${batchSize}`;
     if (endTime !== undefined) url += `&endTime=${endTime}`;
     const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Binance API error: ${res.status}`);
@@ -1104,6 +1106,12 @@ export default function PriceChartWidget() {
   const userPlan = profile?.plan ?? 'start';
   const planLimits = useMemo(() => getPlanLimits(userPlan), [userPlan]);
 
+  // Dynamic symbol support
+  const [symbol, setSymbol] = useState('BTCUSDT');
+  const symbolRef = useRef('BTCUSDT');
+  useEffect(() => { symbolRef.current = symbol; }, [symbol]);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+
   const [timeframe, setTimeframe] = useState<Timeframe>('4h');
   const [chartType, setChartType] = useState<NewUIChartType>('candles');
   const [chartTypeOpen, setChartTypeOpen] = useState(false);
@@ -1495,7 +1503,7 @@ export default function PriceChartWidget() {
       const remaining = Math.max(0, barLimit - baseCandles.length);
       if (remaining === 0 || baseCandles.length === 0) return;
       const endTimeMs = baseCandles[0].time * 1000 - 1;
-      fetchOlderBTCKlines(TF_BINANCE[timeframe], remaining, endTimeMs, controller.signal)
+      fetchOlderKlines(symbol, TF_BINANCE[timeframe], remaining, endTimeMs, controller.signal)
         .then(older => {
           if (controller.signal.aborted || reqSeq !== fetchSeqRef.current || older.length === 0) return;
           const merged = [...older, ...baseCandles];
@@ -1522,7 +1530,7 @@ export default function PriceChartWidget() {
       setLoading(true);
       const tfConfig = TIMEFRAME_CONFIG[timeframe];
       getBacktestKlines(
-        'BTCUSDT',
+        symbol,
         tfConfig.interval,
         replayTs,
         12000,
@@ -1543,7 +1551,7 @@ export default function PriceChartWidget() {
           console.warn('Backtest cache failed, falling back to Binance:', err);
           // Fallback to direct Binance fetch
           const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
-          fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+          fetchKlines(symbol, TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
             .then(candles => {
               if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
               timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
@@ -1557,7 +1565,7 @@ export default function PriceChartWidget() {
 
     setLoading(true);
     const firstLoadLimit = Math.min(barLimit, FAST_INITIAL_BARS);
-    fetchBTCKlines(TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
+    fetchKlines(symbol, TF_BINANCE[timeframe], firstLoadLimit, controller.signal)
       .then(candles => {
         if (controller.signal.aborted || reqSeq !== fetchSeqRef.current) return;
         timeframeCacheRef.current.set(timeframe, { candles, cachedAt: Date.now() });
@@ -1568,7 +1576,7 @@ export default function PriceChartWidget() {
       .catch(finishWithError);
 
     return () => controller.abort();
-  }, [timeframe, planLimits, recalcIndicators, scheduleRender]);
+  }, [timeframe, symbol, planLimits, recalcIndicators, scheduleRender]);
 
   // ─── WebSocket (disabled during replay to avoid interference) ───
   useEffect(() => {
@@ -1576,7 +1584,7 @@ export default function PriceChartWidget() {
     if (replayState !== 'off') return;
 
     const binanceInterval = TF_BINANCE[timeframe];
-    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${binanceInterval}`);
     wsRef.current = ws;
     ws.onmessage = event => {
       try {
@@ -1598,7 +1606,7 @@ export default function PriceChartWidget() {
     };
     ws.onerror = () => console.warn('WS error');
     return () => { ws.close(); wsRef.current = null; };
-  }, [timeframe, replayState, recalcIndicators, scheduleRender]);
+  }, [timeframe, symbol, replayState, recalcIndicators, scheduleRender]);
 
   // ═══ RENDER ═══
   const render = useCallback(() => {
@@ -3149,9 +3157,20 @@ export default function PriceChartWidget() {
           </button>
         </div>
 
+        {/* Watchlist toggle button — top-left */}
+        <button
+          onClick={() => setWatchlistOpen(v => !v)}
+          className={`absolute top-1.5 left-2 z-20 flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors pointer-events-auto ${
+            watchlistOpen ? 'bg-cyan-500/10 text-cyan-400' : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]'
+          }`}
+          title="Watchlist"
+        >
+          <List size={12} />
+        </button>
+
         {/* Status badges */}
         <div className="absolute top-1.5 right-[94px] flex items-center gap-2 pointer-events-none z-10">
-          <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">BTC/USDT • {TIMEFRAME_CONFIG[timeframe].label}</span>
+          <span className="text-[11px] font-mono text-white/20 tracking-wider uppercase">{symbol.replace('USDT', '')}/USDT • {TIMEFRAME_CONFIG[timeframe].label}</span>
           {loading && <Loader2 size={12} className="animate-spin text-white/20" />}
         </div>
 
@@ -3236,6 +3255,18 @@ export default function PriceChartWidget() {
             if (settingsDrawingId) {
               updateDrawing(settingsDrawingId, updates);
             }
+          }}
+        />
+
+        {/* Watchlist panel */}
+        <NewUIWatchlist
+          open={watchlistOpen}
+          onClose={() => setWatchlistOpen(false)}
+          activeSymbol={symbol}
+          onSelectSymbol={(sym) => {
+            setSymbol(sym);
+            timeframeCacheRef.current.clear();
+            setWatchlistOpen(false);
           }}
         />
       </div>
