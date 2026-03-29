@@ -1248,6 +1248,10 @@ export default function PriceChartWidget() {
 
   const [config, setConfig] = useState<ChartConfig>(loadConfig);
   const [indicators, setIndicators] = useState<ActiveIndicator[]>(loadIndicators);
+  const [ohlcSettings, setOhlcSettings] = useState<OhlcBarSettings>(loadOhlcSettings);
+  const [ohlcMenuOpen, setOhlcMenuOpen] = useState(false);
+  const ohlcSettingsRef = useRef(ohlcSettings);
+  useEffect(() => { ohlcSettingsRef.current = ohlcSettings; saveOhlcSettings(ohlcSettings); }, [ohlcSettings]);
 
   const initialDrawingsRef = useRef<WidgetDrawing[]>(loadDrawings());
   const drawingsRef = useRef<WidgetDrawing[]>(initialDrawingsRef.current);
