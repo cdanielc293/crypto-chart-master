@@ -1401,6 +1401,12 @@ export default function PriceChartWidget() {
       } catch (e) { console.warn(`Indicator ${ind.defId} error:`, e); }
     }
     indResultsRef.current = results;
+
+    // Recalc Wyckoff if enabled
+    if (wyckoffEnabledRef.current && data.length > 50) {
+      wyckoffRef.current = analyzeWyckoff(data);
+    }
+
     scheduleRender();
   }, [scheduleRender]);
 
